@@ -26,5 +26,6 @@ public class User {
 
     @Column(name = "user_phone")
     private String userPhone;
+
     // 다른 필드 생략 가능
 }
