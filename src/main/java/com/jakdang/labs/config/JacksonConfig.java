@@ -24,3 +24,24 @@
 //        return objectMapper;
 //    }
 //}
+
+package com.jakdang.labs.config;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.springframework.context.annotation.Configuration;
+import javax.annotation.PostConstruct;
+
+@Configuration
+public class JacksonConfig {
+    private final ObjectMapper objectMapper;
+
+    public JacksonConfig(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
+
+    @PostConstruct
+    public void setUp() {
+        objectMapper.registerModule(new JavaTimeModule());
+    }
+}
