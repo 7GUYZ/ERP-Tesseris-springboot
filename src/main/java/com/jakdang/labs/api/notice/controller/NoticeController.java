@@ -68,4 +68,6 @@ public class NoticeController {
             return ResponseEntity.badRequest().body("공지사항 삭제 실패");
         }
     }
+
+    //비밀번호 검사
 }
