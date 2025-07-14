@@ -74,4 +74,11 @@ public class UserController {
     public ResponseEntity<ResponseDTO<UserDTO>> getUserProfile(@PathVariable("id") String id) {
         return ResponseEntity.ok().body(userService.getUserProfile(id));
     }
+
+    // 정은 추가 0710 (테스트용)
+    @GetMapping(value = "/testBackend")
+    @RunningTime
+    public ResponseEntity<ResponseDTO<String>> testBackend() {
+        return ResponseEntity.ok().body(ResponseDTO.createSuccessResponse("테스트 백엔드 성공", null));
+    }
  }

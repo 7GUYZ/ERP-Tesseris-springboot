@@ -55,7 +55,20 @@ public class LogoutFilter extends OncePerRequestFilter {
         log.info("로그아웃 요청 처리 시작");
 
         try {
+            // 쿠키 디버깅 로그 추가
+            Cookie[] cookies = request.getCookies();
+            if (cookies != null) {
+                log.info("요청에 포함된 쿠키 개수: {}", cookies.length);
+                for (Cookie cookie : cookies) {
+                    log.info("쿠키 이름: {}, 값: {}", cookie.getName(), cookie.getValue());
+                }
+            } else {
+                log.warn("요청에 쿠키가 없습니다");
+            }
+
             String refreshToken = tokenUtils.extractRefreshToken(request.getCookies());
+            log.info("추출된 리프레시 토큰: {}", refreshToken != null ? "존재함" : "null");
+            
             logoutService.processLogout(refreshToken);
 
             Cookie logoutCookie = tokenUtils.createLogoutCookie();

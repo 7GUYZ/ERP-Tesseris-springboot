@@ -5,6 +5,9 @@ import com.jakdang.labs.api.auth.entity.UserToken;
 import com.jakdang.labs.api.auth.repository.UserTokenRepository;
 import com.jakdang.labs.security.jwt.utils.JwtUtil;
 import lombok.RequiredArgsConstructor;
+
+import java.time.Instant;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -110,17 +113,22 @@ public class TokenService {
     }
 
     /**
-     * 토큰 쌍 저장
+     * 
      * 리프레시 토큰을 데이터베이스에 저장
      * 
      * @param accessToken 액세스 토큰
      * @param refreshToken 리프레시 토큰
      */
-    @Transactional
+    @Transactional // (**정은 수정 및 추가함 0710** - refreshToken 정보 추가 저장)
     protected void saveTokenPair(String accessToken, String refreshToken) {
+        
+        long expiresAt = Instant.now().getEpochSecond() + (refreshTokenExpiration / 1000); // 정은 추가
+
         // TODO 값 넣기
         UserToken refreshEntity = UserToken.builder()
                 .userId(jwtUtil.getUserId(accessToken))
+                .expiresAt(expiresAt) // 정은 추가
+                .isRevoked(false) // 토큰이 폐기되었는지 - 예상) 로그아웃시 토큰 폐기할듯. 1(true)이 페기인듯? 기본값이 0(false)임. 
                 .refreshToken(refreshToken)
                 .build();
 

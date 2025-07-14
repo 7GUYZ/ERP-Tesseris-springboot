@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jakdang.labs.api.auth.dto.CustomUserDetails;
 import com.jakdang.labs.api.auth.dto.RoleType;
 import com.jakdang.labs.api.auth.dto.TokenDTO;
+import com.jakdang.labs.api.auth.dto.UserDTO;
 import com.jakdang.labs.api.auth.dto.UserLoginRequest;
 import com.jakdang.labs.api.common.ResponseDTO;
 import com.jakdang.labs.security.jwt.service.TokenService;
@@ -122,12 +123,15 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
             return;
         }
 
+
         String username = authentication.getName();
         String role = extractRole(authentication);
         String userId = extractUserId(authentication);
         String email = extractUserEmail(authentication);
+        String phone = extractUserPhone(authentication);
+        String createdAt = extractUserCreatedAt(authentication);
 
-        log.info("사용자 {} {} {} {} 로그인 성공", username, role, userId, email);
+        log.info("사용자 {} {} {} {} 로그인 성공", username, role, email, userId);
 
         // 토큰 생성 및 저장
         TokenDTO tokenPair = tokenService.createTokenPair(username, role, email, userId);
@@ -135,10 +139,33 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         // 응답 설정
         response.setStatus(HttpStatus.OK.value());
         response.setHeader("Authorization", "Bearer " + tokenPair.getAccessToken());
+        
+        log.info("로그인 성공 - 리프레시 토큰 쿠키 설정 시작");
         tokenUtils.addRefreshTokenCookie(response, tokenPair.getRefreshToken());
+        log.info("로그인 성공 - 리프레시 토큰 쿠키 설정 완료");
 
-        // 로그인 성공 응답 작성
-        writeSuccessResponse(response, username, role);
+        // (**정은 수정 및 추가함 0709-0710** - id, 이메일, 이름만 응답)
+        // UserDTO userDTO = UserDTO.builder()
+        //         .id(userId)
+        //         .email(email)
+        //         .name(username)
+        //         .build();
+        // (**정은 수정 및 추가함 0710** - id, 이메일, 이름만 응답 - Map사용 이유는 UserDTO 클래스 사용시 null이 아닌 count값=0이 가져와짐)
+        // 원하는 필드만 포함하는 Map 생성
+        // (**정은 주석 추가 0712** )
+        // User_Role 테이블에서 user_role_index가져와서 userData에 같이 넘겨주기. 지금은 하드코딩(7)으로 테스트(2-사업자, 3-가맹점, 7-정회원, 4-관리자)
+        Map<String, Object> userData = Map.of(
+                "id", userId,
+                "email", email,
+                "name", username,
+                "phone", phone,
+                "createdAt", createdAt,
+                "user_role_index", "7"
+        );
+
+        // 로그인 성공 응답 작성 (**정은 수정함 0709**)
+        // writeSuccessResponse(response, username, role);
+        writeSuccessResponse(response, userData);
     }
 
     /**
@@ -201,6 +228,18 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         return userDetails.getEmail();
     }
 
+    // 정은 추가 0710
+    private String extractUserCreatedAt(Authentication authentication) {
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        return userDetails.getCreatedAt();
+    }
+
+    // 정은 추가 0710
+    private String extractUserPhone(Authentication authentication) {
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        return userDetails.getPhone();
+    }
+
     /**
      * 로그인 성공 응답 작성
      * 
@@ -209,9 +248,16 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
      * @param role 사용자 역할
      * @throws IOException IO 예외
      */
-    private void writeSuccessResponse(HttpServletResponse response, String username, String role) throws IOException {
+
+    // private void writeSuccessResponse(HttpServletResponse response, String username, String role) throws IOException {
+    //     response.setContentType("application/json");
+    //     objectMapper.writeValue(response.getOutputStream(),
+    //             ResponseDTO.createSuccessResponse("로그인 성공", null));
+    // }
+    // (**정은 수정 및 추가 0709**)
+    private <T> void writeSuccessResponse(HttpServletResponse response, T data) throws IOException {
         response.setContentType("application/json");
         objectMapper.writeValue(response.getOutputStream(),
-                ResponseDTO.createSuccessResponse("로그인 성공", null));
+                ResponseDTO.createSuccessResponse("로그인 성공", data));
     }
 }
