@@ -84,6 +84,16 @@ public class CustomUserDetails implements UserDetails {
         return userEntity.getEmail();
     }
 
+    // 정은 추가 0710
+    public String getCreatedAt() {
+        return userEntity.getCreatedAt().toString();
+    }
+
+    // 정은 추가 0710
+    public String getPhone() {
+        return userEntity.getPhone();
+    }
+
     /**
      * 계정 만료 여부 확인
      * 
@@ -134,4 +144,5 @@ public class CustomUserDetails implements UserDetails {
     public boolean isEnabled() {
         return userEntity.getActivated();
     }
+
 }

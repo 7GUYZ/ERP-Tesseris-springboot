@@ -4,6 +4,7 @@ import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
@@ -17,6 +18,7 @@ import java.util.Optional;
  * 토큰 유틸리티 클래스
  * JWT 토큰의 추출, 검증, 쿠키 관리를 담당하는 유틸리티
  */
+@Slf4j // (**0712 정은 추가 및 수정 코드)
 @Component
 @RequiredArgsConstructor
 public class TokenUtils {
@@ -91,7 +93,15 @@ public class TokenUtils {
         cookie.setMaxAge(0);
         cookie.setPath("/");
         cookie.setHttpOnly(true);
-        cookie.setSecure(true);
+        
+        // (**0712 정은 수정 및 추가 코드)
+        // 개발 모드에서는 Secure를 false로 설정
+        if (IS_DEV_MODE) {
+            cookie.setSecure(false);
+        } else {
+            cookie.setSecure(true);
+        }
+        
         return cookie;
     }
 
@@ -102,7 +112,13 @@ public class TokenUtils {
      * @param refreshToken 리프레시 토큰
      */
     public void addRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
-        response.addHeader(HttpHeaders.SET_COOKIE, createRefreshCookie(refreshToken).toString());
+        // (**0712 정은 추가 및 수정 코드)
+        // response.addHeader(HttpHeaders.SET_COOKIE, createRefreshCookie(refreshToken).toString());
+        ResponseCookie cookie = createRefreshCookie(refreshToken);
+        log.info("리프레시 토큰 쿠키 생성: domain={}, secure={}, sameSite={}", 
+                cookie.getDomain(), cookie.isSecure(), cookie.getSameSite());
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
     }
 
     /**
@@ -113,13 +129,23 @@ public class TokenUtils {
      * @return ResponseCookie 객체
      */
     public ResponseCookie createRefreshCookie(String value) {
-        return ResponseCookie.from("refresh", value)
+        // (**0712 정은 수정 및 추가 코드)
+
+        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from("refresh", value)
                 .maxAge(Duration.ofDays(1))
-                .secure(true)
                 .path("/")
-                .httpOnly(true)
-                .domain("jakdanglabs.store")
-                .sameSite("None")
-                .build();
+                .httpOnly(true);
+
+        // 개발 모드에서는 Secure를 false로 설정하고 SameSite를 Lax로 설정
+        if (IS_DEV_MODE) {
+            builder.secure(false)
+                   .sameSite("Lax");
+        } else {
+            builder.secure(true)
+                   .domain(FRONT_DOMAIN)
+                   .sameSite("None");
+        }
+
+        return builder.build();
     }
 }

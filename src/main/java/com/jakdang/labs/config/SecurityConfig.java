@@ -163,14 +163,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of(
-            frontendUrl,
-            "http://localhost:3000", // React 개발 서버 허용
-            "http://localhost:3001", // 추가: 3001 포트도 허용
-            "http://localhost:7001",
-            "https://jakdanglabs.com",
-            "https://admin.jakdanglabs.com"
-        )); // 프론트엔드 도메인 설정
+        configuration.setAllowedOrigins(List.of(frontendUrl, "http://localhost:7001", "https://jakdanglabs.com", "https://admin.jakdanglabs.com", "http://localhost:3000", "http://localhost:3001")); // 프론트엔드 도메인 설정
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList(
             "Authorization",
