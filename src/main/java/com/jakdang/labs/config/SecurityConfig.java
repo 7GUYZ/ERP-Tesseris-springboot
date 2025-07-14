@@ -54,6 +54,10 @@ public class SecurityConfig {
         "/ws/**", "/ws/chat/**",
         "/api/channel/all",
         "/api/channel/active",
+        "/api/notice/**",
+        "/api/commission-setting/**",
+        "/api/update-log/**",
+        "/api/cms-access-log/**"
     };
 //    .requestMatchers("/ws/**").permitAll()
     public static final String[] SWAGGER_URLS = {
