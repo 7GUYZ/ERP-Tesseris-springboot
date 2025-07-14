@@ -1,10 +1,11 @@
 package com.jakdang.labs.api.notice.controller;
 
-import com.jakdang.labs.api.notice.dto.NoticeDTO;
-import com.jakdang.labs.api.notice.service.NoticeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import com.jakdang.labs.api.notice.dto.NoticeDTO;
+import com.jakdang.labs.api.notice.service.NoticeService;
 
 import java.util.List;
 

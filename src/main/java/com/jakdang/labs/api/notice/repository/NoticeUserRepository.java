@@ -1,8 +1,9 @@
 package com.jakdang.labs.api.notice.repository;
 
-import com.jakdang.labs.api.notice.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+
+import com.jakdang.labs.api.notice.entity.User;
 
 import java.util.Optional;
 

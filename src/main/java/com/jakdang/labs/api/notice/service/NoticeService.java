@@ -5,14 +5,14 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.jakdang.labs.api.notice.dto.NoticeDTO;
 import com.jakdang.labs.api.notice.entity.Notice;
+import com.jakdang.labs.api.notice.entity.User;
 import com.jakdang.labs.api.notice.repository.NoticeRepository;
 import com.jakdang.labs.api.notice.repository.NoticeUserRepository;
-import com.jakdang.labs.api.notice.entity.User;
 
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service
