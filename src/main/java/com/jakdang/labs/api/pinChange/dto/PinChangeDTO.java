@@ -6,7 +6,7 @@ public class PinChangeDTO {
 
   @Data
   public static class Response{
-    private Integer userCmIndex;
+    // private Integer userCmIndex;
     private String userCmPincode;
   }
 }
