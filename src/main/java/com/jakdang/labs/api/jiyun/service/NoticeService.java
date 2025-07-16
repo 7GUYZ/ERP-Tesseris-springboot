@@ -11,16 +11,16 @@ import org.springframework.transaction.annotation.Transactional;
 import com.jakdang.labs.api.jiyun.dto.NoticeDTO;
 import com.jakdang.labs.api.entity.Notice;
 import com.jakdang.labs.api.entity.UserTesseris;
-import com.jakdang.labs.api.jiyun.repository.NoticeRepository;
-import com.jakdang.labs.api.jiyun.repository.NoticeUserRepository;
+import com.jakdang.labs.api.jiyun.repository.NoticekjyRepository;
+import com.jakdang.labs.api.jiyun.repository.NoticeUserkjyRepository;
 
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class NoticeService {
-  private final NoticeRepository noticeRepository;
-  private final NoticeUserRepository userRepository;
+  private final NoticekjyRepository noticeRepository;
+  private final NoticeUserkjyRepository userRepository;
 
   // 공지사항 등록
   @Transactional

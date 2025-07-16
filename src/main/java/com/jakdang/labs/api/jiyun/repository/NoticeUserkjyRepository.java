@@ -8,6 +8,6 @@ import com.jakdang.labs.api.entity.UserTesseris;
 import java.util.Optional;
 
 @Repository("noticeUserRepository")
-public interface NoticeUserRepository extends JpaRepository<UserTesseris, Integer> {
+public interface NoticeUserkjyRepository extends JpaRepository<UserTesseris, Integer> {
     Optional<UserTesseris> findByUserIndex(Integer userIndex);
 } 
