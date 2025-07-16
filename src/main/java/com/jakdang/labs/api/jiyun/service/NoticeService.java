@@ -9,8 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.jakdang.labs.api.jiyun.dto.NoticeDTO;
-import com.jakdang.labs.api.entity.Notice;
-import com.jakdang.labs.api.entity.UserTesseris;
+import com.jakdang.labs.entity.Notice;
+import com.jakdang.labs.entity.UserTesseris;
 import com.jakdang.labs.api.jiyun.repository.NoticekjyRepository;
 import com.jakdang.labs.api.jiyun.repository.NoticeUserkjyRepository;
 

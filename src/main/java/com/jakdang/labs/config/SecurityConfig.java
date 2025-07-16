@@ -6,6 +6,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 //import com.jakdang.labs.security.oauth.handler.OAuth2AuthenticationSuccessHandler;
 //import com.jakdang.labs.security.oauth.service.HttpCookieOAuth2AuthorizationRequestRepository;
 import com.jakdang.labs.security.service.CustomUserDetailsService;
+import com.jakdang.labs.api.jungeun.service.AdminLjeSvc;
+import com.jakdang.labs.api.jungeun.service.CmsAccessLogLjeSvc;
+import com.jakdang.labs.api.jungeun.service.UserTesserisLjeSvc;
+import com.jakdang.labs.entity.UserTesseris;
 import com.jakdang.labs.security.jwt.*;
 import com.jakdang.labs.security.jwt.service.LogoutService;
 import com.jakdang.labs.security.jwt.service.TokenService;
@@ -53,11 +57,7 @@ public class SecurityConfig {
         "/login/oauth2/code/**",
         "/ws/**", "/ws/chat/**",
         "/api/channel/all",
-        "/api/channel/active",
-        "/api/notice/**",
-        "/api/commission-setting/**",
-        "/api/update-log/**",
-        "/api/cms-access-log/**"
+        "/api/channel/active"
     };
 //    .requestMatchers("/ws/**").permitAll()
     public static final String[] SWAGGER_URLS = {
@@ -84,6 +84,10 @@ public class SecurityConfig {
     private final LogoutService logoutService;
     private final ObjectMapper objectMapper;
     private final CustomUserDetailsService userDetailsService;
+    // (**0715 정은 추가...service 호출하려고 LoginFilter에 생성자 추가했더니 이것도 수정해야된대용..)
+    private final UserTesserisLjeSvc userTesserisSvc;
+    private final AdminLjeSvc adminSvc;
+    private final CmsAccessLogLjeSvc cmsLogSvc;
 
 //    private final CustomOAuth2UserService customOAuth2UserService;
 //    private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
@@ -154,8 +158,9 @@ public class SecurityConfig {
         // 필터 설정
         http
                 .addFilterBefore(new JWTFilter(jwtUtil, tokenUtils), UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(new LogoutFilter(logoutService, tokenUtils, objectMapper), JWTFilter.class)
-                .addFilterAt(new LoginFilter(authenticationManager, tokenService, tokenUtils, objectMapper), UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(new LogoutFilter(logoutService, tokenUtils, objectMapper, jwtUtil, userTesserisSvc, cmsLogSvc), JWTFilter.class)
+                // (**0715 정은 수정...service 호출하려고 LoginFilter에 생성자 추가했더니 이것도 수정해야된대용..)
+                .addFilterAt(new LoginFilter(authenticationManager, tokenService, tokenUtils, objectMapper, userTesserisSvc, adminSvc, cmsLogSvc), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
