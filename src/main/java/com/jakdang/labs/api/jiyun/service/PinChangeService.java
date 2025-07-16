@@ -3,7 +3,7 @@ package com.jakdang.labs.api.jiyun.service;
 import org.springframework.stereotype.Service;
 
 import com.jakdang.labs.api.jiyun.dto.PinChangeDTO;
-import com.jakdang.labs.api.entity.UserCm;
+import com.jakdang.labs.entity.UserCm;
 import com.jakdang.labs.api.jiyun.repository.PinChangekjyRepository;
 
 import lombok.RequiredArgsConstructor;
