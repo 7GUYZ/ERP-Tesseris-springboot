@@ -1,6 +1,7 @@
 package com.jakdang.labs.api.auth.dto;
 
 import com.jakdang.labs.api.auth.entity.UserEntity;
+
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
@@ -21,6 +22,7 @@ public class CustomUserDetails implements UserDetails {
 
     /** 사용자 엔티티 */
     private final UserEntity userEntity;
+
 
     /**
      * 사용자의 권한 정보를 반환
@@ -93,6 +95,7 @@ public class CustomUserDetails implements UserDetails {
     public String getPhone() {
         return userEntity.getPhone();
     }
+
 
     /**
      * 계정 만료 여부 확인
