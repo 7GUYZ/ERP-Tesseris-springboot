@@ -4,6 +4,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.jakdang.labs.api.entity.Notice;
 
-public interface NoticeRepository extends JpaRepository<Notice, Integer> {
+public interface NoticekjyRepository extends JpaRepository<Notice, Integer> {
   
 } 
