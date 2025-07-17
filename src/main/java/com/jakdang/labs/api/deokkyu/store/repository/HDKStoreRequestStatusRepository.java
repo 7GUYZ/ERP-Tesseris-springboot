@@ -5,7 +5,7 @@ import com.jakdang.labs.entity.StoreRequestStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 
-public interface StoreRequestStatusRepository extends JpaRepository<StoreRequestStatus, Integer> {
+public interface HDKStoreRequestStatusRepository extends JpaRepository<StoreRequestStatus, Integer> {
 
 }
 

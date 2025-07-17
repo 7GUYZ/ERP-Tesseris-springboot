@@ -15,15 +15,15 @@ import com.jakdang.labs.entity.StoreRequestStatus;
 import com.jakdang.labs.entity.UserCm;
 import com.jakdang.labs.entity.UserTesseris;
 import com.jakdang.labs.api.auth.entity.UserEntity;
-import com.jakdang.labs.api.deokkyu.store.repository.StoreCategoryRepository;
-import com.jakdang.labs.api.deokkyu.store.repository.StoreRepository;
-import com.jakdang.labs.api.deokkyu.store.repository.StoreRequestStatusRepository;
-import com.jakdang.labs.api.deokkyu.store.repository.UserCmRepository;
-import com.jakdang.labs.api.deokkyu.store.repository.BusinessManRepository;
-import com.jakdang.labs.api.deokkyu.store.repository.DKUserRepository;
-import com.jakdang.labs.api.deokkyu.store.repository.BusinessGradeRepository;
-import com.jakdang.labs.api.deokkyu.store.repository.StoreCustomerRepository;
-import com.jakdang.labs.api.deokkyu.store.repository.UserTesserisRepository;
+import com.jakdang.labs.api.deokkyu.store.repository.HDKStoreCategoryRepository;
+import com.jakdang.labs.api.deokkyu.store.repository.HDKStoreRepository;
+import com.jakdang.labs.api.deokkyu.store.repository.HDKStoreRequestStatusRepository;
+import com.jakdang.labs.api.deokkyu.store.repository.HDKUserCmRepository;
+import com.jakdang.labs.api.deokkyu.store.repository.HDKBusinessManRepository;
+import com.jakdang.labs.api.deokkyu.store.repository.HDKUserRepository;
+import com.jakdang.labs.api.deokkyu.store.repository.HDKBusinessGradeRepository;
+import com.jakdang.labs.api.deokkyu.store.repository.HDKStoreCustomerRepository;
+import com.jakdang.labs.api.deokkyu.store.repository.HDKUserTesserisRepository;
 import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
@@ -36,15 +36,15 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor // 생성자 이걸로 만들어줌
 @Service
 public class StoreService {
-    private final StoreRepository storeRepository;
-    private final DKUserRepository userRepository;
-    private final StoreCategoryRepository storeCategoryRepository;
-    private final StoreRequestStatusRepository storeRequestStatusRepository;
-    private final UserCmRepository userCmRepository;
-    private final BusinessManRepository businessManRepository;
-    private final BusinessGradeRepository businessGradeRepository;
-    private final StoreCustomerRepository storeCustomerRepository;
-    private final UserTesserisRepository userTesserisRepository;
+    private final HDKStoreRepository storeRepository;
+    private final HDKUserRepository userRepository;
+    private final HDKStoreCategoryRepository storeCategoryRepository;
+    private final HDKStoreRequestStatusRepository storeRequestStatusRepository;
+    private final HDKUserCmRepository userCmRepository;
+    private final HDKBusinessManRepository businessManRepository;
+    private final HDKBusinessGradeRepository businessGradeRepository;
+    private final HDKStoreCustomerRepository storeCustomerRepository;
+    private final HDKUserTesserisRepository userTesserisRepository;
 
     // 전체 리스트 조회
      public List<StoreListDto> getStoreDtos(StoreListSearchDto filter) {
