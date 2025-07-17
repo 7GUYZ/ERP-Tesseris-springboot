@@ -4,7 +4,7 @@ import com.jakdang.labs.api.auth.entity.UserEntity;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface DKUserRepository extends JpaRepository<UserEntity, String> {
+public interface HDKUserRepository extends JpaRepository<UserEntity, String> {
     // findByUserId 삭제, findById만 사용
 }
 
