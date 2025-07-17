@@ -3,18 +3,18 @@ package com.jakdang.labs.api.deokkyu.store.service;
 import org.springframework.stereotype.Service;
 
 import com.jakdang.labs.api.deokkyu.store.dto.CusStoreListDto;
-import com.jakdang.labs.api.deokkyu.store.dto.StoreCustomerDto;
+import com.jakdang.labs.api.deokkyu.store.dto.CustomerDto;
 import com.jakdang.labs.api.deokkyu.store.dto.StoreListDto;
 import com.jakdang.labs.api.deokkyu.store.dto.StoreListSearchDto;
-import com.jakdang.labs.api.entity.BusinessGrade;
-import com.jakdang.labs.api.entity.BusinessMan;
-import com.jakdang.labs.api.entity.Store;
-import com.jakdang.labs.api.entity.StoreCategory;
-import com.jakdang.labs.api.entity.StoreCustomer;
-import com.jakdang.labs.api.entity.StoreRequestStatus;
-import com.jakdang.labs.api.entity.User;
-import com.jakdang.labs.api.entity.UserCm;
-import com.jakdang.labs.api.entity.UserTesseris;
+import com.jakdang.labs.entity.BusinessGrade;
+import com.jakdang.labs.entity.BusinessMan;
+import com.jakdang.labs.entity.Store;
+import com.jakdang.labs.entity.StoreCategory;
+import com.jakdang.labs.entity.StoreCustomer;
+import com.jakdang.labs.entity.StoreRequestStatus;
+import com.jakdang.labs.entity.UserCm;
+import com.jakdang.labs.entity.UserTesseris;
+import com.jakdang.labs.api.auth.entity.UserEntity;
 import com.jakdang.labs.api.deokkyu.store.repository.StoreCategoryRepository;
 import com.jakdang.labs.api.deokkyu.store.repository.StoreRepository;
 import com.jakdang.labs.api.deokkyu.store.repository.StoreRequestStatusRepository;
@@ -54,9 +54,15 @@ public class StoreService {
         return stores.stream()
             // 검색 조건 검사 
             .filter(store -> {
-                Optional<UserTesseris> userTesserisOpt = userTesserisRepository.findByUserIndex(store.getUserIndex());
-                String userId = userTesserisOpt.map(UserTesseris::getUsersId).orElse(null);
-                User user = (store.getUserIndex() != null) ? userRepository.findById(store.getUserIndex()).orElse(null) : null;
+                UserTesseris userTesseris = store.getUserIndex();
+                String userId = null;
+                UserEntity user = null;
+                
+                if (userTesseris != null) {
+                    userId = userTesseris.getUsersId().getId(); // UserEntity의 id
+                    user = userTesseris.getUsersId(); // UserEntity 객체
+                }
+                
                 Optional<StoreRequestStatus> requestId = storeRequestStatusRepository.findById(store.getStoreRequestStatusIndex());
 
                 if (filter.getUserId() != null && !filter.getUserId().isBlank()) {
@@ -121,7 +127,7 @@ public class StoreService {
 
                 // 사업자 이름으로 비교
                 if (filter.getBusinessUserName() != null && !filter.getBusinessUserName().isBlank()) {
-                    Optional<User> businessUserOpt = userRepository.findById(store.getBusinessManUserIndex());
+                    Optional<UserEntity> businessUserOpt = userRepository.findById(String.valueOf(store.getBusinessManUserIndex()));
                     if (businessUserOpt.isEmpty() || businessUserOpt.get().getName() == null ||
                     !businessUserOpt.get().getName().contains(filter.getBusinessUserName())) {
                         return false;
@@ -150,22 +156,40 @@ public class StoreService {
             })
             .map(store -> {
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-                Optional<UserTesseris> userTesserisOpt = userTesserisRepository.findByUserIndex(store.getUserIndex());
-                String userId = userTesserisOpt.map(UserTesseris::getUsersId).orElse(null);
-                User user = (store.getUserIndex() != null) ? userRepository.findById(store.getUserIndex()).orElse(null) : null;
-                StoreCategory category = storeCategoryRepository.findById(store.getStoreCategoryIndex()).orElse(null);
-                StoreRequestStatus status = storeRequestStatusRepository.findById(store.getStoreRequestStatusIndex()).orElse(null);
-                UserCm userCm= userCmRepository.findById(store.getUserIndex()).orElse(null);
-                User businessManUser = userRepository.findById(store.getBusinessManUserIndex()).orElse(null);
-                String businessManUserId = null;
-                if (businessManUser != null) {
-                    Optional<UserTesseris> businessManTesserisOpt = userTesserisRepository.findByUserIndex(businessManUser.getId());
-                    businessManUserId = businessManTesserisOpt.map(UserTesseris::getUsersId).orElse(null);
+                // Store.userIndex는 UserTesseris 객체
+                UserTesseris userTesseris = store.getUserIndex();
+                String userId = null;
+                UserEntity user = null;
+                
+                if (userTesseris != null) {
+                    userId = userTesseris.getUsersId().getId(); // UserEntity의 id
+                    user = userTesseris.getUsersId(); // UserEntity 객체
                 }
+                
+                StoreCategory category = store.getStoreCategory(); // Store에서 직접 가져오기
+                StoreRequestStatus status = storeRequestStatusRepository.findById(store.getStoreRequestStatusIndex()).orElse(null);
+                UserCm userCm= userCmRepository.findById(userTesseris != null ? userTesseris.getUserIndex() : null).orElse(null);
+
+                // businessMan → userTesseris → usersId(UserEntity) 경로로 사업자 정보 조회
                 BusinessMan businessMan = businessManRepository.findById(store.getBusinessManUserIndex()).orElse(null);
-                BusinessGrade businessGrade = null;
-                if (businessMan != null && businessMan.getBusinessGradeIndex() != null) { // 가맹점에 사업자가 있으면 조회
-                    businessGrade = businessGradeRepository.findById(businessMan.getBusinessGradeIndex()).orElse(null);
+                String businessUserName = null;
+                String businessUserId = null;
+                String businessGradeName = null;
+                if (businessMan != null) {
+                    Optional<UserTesseris> businessUserTesserisOpt = userTesserisRepository.findByUserIndex(
+                        businessMan.getUserIndex() != null ? businessMan.getUserIndex().getUserIndex() : null
+                    );
+                    if (businessUserTesserisOpt.isPresent()) {
+                        UserTesseris businessUserTesseris = businessUserTesserisOpt.get();
+                        UserEntity businessUserEntity = businessUserTesseris.getUsersId();
+                        if (businessUserEntity != null) {
+                            businessUserName = businessUserEntity.getName();
+                            businessUserId = businessUserEntity.getId();
+                        }
+                    }
+                    if (businessMan.getBusinessGrade() != null) {
+                        businessGradeName = businessMan.getBusinessGrade().getBusinessGradeName();
+                    }
                 }
 
                 return StoreListDto.builder()
@@ -194,54 +218,81 @@ public class StoreService {
                             userCm != null ? Optional.ofNullable(userCm.getUserCmpInit()).orElse(0) : 0
                         )
 
-                        .businessGradeName(businessGrade != null ? businessGrade.getBusinessGradeName() : null)
-                        .businessUserId(businessManUserId)
-                        .businessUserName(businessManUser != null ? businessManUser.getName() : null)
+                        .businessGradeName(businessGradeName)
+                        .businessUserId(businessUserId)
+                        .businessUserName(businessUserName)
                         
                         .build();
             })
             .collect(Collectors.toList());
     }
 
-     public List<CusStoreListDto> getStoresInCustomerList(StoreListSearchDto filter) {
+    // 전체 가맹점 + 고객 수만 반환
+    public List<CusStoreListDto> getStoresInCustomerList(StoreListSearchDto filter) {
         List<Store> stores = storeRepository.findAll();
 
         return stores.stream()
             .filter(store -> {
-                Optional<UserTesseris> userTesserisOpt = userTesserisRepository.findByUserIndex(store.getUserIndex());
-                String userId = userTesserisOpt.map(UserTesseris::getUsersId).orElse(null);
-                User user = (store.getUserIndex() != null) ? userRepository.findById(store.getUserIndex()).orElse(null) : null;
-                if (user == null) return false;
+                UserTesseris userTesseris = store.getUserIndex();
+                String userId = null;
+                UserEntity user = null;
+                if (userTesseris != null) {
+                    userId = userTesseris.getUsersId().getId();
+                    user = userTesseris.getUsersId();
+                }
                 if (filter.getUserId() != null && !filter.getUserId().isBlank() && (userId == null || !userId.contains(filter.getUserId()))) return false;
-                if (filter.getUserName() != null && !filter.getUserName().isBlank() && (user.getName() == null || !user.getName().contains(filter.getUserName()))) return false;
+                if (filter.getUserName() != null && !filter.getUserName().isBlank() && (user == null || user.getName() == null || !user.getName().contains(filter.getUserName()))) return false;
                 if (filter.getStoreCorporateName() != null && !filter.getStoreCorporateName().isBlank() && (store.getStoreCorporateName() == null || !store.getStoreCorporateName().contains(filter.getStoreCorporateName()))) return false;
                 if (filter.getStoreName() != null && !filter.getStoreName().isBlank() && (store.getStoreName() == null || !store.getStoreName().contains(filter.getStoreName()))) return false;
                 return true;
             })
             .map(store -> {
-                List<StoreCustomer> customers = storeCustomerRepository.findByStoreStoreUserIndex(store.getUserIndex());
-                List<StoreCustomerDto> customerList = customers.stream()
-                    .map(sc -> {
-                        Optional<UserTesseris> customerTesserisOpt = userTesserisRepository.findByUserIndex(sc.getStoreCustomerUserIndex());
-                        String customerUserId = customerTesserisOpt.map(UserTesseris::getUsersId).orElse(null);
-                        User customerUser = (sc.getStoreCustomerUserIndex() != null) ? userRepository.findById(sc.getStoreCustomerUserIndex()).orElse(null) : null;
-                        return StoreCustomerDto.builder()
-                            .userId(customerUserId)
-                            .userName(customerUser != null ? customerUser.getName() : null)
-                            .storeCustomerStatus(sc.getStoreCustomerStatus())
-                            .build();
-                    })
-                    .collect(Collectors.toList());
-
-                Optional<UserTesseris> storeUserTesserisOpt = userTesserisRepository.findByUserIndex(store.getUserIndex());
-                String storeUserId = storeUserTesserisOpt.map(UserTesseris::getUsersId).orElse(null);
-                User storeUser = (store.getUserIndex() != null) ? userRepository.findById(store.getUserIndex()).orElse(null) : null;
+                // store의 user_index를 String으로 변환
+                String storeUserIndex = store.getUserIndex() != null ? String.valueOf(store.getUserIndex().getUserIndex()) : null;
+                int customerCount = 0;
+                if (storeUserIndex != null) {
+                    customerCount = storeCustomerRepository.findByStoreStoreUserIndex(storeUserIndex).size();
+                }
+                UserTesseris userTesseris = store.getUserIndex();
+                String storeUserId = null;
+                UserEntity storeUser = null;
+                if (userTesseris != null) {
+                    storeUserId = userTesseris.getUsersId().getId();
+                    storeUser = userTesseris.getUsersId();
+                }
                 return CusStoreListDto.builder()
                     .userId(storeUserId)
                     .userName(storeUser != null ? storeUser.getName() : null)
                     .storeCorporateName(store.getStoreCorporateName())
                     .storeName(store.getStoreName())
-                    .customerCount(customerList.size())
+                    .customerCount(customerCount)
+                    .build();
+            })
+            .collect(Collectors.toList());
+    }
+
+
+    // 선택한 가맹점의 고객 수 반환
+    public List<CustomerDto> getStoreCustomerListByStoreId(String storeUsersId) {
+        // store_customer에서 store_store_user_index == storeUsersId
+        List<StoreCustomer> customers = storeCustomerRepository.findByStoreStoreUserIndex(storeUsersId);
+
+        return customers.stream()
+            .map(sc -> {
+                Optional<UserTesseris> userTesserisOpt = userTesserisRepository.findByUserIndex(Integer.parseInt(sc.getStoreCustomerUserIndex()));
+                String userId = null;
+                String userName = null;
+                if (userTesserisOpt.isPresent()) {
+                    UserEntity userEntity = userTesserisOpt.get().getUsersId();
+                    if (userEntity != null) {
+                        userId = userEntity.getId();
+                        userName = userEntity.getName();
+                    }
+                }
+                return CustomerDto.builder()
+                    .userId(userId)
+                    .userName(userName)
+                    .storeCustomerStatus(sc.getStoreCustomerStatus())
                     .build();
             })
             .collect(Collectors.toList());

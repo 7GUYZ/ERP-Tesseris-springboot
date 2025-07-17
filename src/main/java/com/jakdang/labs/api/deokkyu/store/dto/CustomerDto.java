@@ -7,7 +7,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class StoreCustomerDto {
+public class CustomerDto { // /storecustomerlist front로 보낼 고객 정보 (가맹점 하나 클릭시)
     private String userId; // 고객 아이디
     private String userName; // 고객 이름
     private String storeCustomerStatus; // 고객 등급

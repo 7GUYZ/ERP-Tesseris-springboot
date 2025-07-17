@@ -1,6 +1,6 @@
 package com.jakdang.labs.api.deokkyu.store.repository;
 
-import com.jakdang.labs.api.entity.UserTesseris;
+import com.jakdang.labs.entity.UserTesseris;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 

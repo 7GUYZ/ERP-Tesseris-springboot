@@ -7,7 +7,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class StoreListSearchDto {
+public class StoreListSearchDto { // 검색하는거 받을 DTO
     private String userId;
     private String userName;
     private String userPhone;

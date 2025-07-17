@@ -7,7 +7,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class StoreListDto {
+public class StoreListDto { // /storelist에 front로 보낼 거
     // User 쪽
     private String userId;        // 아이디.
     private String userName;      // 이름.

@@ -1,15 +1,15 @@
-package com.jakdang.labs.api.entity;
+package com.jakdang.labs.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "store_category")
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class StoreCategory {
 
     @Id
@@ -17,6 +17,6 @@ public class StoreCategory {
     @Column(name = "store_category_index")
     private Integer storeCategoryIndex;
 
-    @Column(name = "store_category_name")
+    @Column(name = "store_category_name", length = 30)
     private String storeCategoryName;
-}
+} 

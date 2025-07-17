@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import com.jakdang.labs.api.deokkyu.store.dto.CusStoreListDto;
 import com.jakdang.labs.api.deokkyu.store.dto.StoreListDto;
 import com.jakdang.labs.api.deokkyu.store.dto.StoreListSearchDto;
+import com.jakdang.labs.api.deokkyu.store.dto.CustomerDto;
 import com.jakdang.labs.api.deokkyu.store.service.StoreService;
 
 import java.util.List;
@@ -30,5 +31,11 @@ public class StoreController {
     public ResponseEntity<List<CusStoreListDto>> getStoresInCustomerList(StoreListSearchDto filter) {
         List<CusStoreListDto> stores = storeService.getStoresInCustomerList(filter);
         return ResponseEntity.ok(stores);
+    }
+
+    @GetMapping("/customerlist/{storeUsersId}")
+    public ResponseEntity<List<CustomerDto>> getStoreCustomerListByStoreUserId(@PathVariable String storeUsersId) {
+        List<CustomerDto> customers = storeService.getStoreCustomerListByStoreId(storeUsersId);
+        return ResponseEntity.ok(customers);
     }
 }

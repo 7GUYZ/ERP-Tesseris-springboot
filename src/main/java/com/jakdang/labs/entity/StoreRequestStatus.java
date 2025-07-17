@@ -1,15 +1,15 @@
-package com.jakdang.labs.api.entity;
+package com.jakdang.labs.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "store_request_status")
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class StoreRequestStatus {
 
     @Id
@@ -17,6 +17,6 @@ public class StoreRequestStatus {
     @Column(name = "store_request_status_index")
     private Integer storeRequestStatusIndex;
 
-    @Column(name = "store_request_status_name")
+    @Column(name = "store_request_status_name", length = 30)
     private String storeRequestStatusName;
-}
+} 

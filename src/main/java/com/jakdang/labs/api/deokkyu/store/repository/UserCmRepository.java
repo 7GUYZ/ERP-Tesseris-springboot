@@ -1,5 +1,5 @@
 package com.jakdang.labs.api.deokkyu.store.repository;
-import com.jakdang.labs.api.entity.UserCm;
+import com.jakdang.labs.entity.UserCm;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
