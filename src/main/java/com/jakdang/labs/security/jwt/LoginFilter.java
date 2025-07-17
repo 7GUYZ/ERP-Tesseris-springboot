@@ -159,9 +159,11 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
         // 2. (**0715 정은 추가) Admin일 경우 admin_type_index까지 받기
         Integer admin_type_index = null;
+        String admin_type_name = null;
         LoginAdminDTO admin = adminLjeSvc.findByUserIndex(user_index);
         if(admin != null){
             admin_type_index = admin.getAdminTypeIndex();
+            admin_type_name = admin.getAdminTypeName();
         }
         
 
@@ -224,6 +226,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
                         .createdAt(createdAt)
                         .user_role_index(String.valueOf(user_role_index))
                         .admin_type_index(admin_type_index == null ? "관리자회원X" : String.valueOf(admin_type_index))
+                        .admin_type_name(admin_type_name)
                         .user_index(String.valueOf(user_index))
                         .build();
 
