@@ -22,5 +22,6 @@ public class LoginResponseDTO {
     private String createdAt;
     private String user_role_index;
     private String admin_type_index;
+    private String admin_type_name;
     private String user_index;
 }
