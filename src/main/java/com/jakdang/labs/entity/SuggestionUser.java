@@ -28,12 +28,12 @@ public class SuggestionUser {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long suggestionUserId;
 
-    @Column(nullable = false)
+    @Column(name = "suggestion_user_index", nullable = false)
     private Integer suggestionUserIndex;
 
-    @Column(nullable = false)
+    @Column(name = "recommendation_user_index", nullable = false)
     private Integer recommendationUserIndex;
 
-    @Column(nullable = false)
+    @Column(name = "join_date", nullable = false)
     private LocalDateTime joinDate;
 }
