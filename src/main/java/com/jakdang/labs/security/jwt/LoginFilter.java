@@ -7,8 +7,20 @@ import com.jakdang.labs.api.auth.dto.TokenDTO;
 import com.jakdang.labs.api.auth.dto.UserDTO;
 import com.jakdang.labs.api.auth.dto.UserLoginRequest;
 import com.jakdang.labs.api.common.ResponseDTO;
+import com.jakdang.labs.api.jungeun.dto.LoginAdminDTO;
+import com.jakdang.labs.api.jungeun.dto.LoginResponseDTO;
+import com.jakdang.labs.api.jungeun.dto.LoginUserTesserisDTO;
+import com.jakdang.labs.api.jungeun.dto.LoginoutCmsAccessLogDTO;
+import com.jakdang.labs.api.jungeun.repository.UserTesserisLjeRepo;
+import com.jakdang.labs.api.jungeun.service.AdminLjeSvc;
+import com.jakdang.labs.api.jungeun.service.CmsAccessLogLjeSvc;
+import com.jakdang.labs.api.jungeun.service.UserTesserisLjeSvc;
+import com.jakdang.labs.entity.Admin;
+import com.jakdang.labs.entity.UserTesseris;
 import com.jakdang.labs.security.jwt.service.TokenService;
 import com.jakdang.labs.security.jwt.utils.TokenUtils;
+import com.jakdang.labs.utils.jungeun.GetIpUtil;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -38,6 +50,9 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     private final TokenService tokenService;
     private final TokenUtils tokenUtils;
     private final ObjectMapper objectMapper;
+    private final UserTesserisLjeSvc userTesserisSvc;
+    private final AdminLjeSvc adminLjeSvc;
+    private final CmsAccessLogLjeSvc cmsLogSvc;
 
     /**
      * LoginFilter 생성자
@@ -50,11 +65,17 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     public LoginFilter(AuthenticationManager authenticationManager,
                        TokenService tokenService,
                        TokenUtils tokenUtils,
-                       ObjectMapper objectMapper) {
+                       ObjectMapper objectMapper,
+                       UserTesserisLjeSvc userTesserisSvc,
+                       AdminLjeSvc adminLjeSvc,
+                       CmsAccessLogLjeSvc cmsLogSvc) {
         this.authenticationManager = authenticationManager;
         this.tokenService = tokenService;
         this.tokenUtils = tokenUtils;
         this.objectMapper = objectMapper;
+        this.userTesserisSvc = userTesserisSvc;
+        this.adminLjeSvc = adminLjeSvc;
+        this.cmsLogSvc = cmsLogSvc;
 
         this.setFilterProcessesUrl("/api/auth/login");
     }
@@ -133,6 +154,21 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
         log.info("사용자 {} {} {} {} 로그인 성공", username, role, email, userId);
 
+        
+        // 1. UserTesseris 정보 받기 - user_role_index를 위한
+        LoginUserTesserisDTO userTesseris = userTesserisSvc.findByUsersId(userId);
+        Integer user_role_index = userTesseris.getUserRoleIndex();
+        // Admin일시 admin 테이블 가기 위한 작업
+        Integer user_index = userTesseris.getUserIndex();
+
+        // 2. (**0715 정은 추가) Admin일 경우 admin_type_index까지 받기
+        Integer admin_type_index = null;
+        LoginAdminDTO admin = adminLjeSvc.findByUserIndex(user_index);
+        if(admin != null){
+            admin_type_index = admin.getAdminTypeIndex();
+        }
+        
+
         // 토큰 생성 및 저장
         TokenDTO tokenPair = tokenService.createTokenPair(username, role, email, userId);
 
@@ -144,6 +180,27 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         tokenUtils.addRefreshTokenCookie(response, tokenPair.getRefreshToken());
         log.info("로그인 성공 - 리프레시 토큰 쿠키 설정 완료");
 
+
+        // cms_access_log 테이블에 로그인 기록 삽입하기
+        // 1. Client ip 받아오기 - 만든 util 사용하기
+        String clientIp = GetIpUtil.getClientIp(request);
+
+        // 2. DTO에 담기
+        LoginoutCmsAccessLogDTO logDTO = LoginoutCmsAccessLogDTO.builder()
+                            .cmsAccessLogUserIndex(user_index)
+                            .cmsAccessUserValue("로그인")
+                            .cmsAccessUserIp(clientIp)
+                            .build();
+        // 3. 로그 저장 (로그인 실패로 이어지지 않게!)
+        try {
+            cmsLogSvc.saveLog(logDTO);
+        } catch (Exception e) {
+            log.warn("로그 저장 실패: {}", e.getMessage());
+        }
+
+
+
+
         // (**정은 수정 및 추가함 0709-0710** - id, 이메일, 이름만 응답)
         // UserDTO userDTO = UserDTO.builder()
         //         .id(userId)
@@ -154,18 +211,30 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         // 원하는 필드만 포함하는 Map 생성
         // (**정은 주석 추가 0712** )
         // User_Role 테이블에서 user_role_index가져와서 userData에 같이 넘겨주기. 지금은 하드코딩(7)으로 테스트(2-사업자, 3-가맹점, 7-정회원, 4-관리자)
-        Map<String, Object> userData = Map.of(
-                "id", userId,
-                "email", email,
-                "name", username,
-                "phone", phone,
-                "createdAt", createdAt,
-                "user_role_index", "4"
-        );
+        // Map<String, Object> userData = Map.of(
+        //         "id", userId,
+        //         "email", email,
+        //         "name", username,
+        //         "phone", phone,
+        //         "createdAt", createdAt,
+        //         "user_role_index", user_role_index,
+
+        // );
+        LoginResponseDTO responseDTO = LoginResponseDTO.builder()
+                        .id(userId)
+                        .email(email)
+                        .name(username)
+                        .phone(phone)
+                        .createdAt(createdAt)
+                        .user_role_index(String.valueOf(user_role_index))
+                        .admin_type_index(admin_type_index == null ? "관리자회원X" : String.valueOf(admin_type_index))
+                        .user_index(String.valueOf(user_index))
+                        .build();
+
 
         // 로그인 성공 응답 작성 (**정은 수정함 0709**)
         // writeSuccessResponse(response, username, role);
-        writeSuccessResponse(response, userData);
+        writeSuccessResponse(response, responseDTO);
     }
 
     /**
@@ -255,9 +324,9 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     //             ResponseDTO.createSuccessResponse("로그인 성공", null));
     // }
     // (**정은 수정 및 추가 0709**)
-    private <T> void writeSuccessResponse(HttpServletResponse response, T data) throws IOException {
+    private <T> void writeSuccessResponse(HttpServletResponse response, T responseDTO) throws IOException {
         response.setContentType("application/json");
         objectMapper.writeValue(response.getOutputStream(),
-                ResponseDTO.createSuccessResponse("로그인 성공", data));
+                ResponseDTO.createSuccessResponse("로그인 성공", responseDTO));
     }
 }

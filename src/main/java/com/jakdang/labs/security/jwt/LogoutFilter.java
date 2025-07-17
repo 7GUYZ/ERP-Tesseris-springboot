@@ -1,10 +1,16 @@
 package com.jakdang.labs.security.jwt;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-
+import com.jakdang.labs.api.jungeun.dto.LoginUserTesserisDTO;
+import com.jakdang.labs.api.jungeun.dto.LoginoutCmsAccessLogDTO;
+import com.jakdang.labs.api.jungeun.service.CmsAccessLogLjeSvc;
+import com.jakdang.labs.api.jungeun.service.UserTesserisLjeSvc;
 import com.jakdang.labs.exceptions.JwtExceptionCode;
 import com.jakdang.labs.security.jwt.service.LogoutService;
+import com.jakdang.labs.security.jwt.utils.JwtUtil;
 import com.jakdang.labs.security.jwt.utils.TokenUtils;
+import com.jakdang.labs.utils.jungeun.GetIpUtil;
+
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -32,6 +38,9 @@ public class LogoutFilter extends OncePerRequestFilter {
     private final LogoutService logoutService;
     private final TokenUtils tokenUtils;
     private final ObjectMapper objectMapper;
+    private final JwtUtil jwtUtil; // 정은 추가 - 토큰 추출
+    private final UserTesserisLjeSvc userSvc; // 정은 추가 - user_index를 얻기 위함
+    private final CmsAccessLogLjeSvc cmsLogSvc; // 정은 추가 - cms_access_log 데이터 저장 위함
 
     /**
      * 필터 내부 처리 로직
@@ -68,11 +77,34 @@ public class LogoutFilter extends OncePerRequestFilter {
 
             String refreshToken = tokenUtils.extractRefreshToken(request.getCookies());
             log.info("추출된 리프레시 토큰: {}", refreshToken != null ? "존재함" : "null");
-            
-            logoutService.processLogout(refreshToken);
 
+            logoutService.processLogout(refreshToken);
+            
             Cookie logoutCookie = tokenUtils.createLogoutCookie();
             response.addCookie(logoutCookie);
+
+            // cms_access_log 테이블에 로그아웃 기록 삽입하기
+            // 1. 토큰에서 사용자 id 추출
+            String id = jwtUtil.getUserId(refreshToken);
+            // 2. 서비스 사용하여 user_index 추출
+            LoginUserTesserisDTO userDTO = userSvc.findByUsersId(id);
+            Integer user_index = userDTO.getUserIndex();
+            // 3. Client ip 받아오기 - 만든 util 사용하기
+            String clientIp = GetIpUtil.getClientIp(request);
+
+            // 4. DTO에 담기
+            LoginoutCmsAccessLogDTO logDTO = LoginoutCmsAccessLogDTO.builder()
+                                .cmsAccessLogUserIndex(user_index)
+                                .cmsAccessUserValue("로그아웃")
+                                .cmsAccessUserIp(clientIp)
+                                .build();
+            // 5. 로그 저장 (로그인 실패로 이어지지 않게!)
+            try {
+                cmsLogSvc.saveLog(logDTO);
+            } catch (Exception e) {
+                log.warn("로그 저장 실패: {}", e.getMessage());
+            }
+
 
             sendSuccessResponse(response);
             log.info("로그아웃 처리 완료");
