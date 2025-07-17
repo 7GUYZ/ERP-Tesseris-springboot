@@ -18,9 +18,8 @@ public class Notice {
     @Column(name = "notice_index")
     private Integer noticeIndex;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_index")
-    private UserTesseris userIndex;
+    @Column(name ="user_index")
+    private Integer userIndex;
 
     @Column(name = "notice_title", length = 150)
     private String noticeTitle;
