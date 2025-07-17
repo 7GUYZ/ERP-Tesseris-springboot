@@ -30,9 +30,9 @@ spring:
   # DB ??
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://112.216.122.84:3306/chilguyz
-    username: chilguyz
-    password: 'q1w2e3r4'
+    url: jdbc:mysql://kschost.ddns.net:30006/tesseris_db
+    username: chilguy
+    password: 'ictEDU1234!'
 
 
   #JWT 임시 셋팅
@@ -41,8 +41,11 @@ spring:
       cookie:
         name: refresh
       expired: 86400000
+      # expired: 15000  # 정은 테스트용 15초 
     access:
       expired: 36400000
+      # expired: 10000 # 정은 테스트용 10초 
+      
     secret:
       code: zX9#mK2$pL7@qR5^vN3&hB6*fD1!jW8%cT4(uY0)sA2_eG5+iO9=lQ7
 
@@ -50,7 +53,10 @@ spring:
   jpa:
     show-sql: true # ????? ?????
     hibernate:
-      ddl-auto: update # ??. ?? ???? DB? ???
+      ddl-auto: none # ??. ?? ???? DB? ???
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyJpaImpl
     properties:
       hibernate:
         default_batch_fetch_size: 100
@@ -199,3 +205,5 @@ app:
 jasypt:
   encryptor:
     password: local
+
+
