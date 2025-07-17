@@ -296,13 +296,39 @@ public class UserCmLogService {
     public Map<String, Object> searchUserCmLogs(UserCmLogSearchRequestDto searchRequest) {
         log.info("동적 검색 시작 - 조건: {}", searchRequest);
         
-        // 페이징 정보 생성
-        Pageable pageable = PageRequest.of(searchRequest.getPage(), searchRequest.getSize());
+        // 페이징 정보 생성 (null 안전 처리)
+        int page = searchRequest.getPage();
+        int size = searchRequest.getSize();
         
-        // Repository에서 동적 검색 실행
-        Page<UserCmLog> userCmLogPage = userCmLogRepository.findBySearchCriteria(
-            searchRequest.getUserIndexEventTrigger(),
-            searchRequest.getUserIndexEventParty(),
+        // 기본값 설정
+        if (page < 0) page = 0;
+        if (size <= 0) size = 100;
+        if (size > 1000) size = 1000; // 최대 1000개로 제한
+        
+        Pageable pageable = PageRequest.of(page, size);
+        
+        // LIKE 검색을 위한 파라미터 처리
+        String triggerUserEmail = processLikeParameter(searchRequest.getEventTriggerUserEmail());
+        String partyUserEmail = processLikeParameter(searchRequest.getEventPartyUserEmail());
+        String partyUserName = processLikeParameter(searchRequest.getEventPartyUserName());
+        
+        // 기존 ID 방식 검색도 지원 (하위 호환성)
+        if (triggerUserEmail == null && searchRequest.getUserIndexEventTrigger() != null) {
+            triggerUserEmail = processLikeParameter(searchRequest.getUserIndexEventTrigger());
+        }
+        
+        if (partyUserEmail == null && searchRequest.getUserIndexEventParty() != null) {
+            partyUserEmail = processLikeParameter(searchRequest.getUserIndexEventParty());
+        }
+        
+        log.info("처리된 검색 파라미터 - triggerEmail: {}, partyEmail: {}, partyName: {}", 
+                triggerUserEmail, partyUserEmail, partyUserName);
+        
+        // Repository에서 동적 검색 실행 (페이징 지원)
+        Page<UserCmLog> userCmLogPage = userCmLogRepository.findBySearchCriteriaWithLike(
+            triggerUserEmail,
+            partyUserEmail,
+            partyUserName,
             searchRequest.getUserRoleIndex(),
             searchRequest.getUserRoleIndex2(),
             searchRequest.getUserCmLogValueTypeIndex(),
@@ -612,5 +638,35 @@ public class UserCmLogService {
             log.warn("거래 유형 조회 중 오류 발생 - transactionTypeIndex: {}", transactionTypeIndex, e);
             return "알 수 없음";
         }
+    }
+    
+    /**
+     * 🆕 LIKE 검색을 위한 파라미터 처리
+     * 
+     * 목적: 프론트엔드에서 전달받은 검색어를 LIKE 검색에 적합하게 처리
+     * 
+     * 특징:
+     * - null, 빈 문자열, 공백만 있는 경우 null 반환
+     * - % 문자가 이미 포함된 경우 그대로 사용
+     * - 일반 문자열인 경우 양쪽에 % 추가하지 않음 (Repository에서 처리)
+     * - trim() 처리로 앞뒤 공백 제거
+     * 
+     * @param parameter 프론트엔드에서 전달받은 검색 파라미터
+     * @return 처리된 검색 파라미터 또는 null
+     */
+    private String processLikeParameter(String parameter) {
+        if (parameter == null || parameter.trim().isEmpty()) {
+            return null;
+        }
+        
+        String trimmed = parameter.trim();
+        
+        // 이미 % 문자가 포함된 경우 (프론트엔드에서 직접 LIKE 패턴 전달)
+        if (trimmed.contains("%")) {
+            return trimmed;
+        }
+        
+        // 일반 검색어인 경우 그대로 반환 (Repository에서 LIKE 처리)
+        return trimmed;
     }
 } 
