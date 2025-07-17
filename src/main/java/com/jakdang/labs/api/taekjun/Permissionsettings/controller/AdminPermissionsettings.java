@@ -27,18 +27,18 @@ import com.jakdang.labs.api.taekjun.Permissionsettings.dto.ProgramDTO;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/admin/permissionsettings")
+@RequestMapping("/api/admin/permissionsettings")
 public class AdminPermissionsettings {
 
    
    private final AdminPermissinonsettingsservice AdminPermissinonsettingsservice;
     
-    @GetMapping("/authority-programs-by-admin")
+    @GetMapping("/authorityprogramsbyadmin")
     public List<AuthorityProgramDTO> getAuthorityProgramsByAdmin(@RequestParam("adminTypeIndex") Integer adminTypeIndex) {
         return AdminPermissinonsettingsservice.getAuthorityPrograms(adminTypeIndex);
     }
     
-    @PutMapping("/update-authority")
+    @PutMapping("/updateauthority")
     public ResponseEntity<String> updateAuthority(@RequestBody AuthorityUpdateDTO updateDTO) {
         // 필수 필드 검증
         if (updateDTO.getAdminTypeIndex() == null) {
@@ -66,7 +66,7 @@ public class AdminPermissionsettings {
         }
     }
 
-    @PostMapping("/insert-authority")
+    @PostMapping("/insertauthority")
     public ResponseEntity<String> insertAuthority(@RequestBody AuthorityUpdateDTO insertDTO) {
         // 필수 필드 검증
         if (insertDTO.getAdminTypeIndex() == null) {
@@ -93,7 +93,7 @@ public class AdminPermissionsettings {
         }
     }
 
-    @PostMapping("/delete-authority")
+    @PostMapping("/deleteauthority")
     public ResponseEntity<String> deleteAuthorityByPost(@RequestBody java.util.Map<String, Integer> body) {
         Integer authorityTypeIndex = body.get("authorityTypeIndex");
         boolean success = AdminPermissinonsettingsservice.deleteAuthority(authorityTypeIndex);
@@ -104,12 +104,12 @@ public class AdminPermissionsettings {
         }
     }
     
-    @GetMapping("/getMenu")
+    @GetMapping("/getmenu")
     public List<MenuDTO> getMenu() {
         return AdminPermissinonsettingsservice.getMenu();
     }
 
-    @GetMapping("/getProgram")
+    @GetMapping("/getprogram")
     public List<ProgramDTO> getProgram(@RequestParam("menuIndex") Integer menuIndex ) {
         return AdminPermissinonsettingsservice.getProgram(menuIndex);
     }
