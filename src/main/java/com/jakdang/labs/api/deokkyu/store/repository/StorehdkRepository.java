@@ -3,7 +3,7 @@ import com.jakdang.labs.entity.Store;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 
-public interface HDKStoreRepository extends JpaRepository<Store, Integer> {
+public interface StorehdkRepository extends JpaRepository<Store, Integer> {
 
 }
 
