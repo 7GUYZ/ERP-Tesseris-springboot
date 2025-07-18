@@ -1,0 +1,48 @@
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: main-ingress
+  namespace: default
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2  # /springboot/ 뒤의 경로를 그대로 전달
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - kschost.ddns.net
+      secretName: notion-proxy-tls
+  rules:
+    - host: kschost.ddns.net
+      http:
+        paths:
+          - path: /.well-known/acme-challenge
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: notion-proxy-service
+                port:
+                  number: 80
+          - path: /notion-webhook(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: notion-proxy-service
+                port:
+                  number: 80
+          - path: /wedding(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: wedding-service
+                port:
+                  number: 80
+          # Spring Boot 서비스 인그레스 경로
+          - path: /springboot(/|$)(.*)  # /springboot/ 뒤에 어떤 경로가 올 수도 있음
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: springboot-service   # springboot 서비스 이름
+                port:
+                  number: 19091           # springboot-service의 Service port와 일치
