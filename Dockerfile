@@ -19,4 +19,4 @@ EXPOSE 19091
 ARG PROFILE_ACTIVE
 ENV SPRING_PROFILES_ACTIVE=${PROFILE_ACTIVE}
 
-ENTRYPOINT ["java", "-Djasypt.encryptor.password=@edienisglobalnftmarket1!", "-Djava.net.preferIPv4Stack=true", "-jar", "/app.jar"]
+ENTRYPOINT ["java", "-Djasypt.encryptor.password=${JASYPT_PASSWORD}", "-Djava.net.preferIPv4Stack=true", "-jar", "/app.jar"]
