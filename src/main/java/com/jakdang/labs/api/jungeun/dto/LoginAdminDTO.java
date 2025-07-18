@@ -12,4 +12,5 @@ import lombok.NoArgsConstructor;
 public class LoginAdminDTO {
     private Integer userIndex;
     private Integer adminTypeIndex;
+    private String adminTypeName;
 }
