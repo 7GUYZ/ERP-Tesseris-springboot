@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: erp-tesseris
-          image: <DOCKER_IMAGE>:<TAG>
+          image: __DOCKER_IMAGE__:__TAG__
           ports:
             - containerPort: 19091
           env:
@@ -45,4 +45,23 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: erp-tesseris-secret
-                  key: JASYPT_PASSWORD 
+                  key: JASYPT_PASSWORD
+            - name: FILE_SERVICE_URL
+              value: "http://localhost:8080/api/file"
+            - name: POST_SERVICE_URL
+              value: "http://localhost:9000/api/posts"
+            - name: FRONTEND_URL
+              value: "http://localhost:4173"
+            - name: FRONTEND_ADMIN_URL
+              value: "http://localhost:7001"
+            - name: APP_DOMAIN
+              value: "localhost"
+            - name: SWAGGER_SERVER_URL
+              value: "http://localhost:19091/api"
+            - name: SPRING_JWT_SECRET_CODE
+              valueFrom:
+                secretKeyRef:
+                  name: erp-tesseris-secret
+                  key: JWT_SECRET
+            - name: APP_DEV_MODE
+              value: "true"

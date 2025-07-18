@@ -62,7 +62,13 @@ jobs:
             --from-literal=JASYPT_PASSWORD="${{ secrets.JASYPT_PASSWORD }}" \
             --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Deploy to Kubernetes
+      - name: Replace image tag and apply deployment
         run: |
-          kubectl apply -f /home/chilguy01/my-k8s-app/final/springboot_deployment.yaml
-          kubectl apply -f /home/chilguy01/my-k8s-app/final/springboot_service.yaml 
+          sed "s#__DOCKER_IMAGE__#${{ secrets.DOCKER_IMAGE }}#g" my-k8s-app/final/springboot_deployment.yaml | \
+          sed "s#__TAG__#${{ github.sha }}#g" > my-k8s-app/final/springboot_deployment.generated.yaml
+
+          kubectl apply -f my-k8s-app/final/springboot_deployment.generated.yaml
+
+      - name: apply service
+        run: |
+          kubectl apply -f my-k8s-app/final/springboot_service.yaml 
