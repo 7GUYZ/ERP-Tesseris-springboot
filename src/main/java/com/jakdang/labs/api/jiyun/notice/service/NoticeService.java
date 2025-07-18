@@ -1,4 +1,4 @@
-package com.jakdang.labs.api.jiyun.service;
+package com.jakdang.labs.api.jiyun.notice.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -8,11 +8,11 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.jakdang.labs.api.jiyun.dto.NoticeDTO;
 import com.jakdang.labs.entity.Notice;
 import com.jakdang.labs.entity.UserTesseris;
-import com.jakdang.labs.api.jiyun.repository.NoticekjyRepository;
-import com.jakdang.labs.api.jiyun.repository.NoticeUserkjyRepository;
+import com.jakdang.labs.api.jiyun.notice.dto.NoticeDTO;
+import com.jakdang.labs.api.jiyun.notice.repository.NoticeUserkjyRepository;
+import com.jakdang.labs.api.jiyun.notice.repository.NoticekjyRepository;
 
 import lombok.RequiredArgsConstructor;
 
