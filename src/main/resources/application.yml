@@ -10,6 +10,7 @@ server:
       force: true
 
 spring:
+
   application:
     name: ERP-project-backend
 
@@ -35,17 +36,16 @@ spring:
     password: ${DB_PASSWORD}
 
 
-  #JWT 임시 셋팅
+    #JWT 임시 셋팅
   jwt:
     refresh:
       cookie:
         name: refresh
       expired: 86400000
-      # expired: 15000  # 정은 테스트용 15초 
+            # expired: 15000  # 정은 테스트용 15초 
     access:
       expired: 36400000
-      # expired: 10000 # 정은 테스트용 10초 
-      
+            # expired: 10000 # 정은 테스트용 10초 
     secret:
       code: ${JWT_SECRET}
 

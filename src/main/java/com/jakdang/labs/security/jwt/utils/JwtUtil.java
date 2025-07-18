@@ -1,6 +1,9 @@
 package com.jakdang.labs.security.jwt.utils;
 
 import io.jsonwebtoken.Jwts;
+import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -26,7 +29,6 @@ public class JwtUtil {
      * @param secret JWT 서명용 비밀키
      */
     public JwtUtil(@Value("${spring.jwt.secret.code}") String secret) {
-
         secretKey = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), Jwts.SIG.HS256.key().build().getAlgorithm());
     }
 
