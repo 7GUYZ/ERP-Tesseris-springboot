@@ -1,0 +1,13 @@
+package com.jakdang.labs.api.taekjun.Permissionsettings.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class MenuDTO {
+    private Integer menuIndex;
+    private String menuName;
+} 
