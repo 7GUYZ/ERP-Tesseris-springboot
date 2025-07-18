@@ -6,6 +6,7 @@ import com.jakdang.labs.api.deokkyu.store.dto.CusStoreListDto;
 import com.jakdang.labs.api.deokkyu.store.dto.CustomerDto;
 import com.jakdang.labs.api.deokkyu.store.dto.StoreListDto;
 import com.jakdang.labs.api.deokkyu.store.dto.StoreListSearchDto;
+import com.jakdang.labs.api.deokkyu.store.dto.StoreRegisterdListDto;
 import com.jakdang.labs.entity.BusinessGrade;
 import com.jakdang.labs.entity.BusinessMan;
 import com.jakdang.labs.entity.Store;
@@ -14,37 +15,41 @@ import com.jakdang.labs.entity.StoreCustomer;
 import com.jakdang.labs.entity.StoreRequestStatus;
 import com.jakdang.labs.entity.UserCm;
 import com.jakdang.labs.entity.UserTesseris;
+import com.jakdang.labs.entity.StoreSubscriptionFee;
 import com.jakdang.labs.api.auth.entity.UserEntity;
-import com.jakdang.labs.api.deokkyu.store.repository.HDKStoreCategoryRepository;
-import com.jakdang.labs.api.deokkyu.store.repository.HDKStoreRepository;
-import com.jakdang.labs.api.deokkyu.store.repository.HDKStoreRequestStatusRepository;
-import com.jakdang.labs.api.deokkyu.store.repository.HDKUserCmRepository;
-import com.jakdang.labs.api.deokkyu.store.repository.HDKBusinessManRepository;
-import com.jakdang.labs.api.deokkyu.store.repository.HDKUserRepository;
-import com.jakdang.labs.api.deokkyu.store.repository.HDKBusinessGradeRepository;
-import com.jakdang.labs.api.deokkyu.store.repository.HDKStoreCustomerRepository;
-import com.jakdang.labs.api.deokkyu.store.repository.HDKUserTesserisRepository;
+import com.jakdang.labs.api.deokkyu.store.repository.StoreCategoryhdkRepository;
+import com.jakdang.labs.api.deokkyu.store.repository.StorehdkRepository;
+import com.jakdang.labs.api.deokkyu.store.repository.StoreRequestStatushdkRepository;
+import com.jakdang.labs.api.deokkyu.store.repository.UserCmhdkRepository;
+import com.jakdang.labs.api.deokkyu.store.repository.BusinessManhdkRepository;
+import com.jakdang.labs.api.deokkyu.store.repository.UserhdkRepository;
+import com.jakdang.labs.api.deokkyu.store.repository.BusinessGradehdkRepository;
+import com.jakdang.labs.api.deokkyu.store.repository.StoreCustomerhdkRepository;
+import com.jakdang.labs.api.deokkyu.store.repository.UserTesserishdkRepository;
+import com.jakdang.labs.api.deokkyu.store.repository.StoreSubscriptionFeehdkRepository;
 import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor // 생성자 이걸로 만들어줌
 @Service
 public class StoreService {
-    private final HDKStoreRepository storeRepository;
-    private final HDKUserRepository userRepository;
-    private final HDKStoreCategoryRepository storeCategoryRepository;
-    private final HDKStoreRequestStatusRepository storeRequestStatusRepository;
-    private final HDKUserCmRepository userCmRepository;
-    private final HDKBusinessManRepository businessManRepository;
-    private final HDKBusinessGradeRepository businessGradeRepository;
-    private final HDKStoreCustomerRepository storeCustomerRepository;
-    private final HDKUserTesserisRepository userTesserisRepository;
+    private final StorehdkRepository storeRepository;
+    private final UserhdkRepository userRepository;
+    private final StoreCategoryhdkRepository storeCategoryRepository;
+    private final StoreRequestStatushdkRepository storeRequestStatusRepository;
+    private final UserCmhdkRepository userCmRepository;
+    private final BusinessManhdkRepository businessManRepository;
+    private final BusinessGradehdkRepository businessGradeRepository;
+    private final StoreCustomerhdkRepository storeCustomerRepository;
+    private final UserTesserishdkRepository userTesserisRepository;
+    private final StoreSubscriptionFeehdkRepository storeSubscriptionFeeRepository;
 
     // 전체 리스트 조회
      public List<StoreListDto> getStoreDtos(StoreListSearchDto filter) {
@@ -272,10 +277,23 @@ public class StoreService {
     }
 
 
-    // 선택한 가맹점의 고객 수 반환
+    // 선택한 가맹점의 고객 리스트 반환
     public List<CustomerDto> getStoreCustomerListByStoreId(String storeUsersId) {
-        // store_customer에서 store_store_user_index == storeUsersId
-        List<StoreCustomer> customers = storeCustomerRepository.findByStoreStoreUserIndex(storeUsersId);
+        // 1. users_id(String)로 UserEntity 조회
+        Optional<UserEntity> userEntityOpt = userRepository.findById(storeUsersId);
+        if (userEntityOpt.isEmpty()) {
+            return List.of();
+        }
+        UserEntity userEntity = userEntityOpt.get();
+
+        // 2. UserEntity로 UserTesseris 리스트 조회
+        List<UserTesseris> tesserisList = userTesserisRepository.findByUsersId(userEntity);
+        List<Integer> userIndexList = tesserisList.stream()
+            .map(UserTesseris::getUserIndex)
+            .collect(Collectors.toList());
+
+        // 3. store_customer에서 store_store_user_index in (userIndexList)
+        List<StoreCustomer> customers = userIndexList.isEmpty() ? List.of() : storeCustomerRepository.findByStoreStoreUserIndexIn(userIndexList);
 
         return customers.stream()
             .map(sc -> {
@@ -283,10 +301,10 @@ public class StoreService {
                 String userId = null;
                 String userName = null;
                 if (userTesserisOpt.isPresent()) {
-                    UserEntity userEntity = userTesserisOpt.get().getUsersId();
-                    if (userEntity != null) {
-                        userId = userEntity.getId();
-                        userName = userEntity.getName();
+                    UserEntity userEnt = userTesserisOpt.get().getUsersId();
+                    if (userEnt != null) {
+                        userId = userEnt.getId();
+                        userName = userEnt.getName();
                     }
                 }
                 return CustomerDto.builder()
@@ -297,4 +315,72 @@ public class StoreService {
             })
             .collect(Collectors.toList());
     }
+
+ // 가맹점 신청 현황 페이지에서 가맹점 리스트(등록된 가맹점) 반환
+    public List<StoreRegisterdListDto> getFilteredRegisterdStores(StoreListSearchDto filter) {
+        // 1. store_subscription_fee에 존재하는 user_index만 추출
+        List<StoreSubscriptionFee> feeList = storeSubscriptionFeeRepository.findAll();
+        List<Integer> userIndexes = new ArrayList<>();
+        for (StoreSubscriptionFee fee : feeList) {
+            Store store = fee.getStoreUserIndex();
+            if (store != null && store.getUserIndex() != null) {
+                userIndexes.add(store.getUserIndex().getUserIndex());
+            }
+        }
+        userIndexes = userIndexes.stream().distinct().collect(Collectors.toList());
+
+        // 2. userIndexes로 UserTesseris 리스트 조회
+        List<UserTesseris> tesserisList = userTesserisRepository.findAllById(userIndexes);
+
+        // 3. tesserisList로 필요한 DTO 생성
+        List<StoreRegisterdListDto> result = new ArrayList<>();
+        List<Store> stores = storeRepository.findAll();
+        for (UserTesseris userTesseris : tesserisList) {
+            // filter 조건 체크 (getStoreDtos와 동일하게 적용)
+            UserEntity user = userTesseris.getUsersId();
+            String userId = user != null ? user.getId() : null;
+            if (filter.getUserId() != null && !filter.getUserId().isBlank()) {
+                if (userId == null || !userId.contains(filter.getUserId())) continue;
+            }
+            if (filter.getUserName() != null && !filter.getUserName().isBlank()) {
+                if (user == null || user.getName() == null || !user.getName().contains(filter.getUserName())) continue;
+            }
+            if (filter.getUserPhone() != null && !filter.getUserPhone().isBlank()) {
+                if (user == null || user.getPhone() == null || !user.getPhone().contains(filter.getUserPhone())) continue;
+            }
+            // 연결된 Store 찾기 (userIndex로)
+            Store store = storeRepository.findByUserIndex(userTesseris);
+            if (store == null) continue;
+            if (filter.getStoreBossName() != null && !filter.getStoreBossName().isBlank()) {
+                if (store.getStoreBossName() == null || !store.getStoreBossName().contains(filter.getStoreBossName())) continue;
+            }
+            if (filter.getStoreCorporateName() != null && !filter.getStoreCorporateName().isBlank()) {
+                if (store.getStoreCorporateName() == null || !store.getStoreCorporateName().contains(filter.getStoreCorporateName())) continue;
+            }
+            if (filter.getStoreName() != null && !filter.getStoreName().isBlank()) {
+                if (store.getStoreName() == null || !store.getStoreName().contains(filter.getStoreName())) continue;
+            }
+            // StoreSubscriptionFee 정보 (가장 최근 값 1개만)
+            List<StoreSubscriptionFee> fees = storeSubscriptionFeeRepository.findByStoreUserIndex(store);
+            StoreSubscriptionFee fee = null;
+            if (!fees.isEmpty()) {
+                fee = fees.stream().sorted((a, b) -> b.getStoreSubscriptionFeeTime().compareTo(a.getStoreSubscriptionFeeTime())).findFirst().orElse(null);
+            }
+            StoreRegisterdListDto dto = StoreRegisterdListDto.builder()
+                .userId(userId)
+                .userName(user != null ? user.getName() : null)
+                .userPhone(user != null ? user.getPhone() : null)
+                .storeName(store.getStoreName())
+                .storeCreateDate(store.getStoreCreateDate() != null ? store.getStoreCreateDate().toLocalDate().toString() : null)
+                .storeSubscriptionFeeValue(fee != null ? fee.getStoreSubscriptionFeeValue() : null)
+                .franchiseFee(store.getFranchiseFee())
+                .storeSubscriptionFeeCommissionCheck(fee != null ? fee.getStoreSubscriptionFeeCommissionCheck() : null)
+                .build();
+            result.add(dto);
+        }
+        return result;
+    }
+
+    
+
 }
