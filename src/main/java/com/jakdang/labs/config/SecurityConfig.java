@@ -57,7 +57,8 @@ public class SecurityConfig {
         "/login/oauth2/code/**",
         "/ws/**", "/ws/chat/**",
         "/api/channel/all",
-        "/api/channel/active"
+        "/api/channel/active",
+        "/api/signin/**"
     };
 //    .requestMatchers("/ws/**").permitAll()
     public static final String[] SWAGGER_URLS = {

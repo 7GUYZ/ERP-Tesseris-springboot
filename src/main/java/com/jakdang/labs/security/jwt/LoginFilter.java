@@ -4,19 +4,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jakdang.labs.api.auth.dto.CustomUserDetails;
 import com.jakdang.labs.api.auth.dto.RoleType;
 import com.jakdang.labs.api.auth.dto.TokenDTO;
-import com.jakdang.labs.api.auth.dto.UserDTO;
 import com.jakdang.labs.api.auth.dto.UserLoginRequest;
 import com.jakdang.labs.api.common.ResponseDTO;
 import com.jakdang.labs.api.jungeun.dto.LoginAdminDTO;
 import com.jakdang.labs.api.jungeun.dto.LoginResponseDTO;
 import com.jakdang.labs.api.jungeun.dto.LoginUserTesserisDTO;
 import com.jakdang.labs.api.jungeun.dto.LoginoutCmsAccessLogDTO;
-import com.jakdang.labs.api.jungeun.repository.UserTesserisLjeRepo;
 import com.jakdang.labs.api.jungeun.service.AdminLjeSvc;
 import com.jakdang.labs.api.jungeun.service.CmsAccessLogLjeSvc;
 import com.jakdang.labs.api.jungeun.service.UserTesserisLjeSvc;
-import com.jakdang.labs.entity.Admin;
-import com.jakdang.labs.entity.UserTesseris;
 import com.jakdang.labs.security.jwt.service.TokenService;
 import com.jakdang.labs.security.jwt.utils.TokenUtils;
 import com.jakdang.labs.utils.jungeun.GetIpUtil;
@@ -163,9 +159,11 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
         // 2. (**0715 정은 추가) Admin일 경우 admin_type_index까지 받기
         Integer admin_type_index = null;
+        String admin_type_name = null;
         LoginAdminDTO admin = adminLjeSvc.findByUserIndex(user_index);
         if(admin != null){
             admin_type_index = admin.getAdminTypeIndex();
+            admin_type_name = admin.getAdminTypeName();
         }
         
 
@@ -228,6 +226,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
                         .createdAt(createdAt)
                         .user_role_index(String.valueOf(user_role_index))
                         .admin_type_index(admin_type_index == null ? "관리자회원X" : String.valueOf(admin_type_index))
+                        .admin_type_name(admin_type_name)
                         .user_index(String.valueOf(user_index))
                         .build();
 

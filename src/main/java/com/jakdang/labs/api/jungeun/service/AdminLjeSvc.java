@@ -17,6 +17,7 @@ public class AdminLjeSvc {
         return adminLjeRepo.findByUserIndex(userIndex)
             .map(admin -> LoginAdminDTO.builder()
                 .adminTypeIndex(admin.getAdminTypeIndex().getAdminTypeIndex()) // ManyToOne일 경우
+                .adminTypeName(admin.getAdminTypeIndex().getAdminTypeName())   // 여기!
                 .build())
             .orElse(null);
     }
