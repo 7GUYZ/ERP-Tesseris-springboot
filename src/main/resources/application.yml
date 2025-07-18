@@ -30,9 +30,9 @@ spring:
   # DB ??
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://kschost.ddns.net:30006/tesseris_db
-    username: chilguy
-    password: 'ictEDU1234!'
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
 
 
   #JWT 임시 셋팅
@@ -47,7 +47,7 @@ spring:
       # expired: 10000 # 정은 테스트용 10초 
       
     secret:
-      code: zX9#mK2$pL7@qR5^vN3&hB6*fD1!jW8%cT4(uY0)sA2_eG5+iO9=lQ7
+      code: ${JWT_SECRET}
 
   # Data JPA ??
   jpa:
@@ -204,6 +204,6 @@ app:
 
 jasypt:
   encryptor:
-    password: local
+    password: ${JASYPT_PASSWORD}
 
 
