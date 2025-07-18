@@ -1,4 +1,4 @@
-package com.jakdang.labs.api.jiyun.dto;
+package com.jakdang.labs.api.jiyun.pinChange.dto;
 
 import lombok.Data;
 
@@ -9,4 +9,9 @@ public class PinChangeDTO {
     private Integer userCmIndex;
     private String userCmPincode;
   }
+
+    @Data
+    public static class PasswordVerifyRequest {
+        private String password;
+    }
 } 

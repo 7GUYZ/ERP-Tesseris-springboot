@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import com.jakdang.labs.api.deokkyu.store.dto.CusStoreListDto;
 import com.jakdang.labs.api.deokkyu.store.dto.StoreListDto;
 import com.jakdang.labs.api.deokkyu.store.dto.StoreListSearchDto;
+import com.jakdang.labs.api.deokkyu.store.dto.StoreRegisterdListDto;
 import com.jakdang.labs.api.deokkyu.store.dto.CustomerDto;
 import com.jakdang.labs.api.deokkyu.store.service.StoreService;
 
@@ -38,4 +39,11 @@ public class StoreController {
         List<CustomerDto> customers = storeService.getStoreCustomerListByStoreId(storeUsersId);
         return ResponseEntity.ok(customers);
     }
+
+    @GetMapping("/registerlist") // 가맹점 신청 현황 페이지에서 가맹점 리스트 불러오기 (검색 포함)
+    public ResponseEntity<List<StoreRegisterdListDto>> getFilteredRegisterdStores(StoreListSearchDto filter) {
+        List<StoreRegisterdListDto> stores = storeService.getFilteredRegisterdStores(filter);
+        return ResponseEntity.ok(stores);
+    }
+
 }
