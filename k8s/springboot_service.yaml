@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: springboot-service
+  labels:
+    app: erp-tesseris
+spec:
+  type: ClusterIP
+  selector:
+    app: erp-tesseris
+  ports:
+    - protocol: TCP
+      port: 19091
+      targetPort: 19091 
