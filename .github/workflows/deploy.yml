@@ -54,8 +54,9 @@ jobs:
 
       - name: Render deployment yaml with secrets
         run: |
-          envsubst < k8s/springboot_deployment.yaml > k8s/deployment_rendered.yaml
+          envsubst < k8s/springboot_deployment.yaml > /home/chilguy01/my-k8s-app/final/springboot_deployment.yaml
 
       - name: Deploy to Kubernetes
         run: |
-          kubectl apply -f k8s/deployment_rendered.yaml 
+          kubectl apply -f /home/chilguy01/my-k8s-app/final/springboot_deployment.yaml
+          kubectl apply -f /home/chilguy01/my-k8s-app/final/springboot_service.yaml 
