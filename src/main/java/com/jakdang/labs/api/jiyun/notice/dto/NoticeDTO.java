@@ -1,4 +1,4 @@
-package com.jakdang.labs.api.jiyun.dto;
+package com.jakdang.labs.api.jiyun.notice.dto;
 
 import lombok.Data;
 import java.time.LocalDateTime;

@@ -1,4 +1,4 @@
-package com.jakdang.labs.api.jiyun.repository;
+package com.jakdang.labs.api.jiyun.notice.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
