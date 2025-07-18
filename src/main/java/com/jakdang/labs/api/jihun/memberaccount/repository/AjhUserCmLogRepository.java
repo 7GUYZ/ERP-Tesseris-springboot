@@ -233,4 +233,131 @@ public interface AjhUserCmLogRepository extends JpaRepository<UserCmLog, Long> {
             @Param("paymentIndex") Long paymentIndex,
             @Param("transactionTypeIndex") Long transactionTypeIndex,
             Pageable pageable);
+
+    /**
+     * 🆕 강화된 LIKE 검색 지원 동적 쿼리
+     * 
+     * 목적: 프론트엔드에서 전달받은 파라미터로 LIKE 검색 수행
+     * 
+     * 특징:
+     * - 이메일과 이름 모두에서 LIKE 검색 지원
+     * - OR 조건으로 이메일 또는 이름 중 하나라도 매치되면 결과에 포함
+     * - 프론트엔드 파라미터와 완전히 호환
+     * - 동적 조건 처리 (null/빈 값 무시)
+     * 
+     * 사용 시나리오: 프론트엔드에서 사용자 ID 또는 이름으로 검색
+     */
+    @Query(value = """
+            SELECT DISTINCT ucl.* FROM user_cm_log ucl
+            INNER JOIN user_tesseris etu ON ucl.user_index_event_trigger = etu.user_index
+            LEFT JOIN user_role etuRole ON etu.user_role_index = etuRole.user_role_index
+            INNER JOIN user_tesseris epu ON ucl.user_index_event_party = epu.user_index
+            LEFT JOIN user_role epuRole ON epu.user_role_index = epuRole.user_role_index
+            LEFT JOIN user_cm_log_value_type vt ON ucl.user_cm_log_value_type_index = vt.user_cm_log_value_type_index
+            LEFT JOIN user_cm_log_payment p ON ucl.user_cm_log_payment_index = p.user_cm_log_payment_index
+            LEFT JOIN user_cm_log_transaction_type tt ON ucl.user_cm_log_transaction_type_index = tt.user_cm_log_transaction_type_index
+            LEFT JOIN users etu_users ON etu.users_id = etu_users.id
+            LEFT JOIN users epu_users ON epu.users_id = epu_users.id
+            WHERE (:triggerUserEmail IS NULL OR :triggerUserEmail = '' OR 
+                   etu_users.email LIKE CONCAT('%', :triggerUserEmail, '%') OR 
+                   etu_users.id LIKE CONCAT('%', :triggerUserEmail, '%'))
+              AND (:partyUserEmail IS NULL OR :partyUserEmail = '' OR 
+                   epu_users.email LIKE CONCAT('%', :partyUserEmail, '%') OR 
+                   epu_users.id LIKE CONCAT('%', :partyUserEmail, '%'))
+              AND (:partyUserName IS NULL OR :partyUserName = '' OR 
+                   epu_users.name LIKE CONCAT('%', :partyUserName, '%'))
+              AND (:triggerRoleIndex IS NULL OR :triggerRoleIndex = 0 OR etu.user_role_index = :triggerRoleIndex)
+              AND (:partyRoleIndex IS NULL OR :partyRoleIndex = 0 OR epu.user_role_index = :partyRoleIndex)
+              AND (:valueTypeIndex IS NULL OR :valueTypeIndex = 0 OR ucl.user_cm_log_value_type_index = :valueTypeIndex)
+              AND (:startDate IS NULL OR :startDate = '' OR ucl.user_cm_log_create_time >= STR_TO_DATE(CONCAT(:startDate, ' 00:00:00'), '%Y-%m-%d %H:%i:%s'))
+              AND (:endDate IS NULL OR :endDate = '' OR ucl.user_cm_log_create_time <= STR_TO_DATE(CONCAT(:endDate, ' 23:59:59'), '%Y-%m-%d %H:%i:%s'))
+              AND (:paymentIndex IS NULL OR :paymentIndex = 0 OR ucl.user_cm_log_payment_index = :paymentIndex)
+              AND (:transactionTypeIndex IS NULL OR :transactionTypeIndex = 0 OR ucl.user_cm_log_transaction_type_index = :transactionTypeIndex)
+            ORDER BY ucl.user_cm_log_create_time DESC
+            """, countQuery = """
+            SELECT COUNT(DISTINCT ucl.user_cm_log_index) FROM user_cm_log ucl
+            INNER JOIN user_tesseris etu ON ucl.user_index_event_trigger = etu.user_index
+            INNER JOIN user_tesseris epu ON ucl.user_index_event_party = epu.user_index
+            LEFT JOIN users etu_users ON etu.users_id = etu_users.id
+            LEFT JOIN users epu_users ON epu.users_id = epu_users.id
+            WHERE (:triggerUserEmail IS NULL OR :triggerUserEmail = '' OR 
+                   etu_users.email LIKE CONCAT('%', :triggerUserEmail, '%') OR 
+                   etu_users.id LIKE CONCAT('%', :triggerUserEmail, '%'))
+              AND (:partyUserEmail IS NULL OR :partyUserEmail = '' OR 
+                   epu_users.email LIKE CONCAT('%', :partyUserEmail, '%') OR 
+                   epu_users.id LIKE CONCAT('%', :partyUserEmail, '%'))
+              AND (:partyUserName IS NULL OR :partyUserName = '' OR 
+                   epu_users.name LIKE CONCAT('%', :partyUserName, '%'))
+              AND (:triggerRoleIndex IS NULL OR :triggerRoleIndex = 0 OR etu.user_role_index = :triggerRoleIndex)
+              AND (:partyRoleIndex IS NULL OR :partyRoleIndex = 0 OR epu.user_role_index = :partyRoleIndex)
+              AND (:valueTypeIndex IS NULL OR :valueTypeIndex = 0 OR ucl.user_cm_log_value_type_index = :valueTypeIndex)
+              AND (:startDate IS NULL OR :startDate = '' OR ucl.user_cm_log_create_time >= STR_TO_DATE(CONCAT(:startDate, ' 00:00:00'), '%Y-%m-%d %H:%i:%s'))
+              AND (:endDate IS NULL OR :endDate = '' OR ucl.user_cm_log_create_time <= STR_TO_DATE(CONCAT(:endDate, ' 23:59:59'), '%Y-%m-%d %H:%i:%s'))
+              AND (:paymentIndex IS NULL OR :paymentIndex = 0 OR ucl.user_cm_log_payment_index = :paymentIndex)
+              AND (:transactionTypeIndex IS NULL OR :transactionTypeIndex = 0 OR ucl.user_cm_log_transaction_type_index = :transactionTypeIndex)
+            """, nativeQuery = true)
+    Page<UserCmLog> findBySearchCriteriaWithLike(
+            @Param("triggerUserEmail") String triggerUserEmail,
+            @Param("partyUserEmail") String partyUserEmail,
+            @Param("partyUserName") String partyUserName,
+            @Param("triggerRoleIndex") Long triggerRoleIndex,
+            @Param("partyRoleIndex") Long partyRoleIndex,
+            @Param("valueTypeIndex") Long valueTypeIndex,
+            @Param("startDate") String startDate,
+            @Param("endDate") String endDate,
+            @Param("paymentIndex") Long paymentIndex,
+            @Param("transactionTypeIndex") Long transactionTypeIndex,
+            Pageable pageable);
+
+    /**
+     * 🆕 페이징 없는 동적 검색 쿼리 (클라이언트 사이드 pagination용)
+     * 
+     * 목적: 클라이언트 사이드 pagination을 위해 모든 데이터를 한 번에 조회
+     * 
+     * 특징:
+     * - 페이징 없이 모든 데이터 조회
+     * - 클라이언트에서 pagination 처리
+     * - DataGrid의 내부 상태 관리 안정화
+     * 
+     * 사용 시나리오: 클라이언트 사이드 pagination이 필요한 경우
+     */
+    @Query(value = """
+            SELECT DISTINCT ucl.* FROM user_cm_log ucl
+            INNER JOIN user_tesseris etu ON ucl.user_index_event_trigger = etu.user_index
+            LEFT JOIN user_role etuRole ON etu.user_role_index = etuRole.user_role_index
+            INNER JOIN user_tesseris epu ON ucl.user_index_event_party = epu.user_index
+            LEFT JOIN user_role epuRole ON epu.user_role_index = epuRole.user_role_index
+            LEFT JOIN user_cm_log_value_type vt ON ucl.user_cm_log_value_type_index = vt.user_cm_log_value_type_index
+            LEFT JOIN user_cm_log_payment p ON ucl.user_cm_log_payment_index = p.user_cm_log_payment_index
+            LEFT JOIN user_cm_log_transaction_type tt ON ucl.user_cm_log_transaction_type_index = tt.user_cm_log_transaction_type_index
+            LEFT JOIN users etu_users ON etu.users_id = etu_users.id
+            LEFT JOIN users epu_users ON epu.users_id = epu_users.id
+            WHERE (:triggerUserEmail IS NULL OR :triggerUserEmail = '' OR 
+                   etu_users.email LIKE CONCAT('%', :triggerUserEmail, '%') OR 
+                   etu_users.id LIKE CONCAT('%', :triggerUserEmail, '%'))
+              AND (:partyUserEmail IS NULL OR :partyUserEmail = '' OR 
+                   epu_users.email LIKE CONCAT('%', :partyUserEmail, '%') OR 
+                   epu_users.id LIKE CONCAT('%', :partyUserEmail, '%'))
+              AND (:partyUserName IS NULL OR :partyUserName = '' OR 
+                   epu_users.name LIKE CONCAT('%', :partyUserName, '%'))
+              AND (:triggerRoleIndex IS NULL OR :triggerRoleIndex = 0 OR etu.user_role_index = :triggerRoleIndex)
+              AND (:partyRoleIndex IS NULL OR :partyRoleIndex = 0 OR epu.user_role_index = :partyRoleIndex)
+              AND (:valueTypeIndex IS NULL OR :valueTypeIndex = 0 OR ucl.user_cm_log_value_type_index = :valueTypeIndex)
+              AND (:startDate IS NULL OR :startDate = '' OR ucl.user_cm_log_create_time >= STR_TO_DATE(CONCAT(:startDate, ' 00:00:00'), '%Y-%m-%d %H:%i:%s'))
+              AND (:endDate IS NULL OR :endDate = '' OR ucl.user_cm_log_create_time <= STR_TO_DATE(CONCAT(:endDate, ' 23:59:59'), '%Y-%m-%d %H:%i:%s'))
+              AND (:paymentIndex IS NULL OR :paymentIndex = 0 OR ucl.user_cm_log_payment_index = :paymentIndex)
+              AND (:transactionTypeIndex IS NULL OR :transactionTypeIndex = 0 OR ucl.user_cm_log_transaction_type_index = :transactionTypeIndex)
+            ORDER BY ucl.user_cm_log_create_time DESC
+            """, nativeQuery = true)
+    List<UserCmLog> findBySearchCriteriaWithLikeNoPaging(
+            @Param("triggerUserEmail") String triggerUserEmail,
+            @Param("partyUserEmail") String partyUserEmail,
+            @Param("partyUserName") String partyUserName,
+            @Param("triggerRoleIndex") Long triggerRoleIndex,
+            @Param("partyRoleIndex") Long partyRoleIndex,
+            @Param("valueTypeIndex") Long valueTypeIndex,
+            @Param("startDate") String startDate,
+            @Param("endDate") String endDate,
+            @Param("paymentIndex") Long paymentIndex,
+            @Param("transactionTypeIndex") Long transactionTypeIndex);
 }
