@@ -19,7 +19,7 @@ import com.jakdang.labs.entity.BusinessGrade;
 import com.jakdang.labs.api.auth.repository.AuthRepository;
 import com.jakdang.labs.api.auth.entity.UserEntity;
 import com.jakdang.labs.security.jwt.utils.JwtUtil;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -29,7 +29,7 @@ public class BusinessGradeService {
   private final BusinessGradekjyRepository businessGradeRepository;
   private final AuthRepository authRepository;
   private final JwtUtil jwtUtil;
-  private final PasswordEncoder passwordEncoder;
+  private final Argon2PasswordEncoder passwordEncoder;
   private final UpdateUserLogkjyRepository updateUserLogRepository;
   private final UserTesserisLjeRepo userTesserisRepository;
 
