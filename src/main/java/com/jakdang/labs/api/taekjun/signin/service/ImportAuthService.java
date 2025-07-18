@@ -25,10 +25,10 @@ public class ImportAuthService {
     private static final String IMPORT_API_URL = "https://api.iamport.kr";
     
     // 환경 변수에서 API 키를 가져오도록 수정
-    @Value("${iamport.api.key:4455178272056543}")
+    @Value("${iamport.api.key:}")
     private String iamportApiKey;
     
-    @Value("${iamport.api.secret:fk2aWqHrtsSIFdTfDnyA6hm3esat0q1NBNXCGXfCGUIxFNgb8l5lrlVRpOl2QSk7HIsa3GMaMynDbP9X}")
+    @Value("${iamport.api.secret:}")
     private String iamportApiSecret;
     
     /**

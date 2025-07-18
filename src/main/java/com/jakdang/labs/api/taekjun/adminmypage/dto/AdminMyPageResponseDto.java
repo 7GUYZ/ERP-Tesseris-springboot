@@ -17,7 +17,6 @@ import java.time.LocalDateTime;
 public class AdminMyPageResponseDto {
     
     // 기본 사용자 정보
-    private String userId;
     private String userName;
     private String userBirthday;
     private String userGender;
