@@ -52,10 +52,23 @@ jobs:
           mkdir -p $HOME/.kube
           echo "${{ secrets.KUBE_CONFIG }}" > $HOME/.kube/config
 
-      - name: Render deployment yaml with secrets
+      - name: Create or update erp-tesseris-secret
         run: |
-          envsubst < k8s/springboot_deployment.yaml > k8s/deployment_rendered.yaml
+          kubectl create secret generic erp-tesseris-secret \
+            --from-literal=DB_URL="${{ secrets.DB_URL }}" \
+            --from-literal=DB_USER="${{ secrets.DB_USER }}" \
+            --from-literal=DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+            --from-literal=JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+            --from-literal=JASYPT_PASSWORD="${{ secrets.JASYPT_PASSWORD }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Deploy to Kubernetes
+      - name: Replace image tag and apply deployment
         run: |
-          kubectl apply -f k8s/deployment_rendered.yaml 
+          sed "s#__DOCKER_IMAGE__#${{ secrets.DOCKER_IMAGE }}#g" my-k8s-app/final/springboot_deployment.yaml | \
+          sed "s#__TAG__#${{ github.sha }}#g" > my-k8s-app/final/springboot_deployment.generated.yaml
+
+          kubectl apply -f my-k8s-app/final/springboot_deployment.generated.yaml
+
+      - name: apply service
+        run: |
+          kubectl apply -f my-k8s-app/final/springboot_service.yaml 
