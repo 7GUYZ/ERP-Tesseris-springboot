@@ -13,6 +13,7 @@ public class MemberAssetDetailsResponseDto {
     private String userId;
     private String userName;
     private String userPhone;
+    private String userEmail; // 이메일 필드 추가
     private String userRoleKorNm;
     private String storeName;
     private String userCmCurrent;
@@ -31,6 +32,7 @@ public class MemberAssetDetailsResponseDto {
     public String getId() { return userId; }
     public String getName() { return userName; }
     public String getPhone() { return userPhone; }
+    public String getEmail() { return userEmail; } // 이메일 getter 추가
     public String getGrade() { return userRoleKorNm; }
     public String getFranchiseName() { return storeName; }
     public String getCmHeld() { return userCmCurrent; }
