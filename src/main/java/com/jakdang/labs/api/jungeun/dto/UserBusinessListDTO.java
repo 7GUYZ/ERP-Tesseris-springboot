@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class NaviProgramDTO {
-    private Integer programIndex;
-    private Long menuIndex;
+public class UserBusinessListDTO {
+    private Integer gradeIndex;
+    private String gradeName;
 }
