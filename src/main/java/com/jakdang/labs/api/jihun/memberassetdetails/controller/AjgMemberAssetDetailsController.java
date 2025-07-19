@@ -23,9 +23,8 @@ public class AjgMemberAssetDetailsController {
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
         
-        MemberAssetDetailsSearchDto searchDto = new MemberAssetDetailsSearchDto();
-        searchDto.setPage(page);
-        searchDto.setSize(size);
+        MemberAssetDetailsSearchDto.PaginationInfo paginationInfo = new MemberAssetDetailsSearchDto.PaginationInfo(page, size);
+        MemberAssetDetailsSearchDto searchDto = new MemberAssetDetailsSearchDto(null, paginationInfo);
         
         Page<MemberAssetDetailsResponseDto> result = ajgMemberAssetDetailsService.searchMemberAssetDetails(searchDto);
         return ResponseEntity.ok(result);
@@ -40,20 +39,16 @@ public class AjgMemberAssetDetailsController {
     
     @GetMapping("/search")
     public ResponseEntity<Page<MemberAssetDetailsResponseDto>> searchMemberAssetDetailsGet(
-            @RequestParam(required = false) String userId,
+            @RequestParam(required = false) String userEmail,
             @RequestParam(required = false) String userName,
             @RequestParam(required = false) String userPhone,
             @RequestParam(required = false) Integer userRoleIndex,
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
         
-        MemberAssetDetailsSearchDto searchDto = new MemberAssetDetailsSearchDto();
-        searchDto.setUserId(userId);
-        searchDto.setUserName(userName);
-        searchDto.setUserPhone(userPhone);
-        searchDto.setUserRoleIndex(userRoleIndex);
-        searchDto.setPage(page);
-        searchDto.setSize(size);
+        MemberAssetDetailsSearchDto.SearchCriteria searchCriteria = new MemberAssetDetailsSearchDto.SearchCriteria(userEmail, userName, userPhone, userRoleIndex);
+        MemberAssetDetailsSearchDto.PaginationInfo paginationInfo = new MemberAssetDetailsSearchDto.PaginationInfo(page, size);
+        MemberAssetDetailsSearchDto searchDto = new MemberAssetDetailsSearchDto(searchCriteria, paginationInfo);
         
         Page<MemberAssetDetailsResponseDto> result = ajgMemberAssetDetailsService.searchMemberAssetDetails(searchDto);
         return ResponseEntity.ok(result);
