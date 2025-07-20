@@ -42,8 +42,16 @@ public class AjgMemberAssetDetailsService {
     public Page<MemberAssetDetailsResponseDto> searchMemberAssetDetails(MemberAssetDetailsSearchDto searchDto) {
         Pageable pageable = PageRequest.of(
             searchDto.getPage() != null ? searchDto.getPage() : 0,
-            searchDto.getSize() != null ? searchDto.getSize() : 10
+            searchDto.getSize() != null ? searchDto.getSize() : 25
         );
+        
+        // 검색 파라미터 로깅
+        System.out.println("=== 검색 파라미터 디버깅 ===");
+        System.out.println("userEmail: " + searchDto.getUserEmail());
+        System.out.println("userName: " + searchDto.getUserName());
+        System.out.println("userPhone: " + searchDto.getUserPhone());
+        System.out.println("userRoleIndex: " + searchDto.getUserRoleIndex());
+        System.out.println("==========================");
         
         Page<Object[]> results = ajgMemberAssetDetailsRepository.findMemberAssetDetails(
             searchDto.getUserEmail(),
@@ -68,37 +76,42 @@ public class AjgMemberAssetDetailsService {
     private MemberAssetDetailsResponseDto mapToDto(Object[] row) {
         MemberAssetDetailsResponseDto dto = new MemberAssetDetailsResponseDto();
         
-        dto.setUserIndex((Integer) row[0]);
-        dto.setUserId((String) row[1]);
-        dto.setUserName((String) row[2]);
-        dto.setUserPhone((String) row[3]);
-        dto.setUserEmail((String) row[4]); // 이메일 필드 매핑
-        dto.setUserRoleKorNm((String) row[5]);
-        dto.setStoreName((String) row[6]);
+        // 안전한 null 체크와 타입 변환
+        dto.setUserIndex(row[0] != null ? (Integer) row[0] : null);
+        dto.setUserId(row[1] != null ? (String) row[1] : null);
+        dto.setUserName(row[2] != null ? (String) row[2] : null);
+        dto.setUserPhone(row[3] != null ? (String) row[3] : null);
+        dto.setUserEmail(row[4] != null ? (String) row[4] : null); // 이메일 필드 매핑
+        dto.setUserRoleKorNm(row[5] != null ? (String) row[5] : "알 수 없음");
+        dto.setStoreName(row[6] != null ? (String) row[6] : null);
         dto.setUserCmCurrent(row[7] != null ? String.valueOf(row[7]) : "0");
         dto.setUserCmpCurrent(row[8] != null ? String.valueOf(row[8]) : "0");
         dto.setUserCashCurrent(row[9] != null ? String.valueOf(row[9]) : "0");
         
-        // LocalDateTime 변환
+        // LocalDateTime 변환 (안전한 처리)
         if (row[10] != null) {
-            if (row[10] instanceof LocalDateTime) {
-                dto.setUserCreateTime((LocalDateTime) row[10]);
-            } else if (row[10] instanceof String) {
-                try {
+            try {
+                if (row[10] instanceof LocalDateTime) {
+                    dto.setUserCreateTime((LocalDateTime) row[10]);
+                } else if (row[10] instanceof String) {
                     dto.setUserCreateTime(LocalDateTime.parse((String) row[10], DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-                } catch (Exception e) {
+                } else {
                     dto.setUserCreateTime(null);
                 }
+            } catch (Exception e) {
+                dto.setUserCreateTime(null);
             }
+        } else {
+            dto.setUserCreateTime(null);
         }
         
-        dto.setUserBankName((String) row[11]);
-        dto.setUserBankNumber((String) row[12]);
-        dto.setUserBankHolder((String) row[13]);
-        dto.setUserJumin((String) row[14]);
-        dto.setSuggestionUserId((String) row[15]);
-        dto.setSuggestionUserName((String) row[16]);
-        dto.setTemporaryStoreCashValue((String) row[17]);
+        dto.setUserBankName(row[11] != null ? (String) row[11] : null);
+        dto.setUserBankNumber(row[12] != null ? (String) row[12] : null);
+        dto.setUserBankHolder(row[13] != null ? (String) row[13] : null);
+        dto.setUserJumin(row[14] != null ? (String) row[14] : null);
+        dto.setSuggestionUserId(row[15] != null ? (String) row[15] : null);
+        dto.setSuggestionUserName(row[16] != null ? (String) row[16] : null);
+        dto.setTemporaryStoreCashValue(row[17] != null ? (String) row[17] : "0");
         
         return dto;
     }
@@ -107,8 +120,8 @@ public class AjgMemberAssetDetailsService {
         List<Object[]> roles = ajgMemberAssetDetailsRepository.findUserRoles();
         return roles.stream()
             .map(role -> Map.of(
-                "index", role[0],
-                "name", role[1]
+                "index", role[0] != null ? role[0] : 0,
+                "name", role[1] != null ? role[1] : "알 수 없음"
             ))
             .collect(Collectors.toList());
     }

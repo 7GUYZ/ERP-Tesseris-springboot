@@ -21,7 +21,7 @@ public class AjgMemberAssetDetailsController {
     @GetMapping
     public ResponseEntity<Page<MemberAssetDetailsResponseDto>> getMemberAssetDetails(
             @RequestParam(defaultValue = "0") Integer page,
-            @RequestParam(defaultValue = "10") Integer size) {
+            @RequestParam(defaultValue = "100") Integer size) {
         
         MemberAssetDetailsSearchDto.PaginationInfo paginationInfo = new MemberAssetDetailsSearchDto.PaginationInfo(page, size);
         MemberAssetDetailsSearchDto searchDto = new MemberAssetDetailsSearchDto(null, paginationInfo);
@@ -44,7 +44,7 @@ public class AjgMemberAssetDetailsController {
             @RequestParam(required = false) String userPhone,
             @RequestParam(required = false) Integer userRoleIndex,
             @RequestParam(defaultValue = "0") Integer page,
-            @RequestParam(defaultValue = "10") Integer size) {
+            @RequestParam(defaultValue = "100") Integer size) {
         
         MemberAssetDetailsSearchDto.SearchCriteria searchCriteria = new MemberAssetDetailsSearchDto.SearchCriteria(userEmail, userName, userPhone, userRoleIndex);
         MemberAssetDetailsSearchDto.PaginationInfo paginationInfo = new MemberAssetDetailsSearchDto.PaginationInfo(page, size);
@@ -77,8 +77,8 @@ public class AjgMemberAssetDetailsController {
                 // 기존 단일 처리 방식 지원
                 Object memberIdObj = paymentRequest.get("memberId");
                 String memberId = memberIdObj != null ? memberIdObj.toString() : null;
-                Integer currentCmHeld = (Integer) paymentRequest.get("currentCmHeld");
-                
+            Integer currentCmHeld = (Integer) paymentRequest.get("currentCmHeld");
+            
                 if (memberId == null || memberId.trim().isEmpty()) {
                     return ResponseEntity.badRequest().body(Map.of("success", false, "message", "회원 ID가 필요합니다."));
                 }
@@ -133,8 +133,8 @@ public class AjgMemberAssetDetailsController {
                 // 기존 단일 처리 방식 지원
                 Object memberIdObj = collectionRequest.get("memberId");
                 String memberId = memberIdObj != null ? memberIdObj.toString() : null;
-                Integer currentCmHeld = (Integer) collectionRequest.get("currentCmHeld");
-                
+            Integer currentCmHeld = (Integer) collectionRequest.get("currentCmHeld");
+            
                 if (memberId == null || memberId.trim().isEmpty()) {
                     return ResponseEntity.badRequest().body(Map.of("success", false, "message", "회원 ID가 필요합니다."));
                 }
