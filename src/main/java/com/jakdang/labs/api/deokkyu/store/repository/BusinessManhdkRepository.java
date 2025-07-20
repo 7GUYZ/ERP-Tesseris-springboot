@@ -5,7 +5,7 @@ import com.jakdang.labs.entity.BusinessMan;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 
-public interface HDKBusinessManRepository extends JpaRepository<BusinessMan, Integer> {
+public interface BusinessManhdkRepository extends JpaRepository<BusinessMan, Integer> {
 
     
     
