@@ -67,17 +67,53 @@ public class AjgMemberAssetDetailsController {
     @PostMapping("/payment")
     public ResponseEntity<Map<String, Object>> processPayment(@RequestBody Map<String, Object> paymentRequest) {
         try {
-            String memberId = (String) paymentRequest.get("memberId");
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> members = (List<Map<String, Object>>) paymentRequest.get("members");
             Integer amount = (Integer) paymentRequest.get("amount");
             String reason = (String) paymentRequest.get("reason");
-            Integer currentCmHeld = (Integer) paymentRequest.get("currentCmHeld");
             
-            boolean result = ajgMemberAssetDetailsService.processPayment(memberId, amount, reason, currentCmHeld);
+            // 단일 처리 호환성을 위한 처리
+            if (members == null) {
+                // 기존 단일 처리 방식 지원
+                Object memberIdObj = paymentRequest.get("memberId");
+                String memberId = memberIdObj != null ? memberIdObj.toString() : null;
+                Integer currentCmHeld = (Integer) paymentRequest.get("currentCmHeld");
+                
+                if (memberId == null || memberId.trim().isEmpty()) {
+                    return ResponseEntity.badRequest().body(Map.of("success", false, "message", "회원 ID가 필요합니다."));
+                }
+                
+                // 단일 회원을 배열로 변환
+                members = List.of(Map.of(
+                    "memberId", memberId,
+                    "currentCmHeld", currentCmHeld != null ? currentCmHeld : 0
+                ));
+            }
             
-            if (result) {
-                return ResponseEntity.ok(Map.of("success", true, "message", "CM 지급이 완료되었습니다."));
+            if (members == null || members.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "처리할 회원 목록이 필요합니다."));
+            }
+            
+            AjgMemberAssetDetailsService.BulkPaymentResult result = ajgMemberAssetDetailsService.processBulkPaymentWithFullTransaction(members, amount, reason);
+            
+            if (result.isOverallSuccess()) {
+                return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", result.getMessage(),
+                    "totalCount", result.getTotalCount(),
+                    "successCount", result.getSuccessCount(),
+                    "failureCount", result.getFailureCount(),
+                    "results", result.getResults()
+                ));
             } else {
-                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "CM 지급 처리 중 오류가 발생했습니다."));
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", result.getMessage(),
+                    "totalCount", result.getTotalCount(),
+                    "successCount", result.getSuccessCount(),
+                    "failureCount", result.getFailureCount(),
+                    "results", result.getResults()
+                ));
             }
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "처리 중 오류가 발생했습니다: " + e.getMessage()));
@@ -87,17 +123,53 @@ public class AjgMemberAssetDetailsController {
     @PostMapping("/collection")
     public ResponseEntity<Map<String, Object>> processCollection(@RequestBody Map<String, Object> collectionRequest) {
         try {
-            String memberId = (String) collectionRequest.get("memberId");
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> members = (List<Map<String, Object>>) collectionRequest.get("members");
             Integer amount = (Integer) collectionRequest.get("amount");
             String reason = (String) collectionRequest.get("reason");
-            Integer currentCmHeld = (Integer) collectionRequest.get("currentCmHeld");
             
-            boolean result = ajgMemberAssetDetailsService.processCollection(memberId, amount, reason, currentCmHeld);
+            // 단일 처리 호환성을 위한 처리
+            if (members == null) {
+                // 기존 단일 처리 방식 지원
+                Object memberIdObj = collectionRequest.get("memberId");
+                String memberId = memberIdObj != null ? memberIdObj.toString() : null;
+                Integer currentCmHeld = (Integer) collectionRequest.get("currentCmHeld");
+                
+                if (memberId == null || memberId.trim().isEmpty()) {
+                    return ResponseEntity.badRequest().body(Map.of("success", false, "message", "회원 ID가 필요합니다."));
+                }
+                
+                // 단일 회원을 배열로 변환
+                members = List.of(Map.of(
+                    "memberId", memberId,
+                    "currentCmHeld", currentCmHeld != null ? currentCmHeld : 0
+                ));
+            }
             
-            if (result) {
-                return ResponseEntity.ok(Map.of("success", true, "message", "CM 회수가 완료되었습니다."));
+            if (members == null || members.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "처리할 회원 목록이 필요합니다."));
+            }
+            
+            AjgMemberAssetDetailsService.BulkPaymentResult result = ajgMemberAssetDetailsService.processBulkCollectionWithFullTransaction(members, amount, reason);
+            
+            if (result.isOverallSuccess()) {
+                return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", result.getMessage(),
+                    "totalCount", result.getTotalCount(),
+                    "successCount", result.getSuccessCount(),
+                    "failureCount", result.getFailureCount(),
+                    "results", result.getResults()
+                ));
             } else {
-                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "CM 회수 처리 중 오류가 발생했습니다."));
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", result.getMessage(),
+                    "totalCount", result.getTotalCount(),
+                    "successCount", result.getSuccessCount(),
+                    "failureCount", result.getFailureCount(),
+                    "results", result.getResults()
+                ));
             }
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "처리 중 오류가 발생했습니다: " + e.getMessage()));

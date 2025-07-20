@@ -1,5 +1,9 @@
 package com.jakdang.labs.api.jihun.memberassetdetails.repository;
 
+import com.jakdang.labs.entity.UserCmLog;
+import com.jakdang.labs.entity.UserCmLogPayment;
+import com.jakdang.labs.entity.UserCmLogTransactionType;
+import com.jakdang.labs.entity.UserCmLogValueType;
 import com.jakdang.labs.entity.UserTesseris;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -11,9 +15,13 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface AjgMemberAssetDetailsRepository extends JpaRepository<UserTesseris, Integer> {
+    
+    // 회원 조회 (users_id로)
+    Optional<UserTesseris> findByUsersId_Id(String userId);
     
     @Query(value = """
         SELECT
@@ -24,9 +32,9 @@ public interface AjgMemberAssetDetailsRepository extends JpaRepository<UserTesse
             us.email as userEmail,
             r.user_role_kor_nm as userRoleKorNm,
             s.store_name as storeName,
-            FORMAT((c.user_cm_deposit + c.user_cm_withdrawal), '###,###.##') as userCmCurrent,
-            FORMAT((c.user_cmp_deposit + c.user_cmp_withdrawal), '###,###.##') as userCmpCurrent,
-            FORMAT((c.user_cash_deposit + c.user_cash_withdrawal), '###,###.##') as userCashCurrent,
+            (c.user_cm_deposit - c.user_cm_withdrawal) as userCmCurrent,
+            (c.user_cmp_deposit - c.user_cmp_withdrawal) as userCmpCurrent,
+            (c.user_cash_deposit - c.user_cash_withdrawal) as userCashCurrent,
             us.created_at as userCreateTime,
             t4.user_bank_name as userBankName,
             u.user_bank_number as userBankNumber,
@@ -72,6 +80,21 @@ public interface AjgMemberAssetDetailsRepository extends JpaRepository<UserTesse
     List<Object[]> findUserRoles();
     
     @Query(value = """
+        INSERT INTO user_cm (user_cm_index, user_cm_deposit, user_cm_withdrawal, user_cmp_deposit, user_cmp_withdrawal, user_cash_deposit, user_cash_withdrawal)
+        SELECT user_index, :amount, 0, 0, 0, 0, 0
+        FROM user_tesseris 
+        WHERE users_id = :userId
+        AND NOT EXISTS (
+            SELECT 1 FROM user_cm WHERE user_cm_index = (
+                SELECT user_index FROM user_tesseris WHERE users_id = :userId
+            )
+        )
+        """, nativeQuery = true)
+    @Modifying
+    @Transactional
+    int insertCmDeposit(@Param("userId") String userId, @Param("amount") Integer amount);
+    
+    @Query(value = """
         UPDATE user_cm 
         SET user_cm_deposit = user_cm_deposit + :amount
         WHERE user_cm_index = (
@@ -81,6 +104,21 @@ public interface AjgMemberAssetDetailsRepository extends JpaRepository<UserTesse
     @Modifying
     @Transactional
     int updateCmDeposit(@Param("userId") String userId, @Param("amount") Integer amount);
+    
+    @Query(value = """
+        INSERT INTO user_cm (user_cm_index, user_cm_deposit, user_cm_withdrawal, user_cmp_deposit, user_cmp_withdrawal, user_cash_deposit, user_cash_withdrawal)
+        SELECT user_index, 0, :amount, 0, 0, 0, 0
+        FROM user_tesseris 
+        WHERE users_id = :userId
+        AND NOT EXISTS (
+            SELECT 1 FROM user_cm WHERE user_cm_index = (
+                SELECT user_index FROM user_tesseris WHERE users_id = :userId
+            )
+        )
+        """, nativeQuery = true)
+    @Modifying
+    @Transactional
+    int insertCmWithdrawal(@Param("userId") String userId, @Param("amount") Integer amount);
     
     @Query(value = """
         UPDATE user_cm 
