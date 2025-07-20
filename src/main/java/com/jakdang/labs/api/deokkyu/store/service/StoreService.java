@@ -17,16 +17,16 @@ import com.jakdang.labs.entity.UserCm;
 import com.jakdang.labs.entity.UserTesseris;
 import com.jakdang.labs.entity.StoreSubscriptionFee;
 import com.jakdang.labs.api.auth.entity.UserEntity;
-import com.jakdang.labs.api.deokkyu.store.repository.StoreCategoryhdkRepository;
-import com.jakdang.labs.api.deokkyu.store.repository.StorehdkRepository;
-import com.jakdang.labs.api.deokkyu.store.repository.StoreRequestStatushdkRepository;
-import com.jakdang.labs.api.deokkyu.store.repository.UserCmhdkRepository;
-import com.jakdang.labs.api.deokkyu.store.repository.BusinessManhdkRepository;
-import com.jakdang.labs.api.deokkyu.store.repository.UserhdkRepository;
-import com.jakdang.labs.api.deokkyu.store.repository.BusinessGradehdkRepository;
-import com.jakdang.labs.api.deokkyu.store.repository.StoreCustomerhdkRepository;
-import com.jakdang.labs.api.deokkyu.store.repository.UserTesserishdkRepository;
-import com.jakdang.labs.api.deokkyu.store.repository.StoreSubscriptionFeehdkRepository;
+import com.jakdang.labs.api.deokkyu.store.repository.StoreCategoryhdkRepo;
+import com.jakdang.labs.api.deokkyu.store.repository.StorehdkRepo;
+import com.jakdang.labs.api.deokkyu.store.repository.StoreRequestStatushdkRepo;
+import com.jakdang.labs.api.deokkyu.store.repository.StoreSubscriptionFeehdkRepo;
+import com.jakdang.labs.api.deokkyu.store.repository.UserCmhdkRepo;
+import com.jakdang.labs.api.deokkyu.store.repository.BusinessManhdkRepo;
+import com.jakdang.labs.api.deokkyu.store.repository.UserhdkRepo;
+import com.jakdang.labs.api.deokkyu.store.repository.BusinessGradehdkRepo;
+import com.jakdang.labs.api.deokkyu.store.repository.StoreCustomerhdkRepo;
+import com.jakdang.labs.api.deokkyu.store.repository.UserTesserishdkRepo;
 import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
@@ -40,16 +40,16 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor // 생성자 이걸로 만들어줌
 @Service
 public class StoreService {
-    private final StorehdkRepository storeRepository;
-    private final UserhdkRepository userRepository;
-    private final StoreCategoryhdkRepository storeCategoryRepository;
-    private final StoreRequestStatushdkRepository storeRequestStatusRepository;
-    private final UserCmhdkRepository userCmRepository;
-    private final BusinessManhdkRepository businessManRepository;
-    private final BusinessGradehdkRepository businessGradeRepository;
-    private final StoreCustomerhdkRepository storeCustomerRepository;
-    private final UserTesserishdkRepository userTesserisRepository;
-    private final StoreSubscriptionFeehdkRepository storeSubscriptionFeeRepository;
+    private final StorehdkRepo storeRepository;
+    private final UserhdkRepo userRepository;
+    private final StoreCategoryhdkRepo storeCategoryRepository;
+    private final StoreRequestStatushdkRepo storeRequestStatusRepository;
+    private final UserCmhdkRepo userCmRepository;
+    private final BusinessManhdkRepo businessManRepository;
+    private final BusinessGradehdkRepo businessGradeRepository;
+    private final StoreCustomerhdkRepo storeCustomerRepository;
+    private final UserTesserishdkRepo userTesserisRepository;
+    private final StoreSubscriptionFeehdkRepo storeSubscriptionFeeRepository;
 
     // 전체 리스트 조회
      public List<StoreListDto> getStoreDtos(StoreListSearchDto filter) {
@@ -94,13 +94,13 @@ public class StoreService {
                         return false;
                     }
                 }
-                if (filter.getStoreRequestStatusName() != null && !filter.getStoreRequestStatusName().isBlank()) {
+                if (filter.getStoreRequestStatusName() != null && !filter.getStoreRequestStatusName().isBlank() && !filter.getStoreRequestStatusName().equals("전체")) {
                     if (requestId.isEmpty() || requestId.get().getStoreRequestStatusName() == null ||
                     !requestId.get().getStoreRequestStatusName().contains(filter.getStoreRequestStatusName())) {
                         return false;
                     }// StoreRequestStatus 로 접근후 비교
                 }
-                if (filter.getStoreTransactionStatus() != null && !filter.getStoreTransactionStatus().isBlank()) {
+                if (filter.getStoreTransactionStatus() != null && !filter.getStoreTransactionStatus().isBlank() && !filter.getStoreTransactionStatus().equals("전체")) {
                     Boolean filterTransactionStatus = null;
 
                     if (filter.getStoreTransactionStatus().equals("정상")) {
@@ -388,17 +388,110 @@ public class StoreService {
             if (filter.getStoreName() != null && !filter.getStoreName().isBlank()) {
                 if (store.getStoreName() == null || !store.getStoreName().contains(filter.getStoreName())) continue;
             }
+            
+            // storeRequestStatusName 필터링 추가
+            if (filter.getStoreRequestStatusName() != null && !filter.getStoreRequestStatusName().isBlank() && !filter.getStoreRequestStatusName().equals("전체")) {
+                Optional<StoreRequestStatus> requestId = storeRequestStatusRepository.findById(store.getStoreRequestStatusIndex());
+                if (requestId.isEmpty() || requestId.get().getStoreRequestStatusName() == null ||
+                !requestId.get().getStoreRequestStatusName().contains(filter.getStoreRequestStatusName())) {
+                    continue;
+                }
+            }
+            
+            // storeTransactionStatus 필터링 추가
+            if (filter.getStoreTransactionStatus() != null && !filter.getStoreTransactionStatus().isBlank() && !filter.getStoreTransactionStatus().equals("전체")) {
+                Boolean filterTransactionStatus = null;
+
+                if (filter.getStoreTransactionStatus().equals("정상")) {
+                    filterTransactionStatus = true;
+                } else if (filter.getStoreTransactionStatus().equals("정지")) {
+                    filterTransactionStatus = false;
+                } else {
+                    // 예외 처리 or 무시
+                    continue;
+                }
+
+                if (store.getStoreTransactionStatus() == null || 
+                !store.getStoreTransactionStatus().equals(filterTransactionStatus)) {
+                    continue;
+                }
+            }
             // StoreSubscriptionFee 정보 (가장 최근 값 1개만)
             List<StoreSubscriptionFee> fees = storeSubscriptionFeeRepository.findByStoreUserIndex(store);
             StoreSubscriptionFee fee = null;
             if (!fees.isEmpty()) {
                 fee = fees.stream().sorted((a, b) -> b.getStoreSubscriptionFeeTime().compareTo(a.getStoreSubscriptionFeeTime())).findFirst().orElse(null);
             }
+            
+            // storeRequestStatusName 설정
+            String storeRequestStatusName = null;
+            if (store.getStoreRequestStatusIndex() != null) {
+                Optional<StoreRequestStatus> status = storeRequestStatusRepository.findById(store.getStoreRequestStatusIndex());
+                if (status.isPresent()) {
+                    storeRequestStatusName = status.get().getStoreRequestStatusName();
+                }
+            }
+            
+            // storeTransactionStatus 설정
+            String storeTransactionStatus = "정지";
+            if (store.getStoreTransactionStatus() != null && store.getStoreTransactionStatus()) {
+                storeTransactionStatus = "정상";
+            }
+            
+            // 사업자 정보 조회 (businessMan → userTesseris → usersId(UserEntity) 경로)
+            BusinessMan businessMan = null;
+            String businessUserName = null;
+            String businessUserId = null;
+            String businessGradeName = null;
+            if (store.getBusinessManUserIndex() != null) {
+                businessMan = businessManRepository.findById(store.getBusinessManUserIndex()).orElse(null);
+                if (businessMan != null) {
+                    // businessMan의 userIndex로 UserTesseris 조회
+                    Integer businessUserIndex = null;
+                    if (businessMan.getUserIndex() != null) {
+                        businessUserIndex = businessMan.getUserIndex().getUserIndex();
+                    }
+                    if (businessUserIndex != null) {
+                        UserTesseris businessUserTesseris = userTesserisRepository.findByUserIndex(businessUserIndex).orElse(null);
+                        if (businessUserTesseris != null && businessUserTesseris.getUsersId() != null) {
+                            businessUserName = businessUserTesseris.getUsersId().getName();
+                            businessUserId = businessUserTesseris.getUsersId().getId();
+                        }
+                    }
+                    if (businessMan.getBusinessGrade() != null) {
+                        businessGradeName = businessMan.getBusinessGrade().getBusinessGradeName();
+                    }
+                }
+            }
+            
+            // UserCm 정보 조회 (초기지급 CMP, 보유 CM)
+            UserCm userCm = null;
+            Integer totalCM = 0;
+            Integer userCmpInit = 0;
+            if (userTesseris != null && userTesseris.getUserIndex() != null) {
+                userCm = userCmRepository.findById(userTesseris.getUserIndex()).orElse(null);
+                if (userCm != null) {
+                    Integer deposit = userCm.getUserCmDeposit() != null ? userCm.getUserCmDeposit() : 0;
+                    Integer withdrawal = userCm.getUserCmWithdrawal() != null ? userCm.getUserCmWithdrawal() : 0;
+                    totalCM = deposit + withdrawal;
+                    userCmpInit = userCm.getUserCmpInit() != null ? userCm.getUserCmpInit() : 0;
+                }
+            }
+            
             StoreRegisterdListDto dto = StoreRegisterdListDto.builder()
+                .businessUserId(businessUserId)
+                .businessUserName(businessUserName)
+                .businessGradeName(businessGradeName)
                 .userId(userId)
                 .userName(user != null ? user.getName() : null)
                 .userPhone(user != null ? user.getPhone() : null)
+                .storeBossName(store.getStoreBossName())
+                .storeCorporateName(store.getStoreCorporateName())
                 .storeName(store.getStoreName())
+                .storeRequestStatusName(storeRequestStatusName)
+                .storeTransactionStatus(storeTransactionStatus)
+                .userCmpInit(userCmpInit)
+                .totalCM(totalCM)
                 .storeCreateDate(store.getStoreCreateDate() != null ? store.getStoreCreateDate().toLocalDate().toString() : null)
                 .storeSubscriptionFeeValue(fee != null ? fee.getStoreSubscriptionFeeValue() : null)
                 .franchiseFee(store.getFranchiseFee())
