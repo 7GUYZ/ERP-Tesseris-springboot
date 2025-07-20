@@ -5,7 +5,7 @@ import com.jakdang.labs.entity.BusinessGrade;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 
-public interface BusinessGradehdkRepository extends JpaRepository<BusinessGrade, Integer> {
+public interface BusinessGradehdkRepo extends JpaRepository<BusinessGrade, Integer> {
 
     
 }
