@@ -17,15 +17,22 @@ public class NoticeDTO {
         private Integer noticeIndex;
         private String noticeTitle;
         private String noticeDesc;
+        private String password; // 비밀번호 추가
+    }
+
+    @Data
+    public static class DeleteRequest {
+        private Integer noticeIndex;
+        private String password;
     }
 
     @Data
     public static class Response {
         private Integer noticeIndex;
-        private String userId;
         private String noticeTitle;
         private String noticeDesc;
         @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
         private LocalDateTime noticeCreateTime;
+        private String userId; // 작성자 userId 추가
     }
 } 

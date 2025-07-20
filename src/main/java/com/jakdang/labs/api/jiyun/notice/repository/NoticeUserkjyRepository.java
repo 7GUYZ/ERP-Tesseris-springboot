@@ -10,4 +10,5 @@ import java.util.Optional;
 @Repository("noticeUserRepository")
 public interface NoticeUserkjyRepository extends JpaRepository<UserTesseris, Integer> {
     Optional<UserTesseris> findByUserIndex(Integer userIndex);
+    Optional<UserTesseris> findByUsersId_Id(String id); // userId로 조회
 } 
