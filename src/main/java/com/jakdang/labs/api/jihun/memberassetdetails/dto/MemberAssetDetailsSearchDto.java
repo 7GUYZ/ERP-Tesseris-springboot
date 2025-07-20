@@ -40,13 +40,13 @@ public class MemberAssetDetailsSearchDto {
         private String userEmail;
         
         /** 사용자 이름 */
-        private String userName;
+    private String userName;
         
         /** 사용자 전화번호 */
-        private String userPhone;
+    private String userPhone;
         
         /** 사용자 역할 인덱스 (등급) */
-        private Integer userRoleIndex;
+    private Integer userRoleIndex;
     }
     
     /**
@@ -59,10 +59,10 @@ public class MemberAssetDetailsSearchDto {
     @AllArgsConstructor
     public static class PaginationInfo {
         /** 페이지 번호 (0부터 시작) */
-        private Integer page;
+    private Integer page;
         
         /** 페이지 크기 */
-        private Integer size;
+    private Integer size;
     }
     
     /**
