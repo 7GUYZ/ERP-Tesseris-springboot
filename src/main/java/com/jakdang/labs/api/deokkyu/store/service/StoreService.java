@@ -164,69 +164,97 @@ public class StoreService {
                 // Store.userIndex는 UserTesseris 객체
                 UserTesseris userTesseris = store.getUserIndex();
                 String userId = null;
-                UserEntity user = null;
-                
-                if (userTesseris != null) {
-                    userId = userTesseris.getUsersId().getId(); // UserEntity의 id
-                    user = userTesseris.getUsersId(); // UserEntity 객체
+                String userName = null;
+                String userPhone = null;
+                if (userTesseris != null && userTesseris.getUsersId() != null) {
+                    userId = userTesseris.getUsersId().getId();
+                    userName = userTesseris.getUsersId().getName();
+                    userPhone = userTesseris.getUsersId().getPhone();
                 }
-                
-                StoreCategory category = store.getStoreCategory(); // Store에서 직접 가져오기
-                StoreRequestStatus status = storeRequestStatusRepository.findById(store.getStoreRequestStatusIndex()).orElse(null);
-                UserCm userCm= userCmRepository.findById(userTesseris != null ? userTesseris.getUserIndex() : null).orElse(null);
+
+                StoreCategory category = store.getStoreCategory();
+                String storeCategoryName = null;
+                if (category != null) {
+                    storeCategoryName = category.getStoreCategoryName();
+                }
+
+                StoreRequestStatus status = null;
+                String storeRequestStatusName = null;
+                if (store.getStoreRequestStatusIndex() != null) {
+                    status = storeRequestStatusRepository.findById(store.getStoreRequestStatusIndex()).orElse(null);
+                    if (status != null) {
+                        storeRequestStatusName = status.getStoreRequestStatusName();
+                    }
+                }
+
+                UserCm userCm = null;
+                Integer totalCM = 0;
+                Integer userCmpInit = 0;
+                if (userTesseris != null && userTesseris.getUserIndex() != null) {
+                    userCm = userCmRepository.findById(userTesseris.getUserIndex()).orElse(null);
+                    if (userCm != null) {
+                        Integer deposit = userCm.getUserCmDeposit() != null ? userCm.getUserCmDeposit() : 0;
+                        Integer withdrawal = userCm.getUserCmWithdrawal() != null ? userCm.getUserCmWithdrawal() : 0;
+                        totalCM = deposit + withdrawal;
+                        userCmpInit = userCm.getUserCmpInit() != null ? userCm.getUserCmpInit() : 0;
+                    }
+                }
 
                 // businessMan → userTesseris → usersId(UserEntity) 경로로 사업자 정보 조회
-                BusinessMan businessMan = businessManRepository.findById(store.getBusinessManUserIndex()).orElse(null);
+                BusinessMan businessMan = null;
                 String businessUserName = null;
                 String businessUserId = null;
                 String businessGradeName = null;
-                if (businessMan != null) {
-                    Optional<UserTesseris> businessUserTesserisOpt = userTesserisRepository.findByUserIndex(
-                        businessMan.getUserIndex() != null ? businessMan.getUserIndex().getUserIndex() : null
-                    );
-                    if (businessUserTesserisOpt.isPresent()) {
-                        UserTesseris businessUserTesseris = businessUserTesserisOpt.get();
-                        UserEntity businessUserEntity = businessUserTesseris.getUsersId();
-                        if (businessUserEntity != null) {
-                            businessUserName = businessUserEntity.getName();
-                            businessUserId = businessUserEntity.getId();
+                if (store.getBusinessManUserIndex() != null) {
+                    businessMan = businessManRepository.findById(store.getBusinessManUserIndex()).orElse(null);
+                    if (businessMan != null) {
+                        // businessMan의 userIndex로 UserTesseris 조회
+                        Integer businessUserIndex = null;
+                        if (businessMan.getUserIndex() != null) {
+                            businessUserIndex = businessMan.getUserIndex().getUserIndex();
+                        }
+                        if (businessUserIndex != null) {
+                            UserTesseris businessUserTesseris = userTesserisRepository.findByUserIndex(businessUserIndex).orElse(null);
+                            if (businessUserTesseris != null && businessUserTesseris.getUsersId() != null) {
+                                businessUserName = businessUserTesseris.getUsersId().getName();
+                                businessUserId = businessUserTesseris.getUsersId().getId();
+                            }
+                        }
+                        if (businessMan.getBusinessGrade() != null) {
+                            businessGradeName = businessMan.getBusinessGrade().getBusinessGradeName();
                         }
                     }
-                    if (businessMan.getBusinessGrade() != null) {
-                        businessGradeName = businessMan.getBusinessGrade().getBusinessGradeName();
-                    }
+                }
+
+                String storeTransactionStatus = "정지";
+                if (store.getStoreTransactionStatus() != null && store.getStoreTransactionStatus()) {
+                    storeTransactionStatus = "정상";
+                }
+
+                String storeCreateDate = null;
+                if (store.getStoreCreateDate() != null) {
+                    storeCreateDate = store.getStoreCreateDate().format(formatter);
                 }
 
                 return StoreListDto.builder()
                         .userId(userId)
-                        .userName(user != null ? user.getName() : null)
-                        .userPhone(user != null ? user.getPhone() : null)
-
+                        .userName(userName)
+                        .userPhone(userPhone)
                         .storeBossName(store.getStoreBossName())
                         .storeRegistrationNum(store.getStoreRegistrationNum())
                         .storeTypeTaxation(store.getStoreTypeTaxation())
                         .storeCorporateName(store.getStoreCorporateName())
                         .storeName(store.getStoreName())
-                        .storeTransactionStatus(
-                            store.getStoreTransactionStatus() != null && store.getStoreTransactionStatus() ? "정상" : "정지")
+                        .storeTransactionStatus(storeTransactionStatus)
                         .storePhone(store.getStorePhone())
-                        .storeCreateDate(store.getStoreCreateDate() != null ? store.getStoreCreateDate().format(formatter) : null)
-
-                        .storeCategoryName(category != null ? category.getStoreCategoryName() : null)
-                        .storeRequestStatusName(status != null ? status.getStoreRequestStatusName() : null)
-                        
-                        .totalCM(
-                            (userCm != null ? Optional.ofNullable(userCm.getUserCmDeposit()).orElse(0) : 0) +
-                            (userCm != null ? Optional.ofNullable(userCm.getUserCmWithdrawal()).orElse(0) : 0)
-                        )
-                        .userCmpInit(
-                            userCm != null ? Optional.ofNullable(userCm.getUserCmpInit()).orElse(0) : 0
-                        )
-
+                        .storeCreateDate(storeCreateDate)
+                        .storeCategoryName(storeCategoryName)
+                        .storeRequestStatusName(storeRequestStatusName)
+                        .totalCM(totalCM)
+                        .userCmpInit(userCmpInit)
                         .businessGradeName(businessGradeName)
                         .businessUserId(businessUserId)
                         .businessUserName(businessUserName)
-                        
                         .build();
             })
             .collect(Collectors.toList());
