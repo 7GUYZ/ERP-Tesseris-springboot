@@ -296,14 +296,12 @@ public class UserCmLogService {
     public Map<String, Object> searchUserCmLogs(UserCmLogSearchRequestDto searchRequest) {
         log.info("동적 검색 시작 - 조건: {}", searchRequest);
         
-        // 페이징 정보 생성 (null 안전 처리)
+        // 페이징 정보 생성 (100개씩 고정)
         int page = searchRequest.getPage();
-        int size = searchRequest.getSize();
+        int size = 100; // 항상 100개씩 조회
         
-        // 기본값 설정
+        // 페이지 번호 안전 처리
         if (page < 0) page = 0;
-        if (size <= 0) size = 100;
-        if (size > 1000) size = 1000; // 최대 1000개로 제한
         
         Pageable pageable = PageRequest.of(page, size);
         
@@ -478,25 +476,15 @@ public class UserCmLogService {
                 userCmLog.getUserCmLogCreateTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : null)
             
             // Event Trigger User 정보 (null 안전 처리)
-            .eventTriggerUserIndex(userCmLog.getUserIndexEventTrigger() != null ? 
-                userCmLog.getUserIndexEventTrigger().getUserIndex().longValue() : null)
-            .eventTriggerUserEmail(userCmLog.getUserIndexEventTrigger() != null && 
-                userCmLog.getUserIndexEventTrigger().getUsersId() != null ? 
-                userCmLog.getUserIndexEventTrigger().getUsersId().getEmail() : null)
-            .eventTriggerUserName(userCmLog.getUserIndexEventTrigger() != null && 
-                userCmLog.getUserIndexEventTrigger().getUsersId() != null ? 
-                userCmLog.getUserIndexEventTrigger().getUsersId().getName() : null)
+            .eventTriggerUserIndex(getEventTriggerUserIndex(userCmLog))
+            .eventTriggerUserEmail(getEventTriggerUserEmail(userCmLog))
+            .eventTriggerUserName(getEventTriggerUserName(userCmLog))
             .eventTriggerUserRole(getEventTriggerUserRole(userCmLog))
             
             // Event Party User 정보 (null 안전 처리)
-            .eventPartyUserIndex(userCmLog.getUserIndexEventParty() != null ? 
-                userCmLog.getUserIndexEventParty().getUserIndex().longValue() : null)
-            .eventPartyUserEmail(userCmLog.getUserIndexEventParty() != null && 
-                userCmLog.getUserIndexEventParty().getUsersId() != null ? 
-                userCmLog.getUserIndexEventParty().getUsersId().getEmail() : null)
-            .eventPartyUserName(userCmLog.getUserIndexEventParty() != null && 
-                userCmLog.getUserIndexEventParty().getUsersId() != null ? 
-                userCmLog.getUserIndexEventParty().getUsersId().getName() : null)
+            .eventPartyUserIndex(getEventPartyUserIndex(userCmLog))
+            .eventPartyUserEmail(getEventPartyUserEmail(userCmLog))
+            .eventPartyUserName(getEventPartyUserName(userCmLog))
             .eventPartyUserRole(getEventPartyUserRole(userCmLog))
             
             // Value Type 정보 (null 안전 처리)
@@ -517,6 +505,162 @@ public class UserCmLogService {
     }
 
     /**
+     * Event Trigger User의 인덱스 정보 조회
+     * 
+     * 목적: Event Trigger User의 인덱스를 안전하게 조회
+     * 
+     * 특징:
+     * - null 안전 처리: UserTesseris가 null일 경우 null 반환
+     * - 지연 로딩 오류 방지: try-catch로 EntityNotFoundException 처리
+     * 
+     * @param userCmLog UserCmLog Entity
+     * @return 사용자 인덱스 또는 null
+     */
+    private Long getEventTriggerUserIndex(UserCmLog userCmLog) {
+        if (userCmLog.getUserIndexEventTrigger() != null) {
+            try {
+                Integer userIndex = userCmLog.getUserIndexEventTrigger().getUserIndex();
+                return userIndex != null ? userIndex.longValue() : null;
+            } catch (Exception e) {
+                log.warn("Event Trigger User 인덱스 조회 중 오류 발생", e);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Event Party User의 인덱스 정보 조회
+     * 
+     * 목적: Event Party User의 인덱스를 안전하게 조회
+     * 
+     * 특징:
+     * - null 안전 처리: UserTesseris가 null일 경우 null 반환
+     * - 지연 로딩 오류 방지: try-catch로 EntityNotFoundException 처리
+     * 
+     * @param userCmLog UserCmLog Entity
+     * @return 사용자 인덱스 또는 null
+     */
+    private Long getEventPartyUserIndex(UserCmLog userCmLog) {
+        if (userCmLog.getUserIndexEventParty() != null) {
+            try {
+                Integer userIndex = userCmLog.getUserIndexEventParty().getUserIndex();
+                return userIndex != null ? userIndex.longValue() : null;
+            } catch (Exception e) {
+                log.warn("Event Party User 인덱스 조회 중 오류 발생", e);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Event Trigger User의 이메일 정보 조회
+     * 
+     * 목적: Event Trigger User의 이메일을 안전하게 조회
+     * 
+     * 특징:
+     * - null 안전 처리: UserTesseris가 null이거나 Users가 null일 경우 null 반환
+     * - 지연 로딩 오류 방지: try-catch로 EntityNotFoundException 처리
+     * 
+     * @param userCmLog UserCmLog Entity
+     * @return 이메일 또는 null
+     */
+    private String getEventTriggerUserEmail(UserCmLog userCmLog) {
+        if (userCmLog.getUserIndexEventTrigger() != null) {
+            try {
+                // getUserIndex() 호출도 안전하게 처리
+                Integer userIndex = userCmLog.getUserIndexEventTrigger().getUserIndex();
+                if (userCmLog.getUserIndexEventTrigger().getUsersId() != null) {
+                    return userCmLog.getUserIndexEventTrigger().getUsersId().getEmail();
+                }
+            } catch (Exception e) {
+                log.warn("Event Trigger User 이메일 조회 중 오류 발생", e);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Event Trigger User의 이름 정보 조회
+     * 
+     * 목적: Event Trigger User의 이름을 안전하게 조회
+     * 
+     * 특징:
+     * - null 안전 처리: UserTesseris가 null이거나 Users가 null일 경우 null 반환
+     * - 지연 로딩 오류 방지: try-catch로 EntityNotFoundException 처리
+     * 
+     * @param userCmLog UserCmLog Entity
+     * @return 이름 또는 null
+     */
+    private String getEventTriggerUserName(UserCmLog userCmLog) {
+        if (userCmLog.getUserIndexEventTrigger() != null) {
+            try {
+                // getUserIndex() 호출도 안전하게 처리
+                Integer userIndex = userCmLog.getUserIndexEventTrigger().getUserIndex();
+                if (userCmLog.getUserIndexEventTrigger().getUsersId() != null) {
+                    return userCmLog.getUserIndexEventTrigger().getUsersId().getName();
+                }
+            } catch (Exception e) {
+                log.warn("Event Trigger User 이름 조회 중 오류 발생", e);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Event Party User의 이메일 정보 조회
+     * 
+     * 목적: Event Party User의 이메일을 안전하게 조회
+     * 
+     * 특징:
+     * - null 안전 처리: UserTesseris가 null이거나 Users가 null일 경우 null 반환
+     * - 지연 로딩 오류 방지: try-catch로 EntityNotFoundException 처리
+     * 
+     * @param userCmLog UserCmLog Entity
+     * @return 이메일 또는 null
+     */
+    private String getEventPartyUserEmail(UserCmLog userCmLog) {
+        if (userCmLog.getUserIndexEventParty() != null) {
+            try {
+                // getUserIndex() 호출도 안전하게 처리
+                Integer userIndex = userCmLog.getUserIndexEventParty().getUserIndex();
+                if (userCmLog.getUserIndexEventParty().getUsersId() != null) {
+                    return userCmLog.getUserIndexEventParty().getUsersId().getEmail();
+                }
+            } catch (Exception e) {
+                log.warn("Event Party User 이메일 조회 중 오류 발생", e);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Event Party User의 이름 정보 조회
+     * 
+     * 목적: Event Party User의 이름을 안전하게 조회
+     * 
+     * 특징:
+     * - null 안전 처리: UserTesseris가 null이거나 Users가 null일 경우 null 반환
+     * - 지연 로딩 오류 방지: try-catch로 EntityNotFoundException 처리
+     * 
+     * @param userCmLog UserCmLog Entity
+     * @return 이름 또는 null
+     */
+    private String getEventPartyUserName(UserCmLog userCmLog) {
+        if (userCmLog.getUserIndexEventParty() != null) {
+            try {
+                // getUserIndex() 호출도 안전하게 처리
+                Integer userIndex = userCmLog.getUserIndexEventParty().getUserIndex();
+                if (userCmLog.getUserIndexEventParty().getUsersId() != null) {
+                    return userCmLog.getUserIndexEventParty().getUsersId().getName();
+                }
+            } catch (Exception e) {
+                log.warn("Event Party User 이름 조회 중 오류 발생", e);
+            }
+        }
+        return null;
+    }
+
+    /**
      * Event Trigger User의 역할 정보 조회
      * 
      * 목적: Event Trigger User의 역할명을 안전하게 조회
@@ -524,15 +668,20 @@ public class UserCmLogService {
      * 특징:
      * - null 안전 처리: UserRole이 null일 경우 기본값 반환
      * - 중첩된 연관 관계 처리: User → UserRole
+     * - 지연 로딩 오류 방지: try-catch로 EntityNotFoundException 처리
      * 
      * @param userCmLog UserCmLog Entity
      * @return 역할명 또는 "알 수 없음"
      */
     private String getEventTriggerUserRole(UserCmLog userCmLog) {
         if (userCmLog.getUserIndexEventTrigger() != null) {
-            Integer userRoleIndex = userCmLog.getUserIndexEventTrigger().getUserRoleIndex();
-            if (userRoleIndex != null) {
-                return getUserRoleName(userRoleIndex);
+            try {
+                Integer userRoleIndex = userCmLog.getUserIndexEventTrigger().getUserRoleIndex();
+                if (userRoleIndex != null) {
+                    return getUserRoleName(userRoleIndex);
+                }
+            } catch (Exception e) {
+                log.warn("Event Trigger User 역할 조회 중 오류 발생", e);
             }
         }
         return "알 수 없음";
@@ -546,15 +695,20 @@ public class UserCmLogService {
      * 특징:
      * - null 안전 처리: UserRole이 null일 경우 기본값 반환
      * - 중첩된 연관 관계 처리: User → UserRole
+     * - 지연 로딩 오류 방지: try-catch로 EntityNotFoundException 처리
      * 
      * @param userCmLog UserCmLog Entity
      * @return 역할명 또는 "알 수 없음"
      */
     private String getEventPartyUserRole(UserCmLog userCmLog) {
         if (userCmLog.getUserIndexEventParty() != null) {
-            Integer userRoleIndex = userCmLog.getUserIndexEventParty().getUserRoleIndex();
-            if (userRoleIndex != null) {
-                return getUserRoleName(userRoleIndex);
+            try {
+                Integer userRoleIndex = userCmLog.getUserIndexEventParty().getUserRoleIndex();
+                if (userRoleIndex != null) {
+                    return getUserRoleName(userRoleIndex);
+                }
+            } catch (Exception e) {
+                log.warn("Event Party User 역할 조회 중 오류 발생", e);
             }
         }
         return "알 수 없음";
@@ -669,4 +823,6 @@ public class UserCmLogService {
         // 일반 검색어인 경우 그대로 반환 (Repository에서 LIKE 처리)
         return trimmed;
     }
+
+
 } 

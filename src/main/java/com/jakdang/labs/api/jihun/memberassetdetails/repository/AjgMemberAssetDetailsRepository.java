@@ -44,9 +44,9 @@ public interface AjgMemberAssetDetailsRepository extends JpaRepository<UserTesse
             t6_us.name as suggestionUserName,
             FORMAT(IFNULL(t7.total_cash, 0), '###,###.##') as temporaryStoreCashValue
         FROM user_tesseris u
-        INNER JOIN users us ON u.users_id = us.id
+        LEFT JOIN users us ON u.users_id = us.id
         LEFT JOIN user_cm c ON u.user_index = c.user_cm_index
-        INNER JOIN user_role r ON u.user_role_index = r.user_role_index
+        LEFT JOIN user_role r ON u.user_role_index = r.user_role_index
         LEFT JOIN store s ON u.user_index = s.user_index
         LEFT JOIN user_bank t4 ON u.user_bank_index = t4.user_bank_index
         LEFT JOIN suggestion_user t5 ON u.user_index = t5.recommendation_user_index
@@ -57,7 +57,7 @@ public interface AjgMemberAssetDetailsRepository extends JpaRepository<UserTesse
             FROM temporary_regular_master
             GROUP BY store_user_index
         ) t7 ON u.user_index = t7.store_user_index
-        WHERE (:userEmail IS NULL OR us.email LIKE CONCAT('%', :userEmail, '%'))
+        WHERE (:userEmail IS NULL OR SUBSTRING_INDEX(us.email, '@', 1) LIKE CONCAT('%', :userEmail, '%'))
         AND (:userName IS NULL OR us.name LIKE CONCAT('%', :userName, '%'))
         AND (:userPhone IS NULL OR us.phone LIKE CONCAT('%', :userPhone, '%'))
         AND (:userRoleIndex IS NULL OR u.user_role_index = :userRoleIndex)
