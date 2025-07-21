@@ -22,8 +22,11 @@ import com.jakdang.labs.entity.Program;
 import com.jakdang.labs.api.taekjun.Permissionsettings.repository.UserTesserisRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import com.jakdang.labs.api.taekjun.Permissionsettings.repository.UserRepository;
+import com.jakdang.labs.api.taekjun.adminmypage.repository.UpdateUserLogJtjRepo;
+import com.jakdang.labs.entity.UpdateUserLog;
 import org.springframework.beans.factory.annotation.Qualifier;
 
+import java.time.LocalDateTime;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -37,6 +40,7 @@ public class AdminPermissinonsettingsservice {
     private final UserTesserisRepository userRepository;
     private final UserRepository usersRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UpdateUserLogJtjRepo updateUserLogRepository;
 
     public AdminPermissinonsettingsservice(AdminPermissionsettingsrepository repository,
                                          AdminTypeRepository adminTypeRepository,
@@ -44,7 +48,8 @@ public class AdminPermissinonsettingsservice {
                                          MenuRepository menuRepository,
                                          UserTesserisRepository userRepository,
                                          @Qualifier("permissionsettingsUserRepository") UserRepository usersRepository,
-                                         PasswordEncoder passwordEncoder) {
+                                         PasswordEncoder passwordEncoder,
+                                         UpdateUserLogJtjRepo updateUserLogRepository) {
         this.repository = repository;
         this.adminTypeRepository = adminTypeRepository;
         this.programRepository = programRepository;
@@ -52,6 +57,7 @@ public class AdminPermissinonsettingsservice {
         this.userRepository = userRepository;
         this.usersRepository = usersRepository;
         this.passwordEncoder = passwordEncoder;
+        this.updateUserLogRepository = updateUserLogRepository;
     }
 
     public List<AuthorityProgramDTO> getAuthorityPrograms(Integer adminTypeIndex) {
@@ -94,11 +100,34 @@ public class AdminPermissinonsettingsservice {
             if (existingAuthority.isPresent()) {
                 // 기존 권한이 있으면 엔티티를 직접 수정
                 AuthorityType authority = existingAuthority.get();
+                
+                // 변경 전 데이터 저장
+                String beforeData = String.format("(등급:%s,프로그램:%s,삽입권한:%d,삭제권한:%d,수정권한:%d)", 
+                    adminType.getAdminTypeName(), program.getProgramName(), 
+                    authority.getInsertAuthority(), authority.getDeleteAuthority(), authority.getUpdateAuthority());
+                
                 authority.setInsertAuthority(updateDTO.getInsertAuthority());
                 authority.setDeleteAuthority(updateDTO.getDeleteAuthority());
                 authority.setUpdateAuthority(updateDTO.getUpdateAuthority());
                 
                 repository.save(authority);
+                
+                // 변경 후 데이터 저장
+                String afterData = String.format("(등급:%s,프로그램:%s,삽입권한:%d,삭제권한:%d,수정권한:%d)", 
+                    adminType.getAdminTypeName(), program.getProgramName(), 
+                    authority.getInsertAuthority(), authority.getDeleteAuthority(), authority.getUpdateAuthority());
+                
+                // 로그 기록
+                UpdateUserLog updateUserLog = new UpdateUserLog();
+                updateUserLog.setUpdateUserIndex(updateDTO.getUserIndex() != null ? updateDTO.getUserIndex() : 0);
+                updateUserLog.setInflictUserIndex(updateDTO.getUserIndex() != null ? updateDTO.getUserIndex() : 0);
+                updateUserLog.setUpdateBeforeData(beforeData);
+                updateUserLog.setUpdateAfterData(afterData);
+                updateUserLog.setUpdateUserLogUpdateTime(LocalDateTime.now());
+                updateUserLog.setUpdateDataValue("프로그램명:권한설정 ,기능:권한수정");
+                
+                updateUserLogRepository.save(updateUserLog);
+                
                 return true;
             } else {
                 // 기존 권한이 없으면 새로 생성
@@ -112,6 +141,22 @@ public class AdminPermissinonsettingsservice {
                 newAuthority.setUpdateAuthority(updateDTO.getUpdateAuthority());
                 
                 repository.save(newAuthority);
+                
+                // 새로 생성된 권한 로그 기록
+                String afterData = String.format("(등급:%s ,프로그램:%s,삽입권한:%d,삭제권한:%d,수정권한:%d)", 
+                    adminType.getAdminTypeName(), program.getProgramName(), 
+                    newAuthority.getInsertAuthority(), newAuthority.getDeleteAuthority(), newAuthority.getUpdateAuthority());
+                
+                UpdateUserLog updateUserLog = new UpdateUserLog();
+                updateUserLog.setUpdateUserIndex(updateDTO.getUserIndex() != null ? updateDTO.getUserIndex() : 0);
+                updateUserLog.setInflictUserIndex(updateDTO.getUserIndex() != null ? updateDTO.getUserIndex() : 0);
+                updateUserLog.setUpdateBeforeData("(등급:신규생성)");
+                updateUserLog.setUpdateAfterData(afterData);
+                updateUserLog.setUpdateUserLogUpdateTime(LocalDateTime.now());
+                updateUserLog.setUpdateDataValue("프로그램명:권한설정 ,기능:권한추가");
+                
+                updateUserLogRepository.save(updateUserLog);
+                
                 return true;
             }
         } catch (Exception e) {
@@ -160,6 +205,22 @@ public class AdminPermissinonsettingsservice {
             newAuthority.setDeleteAuthority(updateDTO.getDeleteAuthority());
             newAuthority.setUpdateAuthority(updateDTO.getUpdateAuthority());
             repository.save(newAuthority);
+            
+            // 새로 생성된 권한 로그 기록
+            String afterData = String.format("(등급:%s 수수료율:0.0,프로그램:%s,삽입권한:%d,삭제권한:%d,수정권한:%d)", 
+                adminType.getAdminTypeName(), program.getProgramName(), 
+                newAuthority.getInsertAuthority(), newAuthority.getDeleteAuthority(), newAuthority.getUpdateAuthority());
+            
+            UpdateUserLog updateUserLog = new UpdateUserLog();
+            updateUserLog.setUpdateUserIndex(updateDTO.getUserIndex() != null ? updateDTO.getUserIndex() : 0);
+            updateUserLog.setInflictUserIndex(updateDTO.getUserIndex() != null ? updateDTO.getUserIndex() : 0);
+            updateUserLog.setUpdateBeforeData("(등급:신규생성 수수료율:0.0)");
+            updateUserLog.setUpdateAfterData(afterData);
+            updateUserLog.setUpdateUserLogUpdateTime(LocalDateTime.now());
+            updateUserLog.setUpdateDataValue("프로그램명:권한설정 ,기능:권한추가");
+            
+            updateUserLogRepository.save(updateUserLog);
+            
             return true;
         } catch (Exception e) {
             log.error("권한 추가 중 오류 발생: ", e);
@@ -178,7 +239,27 @@ public class AdminPermissinonsettingsservice {
                 log.warn("삭제할 권한이 존재하지 않습니다. authorityTypeIndex: {}", authorityTypeIndex);
                 return false;
             }
-            repository.delete(existing.get());
+            
+            AuthorityType authority = existing.get();
+            
+            // 삭제 전 데이터 저장
+            String beforeData = String.format("(등급:%s,프로그램:%s,삽입권한:%d,삭제권한:%d,수정권한:%d)", 
+                authority.getAdminTypeIndex().getAdminTypeName(), authority.getProgramIndex().getProgramName(), 
+                authority.getInsertAuthority(), authority.getDeleteAuthority(), authority.getUpdateAuthority());
+            
+            repository.delete(authority);
+            
+            // 삭제 로그 기록
+            UpdateUserLog updateUserLog = new UpdateUserLog();
+            updateUserLog.setUpdateUserIndex(0); // 삭제자는 시스템으로 설정
+            updateUserLog.setInflictUserIndex(0); // 영향을 받는 사용자도 시스템으로 설정
+            updateUserLog.setUpdateBeforeData(beforeData);
+            updateUserLog.setUpdateAfterData("(등급:삭제됨)");
+            updateUserLog.setUpdateUserLogUpdateTime(LocalDateTime.now());
+            updateUserLog.setUpdateDataValue("프로그램명:권한설정 ,기능:권한삭제");
+            
+            updateUserLogRepository.save(updateUserLog);
+            
             return true;
         } catch (Exception e) {
             log.error("권한 삭제 중 오류 발생: ", e);
@@ -265,12 +346,34 @@ public class AdminPermissinonsettingsservice {
             
             AuthorityType authority = authorityOpt.get();
             
+            // 변경 전 데이터 저장
+            String beforeData = String.format("(등급:%s,프로그램:%s,삽입권한:%d,삭제권한:%d,수정권한:%d)", 
+                authority.getAdminTypeIndex().getAdminTypeName(), authority.getProgramIndex().getProgramName(), 
+                authority.getInsertAuthority(), authority.getDeleteAuthority(), authority.getUpdateAuthority());
+            
             // 권한 정보 업데이트
             authority.setInsertAuthority(updateDTO.getInsertAuthority());
             authority.setDeleteAuthority(updateDTO.getDeleteAuthority());
             authority.setUpdateAuthority(updateDTO.getUpdateAuthority());
             
             repository.save(authority);
+            
+            // 변경 후 데이터 저장
+            String afterData = String.format("(등급:%s,프로그램:%s,삽입권한:%d,삭제권한:%d,수정권한:%d)", 
+                authority.getAdminTypeIndex().getAdminTypeName(), authority.getProgramIndex().getProgramName(), 
+                authority.getInsertAuthority(), authority.getDeleteAuthority(), authority.getUpdateAuthority());
+            
+            // 로그 기록
+            UpdateUserLog updateUserLog = new UpdateUserLog();
+            updateUserLog.setUpdateUserIndex(updateDTO.getUserIndex() != null ? updateDTO.getUserIndex() : 0);
+            updateUserLog.setInflictUserIndex(updateDTO.getUserIndex() != null ? updateDTO.getUserIndex() : 0);
+            updateUserLog.setUpdateBeforeData(beforeData);
+            updateUserLog.setUpdateAfterData(afterData);
+            updateUserLog.setUpdateUserLogUpdateTime(LocalDateTime.now());
+            updateUserLog.setUpdateDataValue("프로그램명:권한설정 ,기능:권한수정");
+            
+            updateUserLogRepository.save(updateUserLog);
+            
             log.info("권한 업데이트 성공. authorityTypeIndex: {}", updateDTO.getAuthorityTypeIndex());
             return true;
             
