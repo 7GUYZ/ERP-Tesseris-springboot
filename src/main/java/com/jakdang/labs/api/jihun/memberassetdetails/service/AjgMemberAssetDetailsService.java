@@ -40,10 +40,11 @@ public class AjgMemberAssetDetailsService {
     private final AjgUserCmLogValueTypeRepository userCmLogValueTypeRepository;
     
     public Page<MemberAssetDetailsResponseDto> searchMemberAssetDetails(MemberAssetDetailsSearchDto searchDto) {
-        Pageable pageable = PageRequest.of(
-            searchDto.getPage() != null ? searchDto.getPage() : 0,
-            searchDto.getSize() != null ? searchDto.getSize() : 25
-        );
+        // 요청된 크기 우선 사용, 기본값 25
+        int page = searchDto.getPage() != null ? searchDto.getPage() : 0;
+        int size = searchDto.getSize() != null && searchDto.getSize() > 0 ? searchDto.getSize() : 25;
+        
+        Pageable pageable = PageRequest.of(page, size);
         
         // 검색 파라미터 로깅
         System.out.println("=== 검색 파라미터 디버깅 ===");

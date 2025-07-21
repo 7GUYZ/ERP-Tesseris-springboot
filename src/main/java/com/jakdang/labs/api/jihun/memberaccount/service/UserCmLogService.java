@@ -61,7 +61,7 @@ public class UserCmLogService {
         
         // Repository에서 JOIN FETCH로 연관 데이터까지 한 번에 조회
         List<UserCmLog> userCmLogs = userCmLogRepository.findTop100WithJoins(
-            PageRequest.of(0, 100) // 첫 페이지, 100개씩
+            PageRequest.of(0, 25) // 첫 페이지, 25개씩
         );
         
         // Entity를 DTO로 변환하여 반환
@@ -296,9 +296,9 @@ public class UserCmLogService {
     public Map<String, Object> searchUserCmLogs(UserCmLogSearchRequestDto searchRequest) {
         log.info("동적 검색 시작 - 조건: {}", searchRequest);
         
-        // 페이징 정보 생성 (100개씩 고정)
+        // 페이징 정보 생성 (요청 파라미터 우선, 기본값 25)
         int page = searchRequest.getPage();
-        int size = 100; // 항상 100개씩 조회
+        int size = searchRequest.getSize() > 0 ? searchRequest.getSize() : 25; // 요청된 크기 또는 기본값 25
         
         // 페이지 번호 안전 처리
         if (page < 0) page = 0;

@@ -56,13 +56,17 @@ public class MemberAssetDetailsSearchDto {
     @JsonIgnoreProperties(ignoreUnknown = true)
     @Data
     @NoArgsConstructor
-    @AllArgsConstructor
     public static class PaginationInfo {
         /** 페이지 번호 (0부터 시작) */
     private Integer page;
         
         /** 페이지 크기 */
-    private Integer size;
+            private Integer size = 25;
+            
+        public PaginationInfo(Integer page, Integer size) {
+            this.page = page != null ? page : 0;
+            this.size = size != null ? size : 25;
+        }
     }
     
     /**
