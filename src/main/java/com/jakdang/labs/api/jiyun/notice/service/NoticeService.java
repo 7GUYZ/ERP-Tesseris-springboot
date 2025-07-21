@@ -13,6 +13,11 @@ import com.jakdang.labs.entity.UserTesseris;
 import com.jakdang.labs.api.jiyun.notice.dto.NoticeDTO;
 import com.jakdang.labs.api.jiyun.notice.repository.NoticeUserkjyRepository;
 import com.jakdang.labs.api.jiyun.notice.repository.NoticekjyRepository;
+import com.jakdang.labs.security.jwt.utils.JwtUtil;
+import com.jakdang.labs.api.jiyun.notice.dto.NoticeDTO.DeleteRequest;
+import com.jakdang.labs.api.auth.repository.AuthRepository;
+import com.jakdang.labs.api.auth.entity.UserEntity;
+import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 
 import lombok.RequiredArgsConstructor;
 
@@ -21,14 +26,23 @@ import lombok.RequiredArgsConstructor;
 public class NoticeService {
   private final NoticekjyRepository noticeRepository;
   private final NoticeUserkjyRepository userRepository;
+  private final JwtUtil jwtUtil;
+  private final AuthRepository authRepository;
+  private final Argon2PasswordEncoder passwordEncoder;
 
   // 공지사항 등록
   @Transactional
-  public boolean createNotice(NoticeDTO.CreateRequest request) {
+  public boolean createNotice(NoticeDTO.CreateRequest request, String authHeader) {
     try {
+      String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
+      String userId = jwtUtil.getUserId(token); // 토큰에서 userId 추출
+
+      // userId로 UserTesseris 조회
+      UserTesseris user = userRepository.findByUsersId_Id(userId).orElse(null);
+      if (user == null) return false;
+
       Notice notice = new Notice();
-      // userIndex를 직접 설정
-      notice.setUserIndex(request.getUserIndex());
+      notice.setUserIndex(user.getUserIndex()); // userIndex 저장
       notice.setNoticeTitle(request.getNoticeTitle());
       notice.setNoticeDesc(request.getNoticeDesc());
       notice.setNoticeCreateTime(LocalDateTime.now());
@@ -65,8 +79,9 @@ public class NoticeService {
 
   // 공지사항 수정
   @Transactional
-  public boolean updateNotice(NoticeDTO.UpdateRequest request) {
+  public boolean updateNotice(NoticeDTO.UpdateRequest request, String authHeader) {
     try {
+      if (!verifyPassword(request.getPassword(), authHeader)) return false;
       Notice notice = noticeRepository.findById(request.getNoticeIndex())
           .orElseThrow(() -> new IllegalArgumentException("공지사항을 찾을 수 없습니다."));
       notice.setNoticeTitle(request.getNoticeTitle());
@@ -80,15 +95,26 @@ public class NoticeService {
 
   // 공지사항 삭제
   @Transactional
-  public boolean deleteNotice(Integer noticeIndex) {
+  public boolean deleteNotice(DeleteRequest request, String authHeader) {
     try {
-      Notice notice = noticeRepository.findById(noticeIndex)
+      if (!verifyPassword(request.getPassword(), authHeader)) return false;
+      Notice notice = noticeRepository.findById(request.getNoticeIndex())
         .orElseThrow(() -> new IllegalArgumentException("공지사항을 찾을 수 없습니다."));
       noticeRepository.delete(notice);
       return true;
     } catch (Exception e) {
       return false;
     }
+  }
+
+  // 비밀번호 검증
+  public boolean verifyPassword(String password, String authHeader) {
+    if (authHeader == null || !authHeader.startsWith("Bearer ")) return false;
+    String token = authHeader.substring(7);
+    String email = jwtUtil.getUserEmail(token);
+    UserEntity user = authRepository.findByEmail(email).orElse(null);
+    if (user == null) return false;
+    return passwordEncoder.matches(password, user.getPassword());
   }
 
       // Entity → DTO 변환

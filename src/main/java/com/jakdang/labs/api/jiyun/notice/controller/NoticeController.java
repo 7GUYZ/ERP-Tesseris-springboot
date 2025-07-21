@@ -8,6 +8,7 @@ import com.jakdang.labs.api.jiyun.notice.dto.NoticeDTO;
 import com.jakdang.labs.api.jiyun.notice.service.NoticeService;
 
 import java.util.List;
+import com.jakdang.labs.api.jiyun.notice.dto.NoticeDTO.DeleteRequest;
 
 @RestController
 @RequiredArgsConstructor
@@ -17,8 +18,8 @@ public class NoticeController {
 
     // 공지사항 등록
     @PostMapping("/insert")
-    public ResponseEntity<?> createNotice(@RequestBody NoticeDTO.CreateRequest request) {
-        boolean result = noticeService.createNotice(request);
+    public ResponseEntity<?> createNotice(@RequestBody NoticeDTO.CreateRequest request, @RequestHeader("Authorization") String authHeader) {
+        boolean result = noticeService.createNotice(request, authHeader);
         if (result) {
             return ResponseEntity.ok("공지사항 등록 성공");
         } else {
@@ -46,13 +47,13 @@ public class NoticeController {
 
     // 공지사항 수정
     @PostMapping("/update")
-    public ResponseEntity<?> updateNotice(@RequestBody NoticeDTO.UpdateRequest request) {
+    public ResponseEntity<?> updateNotice(@RequestBody NoticeDTO.UpdateRequest request, @RequestHeader("Authorization") String authHeader) {
         try {
-            boolean result = noticeService.updateNotice(request);
+            boolean result = noticeService.updateNotice(request, authHeader);
             if (result) {
                 return ResponseEntity.ok("공지사항 수정 성공");
             } else {
-                return ResponseEntity.badRequest().body("공지사항 수정 실패");
+                return ResponseEntity.status(403).body("비밀번호가 일치하지 않습니다.");
             }
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
@@ -60,13 +61,13 @@ public class NoticeController {
     }
 
     // 공지사항 삭제
-    @PostMapping("/delete/{noticeIndex}")
-    public ResponseEntity<?> deleteNotice(@PathVariable("noticeIndex") Integer noticeIndex) {
-        boolean result = noticeService.deleteNotice(noticeIndex);
+    @PostMapping("/delete")
+    public ResponseEntity<?> deleteNotice(@RequestBody DeleteRequest request, @RequestHeader("Authorization") String authHeader) {
+        boolean result = noticeService.deleteNotice(request, authHeader);
         if (result) {
             return ResponseEntity.ok("공지사항 삭제 성공");
         } else {
-            return ResponseEntity.badRequest().body("공지사항 삭제 실패");
+            return ResponseEntity.status(403).body("비밀번호가 일치하지 않습니다.");
         }
     }
 } 
