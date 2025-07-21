@@ -23,6 +23,9 @@ public interface AjgMemberAssetDetailsRepository extends JpaRepository<UserTesse
     // 회원 조회 (users_id로)
     Optional<UserTesseris> findByUsersId_Id(String userId);
     
+    // 회원 조회 (user_index로)
+    Optional<UserTesseris> findByUserIndex(Integer userIndex);
+    
     @Query(value = """
         SELECT
             u.user_index as userIndex,
