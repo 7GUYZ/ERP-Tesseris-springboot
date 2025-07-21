@@ -13,7 +13,10 @@ import com.jakdang.labs.entity.UserCmLogTransactionType;
 import com.jakdang.labs.entity.UserCmLogValueType;
 import com.jakdang.labs.entity.UserTesseris;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -31,6 +34,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AjgMemberAssetDetailsService {
     
     private final AjgMemberAssetDetailsRepository ajgMemberAssetDetailsRepository;
@@ -38,6 +42,29 @@ public class AjgMemberAssetDetailsService {
     private final AjgUserCmLogPaymentRepository userCmLogPaymentRepository;
     private final AjgUserCmLogTransactionTypeRepository userCmLogTransactionTypeRepository;
     private final AjgUserCmLogValueTypeRepository userCmLogValueTypeRepository;
+    
+    /**
+     * 현재 로그인한 사용자의 user_index를 가져오는 메서드
+     */
+    private Integer getCurrentUserIndex() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null && authentication.getPrincipal() instanceof com.jakdang.labs.api.auth.dto.CustomUserDetails) {
+                com.jakdang.labs.api.auth.dto.CustomUserDetails userDetails = 
+                    (com.jakdang.labs.api.auth.dto.CustomUserDetails) authentication.getPrincipal();
+                String userId = userDetails.getUserId();
+                
+                // userId로 UserTesseris 조회하여 user_index 반환
+                Optional<UserTesseris> userOpt = ajgMemberAssetDetailsRepository.findByUsersId_Id(userId);
+                if (userOpt.isPresent()) {
+                    return userOpt.get().getUserIndex();
+                }
+            }
+        } catch (Exception e) {
+            log.error("현재 사용자 정보 조회 중 오류: {}", e.getMessage());
+        }
+        return null; // 현재 사용자 정보를 가져올 수 없는 경우
+    }
     
     public Page<MemberAssetDetailsResponseDto> searchMemberAssetDetails(MemberAssetDetailsSearchDto searchDto) {
         // 요청된 크기 우선 사용, 기본값 25
@@ -47,12 +74,12 @@ public class AjgMemberAssetDetailsService {
         Pageable pageable = PageRequest.of(page, size);
         
         // 검색 파라미터 로깅
-        System.out.println("=== 검색 파라미터 디버깅 ===");
-        System.out.println("userEmail: " + searchDto.getUserEmail());
-        System.out.println("userName: " + searchDto.getUserName());
-        System.out.println("userPhone: " + searchDto.getUserPhone());
-        System.out.println("userRoleIndex: " + searchDto.getUserRoleIndex());
-        System.out.println("==========================");
+        log.info("=== 검색 파라미터 디버깅 ===");
+        log.info("userEmail: {}", searchDto.getUserEmail());
+        log.info("userName: {}", searchDto.getUserName());
+        log.info("userPhone: {}", searchDto.getUserPhone());
+        log.info("userRoleIndex: {}", searchDto.getUserRoleIndex());
+        log.info("==========================");
         
         Page<Object[]> results = ajgMemberAssetDetailsRepository.findMemberAssetDetails(
             searchDto.getUserEmail(),
@@ -130,38 +157,38 @@ public class AjgMemberAssetDetailsService {
     @Transactional
     public boolean processPayment(String memberId, Integer amount, String reason, Integer currentCmHeld) {
         try {
-            System.out.println("CM 지급 처리: " + memberId + ", 금액: " + amount + ", 사유: " + reason);
+            log.info("CM 지급 처리: {}, 금액: {}, 사유: {}", memberId, amount, reason);
             
-            // 1. 회원 조회
-            Optional<UserTesseris> memberOpt = ajgMemberAssetDetailsRepository.findByUsersId_Id(memberId);
+            // 1. 회원 조회 (user_index로 조회)
+            Optional<UserTesseris> memberOpt = ajgMemberAssetDetailsRepository.findByUserIndex(Integer.parseInt(memberId));
             if (!memberOpt.isPresent()) {
-                System.err.println("CM 지급 처리 실패: 회원을 찾을 수 없습니다. " + memberId);
+                log.error("CM 지급 처리 실패: 회원을 찾을 수 없습니다. {}", memberId);
                 return false;
             }
             UserTesseris member = memberOpt.get();
             
-            // 2. CM 지급 처리 (레코드가 없으면 INSERT, 있으면 UPDATE)
-            int insertedRows = ajgMemberAssetDetailsRepository.insertCmDeposit(memberId, amount);
-            int updatedRows = ajgMemberAssetDetailsRepository.updateCmDeposit(memberId, amount);
+            // 2. CM 지급 처리 (레코드가 없으면 INSERT, 있으면 UPDATE) - users_id 사용
+            int insertedRows = ajgMemberAssetDetailsRepository.insertCmDeposit(member.getUsersId().getId(), amount);
+            int updatedRows = ajgMemberAssetDetailsRepository.updateCmDeposit(member.getUsersId().getId(), amount);
             
             // INSERT 또는 UPDATE 중 하나라도 성공하면 처리 완료
             if (insertedRows > 0 || updatedRows > 0) {
-                System.out.println("CM 지급 처리 완료: " + memberId + ", 금액: " + amount);
+                log.info("CM 지급 처리 완료: {}, 금액: {}", memberId, amount);
                 
                 // 3. 거래 내역 기록
                 boolean logResult = createPaymentLog(member, amount, reason);
                 if (!logResult) {
-                    System.err.println("거래 내역 기록 실패");
+                    log.error("거래 내역 기록 실패");
                     return false;
                 }
                 
                 return true;
             } else {
-                System.err.println("CM 지급 처리 실패: 회원을 찾을 수 없습니다. " + memberId);
+                log.error("CM 지급 처리 실패: 회원을 찾을 수 없습니다. {}", memberId);
                 return false;
             }
         } catch (Exception e) {
-            System.err.println("CM 지급 처리 중 오류: " + e.getMessage());
+            log.error("CM 지급 처리 중 오류: {}", e.getMessage());
             return false;
         }
     }
@@ -177,17 +204,32 @@ public class AjgMemberAssetDetailsService {
             Optional<UserCmLogValueType> valueTypeOpt = userCmLogValueTypeRepository.findByUserCmLogValueTypeName("CM");
             
             if (!paymentOpt.isPresent() || !transactionOpt.isPresent() || !valueTypeOpt.isPresent()) {
-                System.err.println("거래 내역 기록 실패: 필요한 인덱스를 찾을 수 없습니다.");
+                log.error("거래 내역 기록 실패: 필요한 인덱스를 찾을 수 없습니다.");
                 return false;
             }
             
             // 2. UserCmLog 엔티티 생성
+            // 현재 로그인한 사용자(관리자)의 user_index 가져오기
+            Integer currentUserIndex = getCurrentUserIndex();
+            if (currentUserIndex == null) {
+                log.error("현재 로그인한 사용자 정보를 가져올 수 없습니다.");
+                return false;
+            }
+            
+            // 현재 로그인한 사용자(관리자) 정보 조회
+            Optional<UserTesseris> currentUserOpt = ajgMemberAssetDetailsRepository.findByUserIndex(currentUserIndex);
+            if (!currentUserOpt.isPresent()) {
+                log.error("현재 로그인한 사용자 정보를 찾을 수 없습니다. user_index: {}", currentUserIndex);
+                return false;
+            }
+            UserTesseris currentUser = currentUserOpt.get();
+            
             UserCmLog userCmLog = UserCmLog.builder()
                 .userCmLogPaymentIndex(paymentOpt.get().getUserCmLogPaymentIndex())
                 .userCmLogTransactionTypeIndex(transactionOpt.get().getUserCmLogTransactionTypeIndex())
                 .userCmLogValueTypeIndex(valueTypeOpt.get().getUserCmLogValueTypeIndex())
-                .userIndexEventTrigger(null) // TODO: 로그인한 관리자 정보 필요
-                .userIndexEventParty(member)
+                .userIndexEventTrigger(currentUser) // 지급을 실행한 관리자
+                .userIndexEventParty(member) // 지급을 받는 회원
                 .userCmLogValue(amount)
                 .userCmLogReason(reason)
                 .userCmLogCreateTime(LocalDateTime.now())
@@ -196,11 +238,11 @@ public class AjgMemberAssetDetailsService {
             // 3. 로그 저장
             userCmLogRepository.save(userCmLog);
             
-            System.out.println("거래 내역 기록 완료: " + member.getUsersId().getId() + ", 금액: " + amount);
+            log.info("거래 내역 기록 완료: {}, 금액: {}", member.getUserIndex(), amount);
             return true;
             
         } catch (Exception e) {
-            System.err.println("거래 내역 기록 중 오류: " + e.getMessage());
+            log.error("거래 내역 기록 중 오류: {}", e.getMessage());
             return false;
         }
     }
@@ -208,38 +250,38 @@ public class AjgMemberAssetDetailsService {
     @Transactional
     public boolean processCollection(String memberId, Integer amount, String reason, Integer currentCmHeld) {
         try {
-            System.out.println("CM 회수 처리: " + memberId + ", 금액: " + amount + ", 사유: " + reason);
+            log.info("CM 회수 처리: {}, 금액: {}, 사유: {}", memberId, amount, reason);
             
-            // 1. 회원 조회
-            Optional<UserTesseris> memberOpt = ajgMemberAssetDetailsRepository.findByUsersId_Id(memberId);
+            // 1. 회원 조회 (user_index로 조회)
+            Optional<UserTesseris> memberOpt = ajgMemberAssetDetailsRepository.findByUserIndex(Integer.parseInt(memberId));
             if (!memberOpt.isPresent()) {
-                System.err.println("CM 회수 처리 실패: 회원을 찾을 수 없습니다. " + memberId);
+                log.error("CM 회수 처리 실패: 회원을 찾을 수 없습니다. {}", memberId);
                 return false;
             }
             UserTesseris member = memberOpt.get();
             
-            // 2. CM 회수 처리 (레코드가 없으면 INSERT, 있으면 UPDATE)
-            int insertedRows = ajgMemberAssetDetailsRepository.insertCmWithdrawal(memberId, amount);
-            int updatedRows = ajgMemberAssetDetailsRepository.updateCmWithdrawal(memberId, amount);
+            // 2. CM 회수 처리 (레코드가 없으면 INSERT, 있으면 UPDATE) - users_id 사용
+            int insertedRows = ajgMemberAssetDetailsRepository.insertCmWithdrawal(member.getUsersId().getId(), amount);
+            int updatedRows = ajgMemberAssetDetailsRepository.updateCmWithdrawal(member.getUsersId().getId(), amount);
             
             // INSERT 또는 UPDATE 중 하나라도 성공하면 처리 완료
             if (insertedRows > 0 || updatedRows > 0) {
-                System.out.println("CM 회수 처리 완료: " + memberId + ", 금액: " + amount);
+                log.info("CM 회수 처리 완료: {}, 금액: {}", memberId, amount);
                 
                 // 3. 거래 내역 기록
                 boolean logResult = createCollectionLog(member, amount, reason);
                 if (!logResult) {
-                    System.err.println("거래 내역 기록 실패");
+                    log.error("거래 내역 기록 실패");
                     return false;
                 }
                 
                 return true;
             } else {
-                System.err.println("CM 회수 처리 실패: 회원을 찾을 수 없습니다. " + memberId);
+                log.error("CM 회수 처리 실패: 회원을 찾을 수 없습니다. {}", memberId);
                 return false;
             }
         } catch (Exception e) {
-            System.err.println("CM 회수 처리 중 오류: " + e.getMessage());
+            log.error("CM 회수 처리 중 오류: {}", e.getMessage());
             return false;
         }
     }
@@ -255,17 +297,32 @@ public class AjgMemberAssetDetailsService {
             Optional<UserCmLogValueType> valueTypeOpt = userCmLogValueTypeRepository.findByUserCmLogValueTypeName("CM");
             
             if (!paymentOpt.isPresent() || !transactionOpt.isPresent() || !valueTypeOpt.isPresent()) {
-                System.err.println("거래 내역 기록 실패: 필요한 인덱스를 찾을 수 없습니다.");
+                log.error("거래 내역 기록 실패: 필요한 인덱스를 찾을 수 없습니다.");
                 return false;
             }
             
             // 2. UserCmLog 엔티티 생성
+            // 현재 로그인한 사용자(관리자)의 user_index 가져오기
+            Integer currentUserIndex = getCurrentUserIndex();
+            if (currentUserIndex == null) {
+                log.error("현재 로그인한 사용자 정보를 가져올 수 없습니다.");
+                return false;
+            }
+            
+            // 현재 로그인한 사용자(관리자) 정보 조회
+            Optional<UserTesseris> currentUserOpt = ajgMemberAssetDetailsRepository.findByUserIndex(currentUserIndex);
+            if (!currentUserOpt.isPresent()) {
+                log.error("현재 로그인한 사용자 정보를 찾을 수 없습니다. user_index: {}", currentUserIndex);
+                return false;
+            }
+            UserTesseris currentUser = currentUserOpt.get();
+            
             UserCmLog userCmLog = UserCmLog.builder()
                 .userCmLogPaymentIndex(paymentOpt.get().getUserCmLogPaymentIndex())
                 .userCmLogTransactionTypeIndex(transactionOpt.get().getUserCmLogTransactionTypeIndex())
                 .userCmLogValueTypeIndex(valueTypeOpt.get().getUserCmLogValueTypeIndex())
-                .userIndexEventTrigger(null) // TODO: 로그인한 관리자 정보 필요
-                .userIndexEventParty(member)
+                .userIndexEventTrigger(currentUser) // 회수를 실행한 관리자
+                .userIndexEventParty(member) // 회수를 받는 회원
                 .userCmLogValue(amount)
                 .userCmLogReason(reason)
                 .userCmLogCreateTime(LocalDateTime.now())
@@ -274,11 +331,11 @@ public class AjgMemberAssetDetailsService {
             // 3. 로그 저장
             userCmLogRepository.save(userCmLog);
             
-            System.out.println("거래 내역 기록 완료: " + member.getUsersId().getId() + ", 금액: " + amount);
+            log.info("거래 내역 기록 완료: {}, 금액: {}", member.getUserIndex(), amount);
             return true;
             
         } catch (Exception e) {
-            System.err.println("거래 내역 기록 중 오류: " + e.getMessage());
+            log.error("거래 내역 기록 중 오류: {}", e.getMessage());
             return false;
         }
     }
@@ -293,12 +350,12 @@ public class AjgMemberAssetDetailsService {
                 String memberId = (String) member.get("memberId");
                 Integer currentCmHeld = (Integer) member.get("currentCmHeld");
                 
-                System.out.println("다중 CM 지급 처리 시작: " + memberId + ", 금액: " + amount);
+                log.info("다중 CM 지급 처리 시작: {}, 금액: {}", memberId, amount);
                 
                 // 각 회원별로 개별 트랜잭션 처리
                 boolean result = processPayment(memberId, amount, reason, currentCmHeld);
                 
-                System.out.println("다중 CM 지급 처리 완료: " + memberId + ", 결과: " + result);
+                log.info("다중 CM 지급 처리 완료: {}, 결과: {}", memberId, result);
                 
                 Map<String, Object> resultMap = new HashMap<>();
                 resultMap.put("memberId", memberId);
@@ -307,7 +364,7 @@ public class AjgMemberAssetDetailsService {
                 return resultMap;
             } catch (Exception e) {
                 String memberId = (String) member.get("memberId");
-                System.err.println("다중 CM 지급 처리 중 오류: " + memberId + ", " + e.getMessage());
+                log.error("다중 CM 지급 처리 중 오류: {}, {}", memberId, e.getMessage());
                 Map<String, Object> resultMap = new HashMap<>();
                 resultMap.put("memberId", memberId);
                 resultMap.put("success", false);
@@ -327,12 +384,12 @@ public class AjgMemberAssetDetailsService {
                 String memberId = (String) member.get("memberId");
                 Integer currentCmHeld = (Integer) member.get("currentCmHeld");
                 
-                System.out.println("다중 CM 회수 처리 시작: " + memberId + ", 금액: " + amount);
+                log.info("다중 CM 회수 처리 시작: {}, 금액: {}", memberId, amount);
                 
                 // 각 회원별로 개별 트랜잭션 처리
                 boolean result = processCollection(memberId, amount, reason, currentCmHeld);
                 
-                System.out.println("다중 CM 회수 처리 완료: " + memberId + ", 결과: " + result);
+                log.info("다중 CM 회수 처리 완료: {}, 결과: {}", memberId, result);
                 
                 Map<String, Object> resultMap = new HashMap<>();
                 resultMap.put("memberId", memberId);
@@ -341,7 +398,7 @@ public class AjgMemberAssetDetailsService {
                 return resultMap;
             } catch (Exception e) {
                 String memberId = (String) member.get("memberId");
-                System.err.println("다중 CM 회수 처리 중 오류: " + memberId + ", " + e.getMessage());
+                log.error("다중 CM 회수 처리 중 오류: {}, {}", memberId, e.getMessage());
                 Map<String, Object> resultMap = new HashMap<>();
                 resultMap.put("memberId", memberId);
                 resultMap.put("success", false);
@@ -361,11 +418,11 @@ public class AjgMemberAssetDetailsService {
         List<PaymentResult> results = new ArrayList<>();
         List<String> memberIds = new ArrayList<>();
         
-        System.out.println("=== 전체 트랜잭션 CM 지급 시작 ===");
-        System.out.println("트랜잭션 ID: " + transactionId);
-        System.out.println("처리할 회원 수: " + members.size());
-        System.out.println("지급 금액: " + amount);
-        System.out.println("사유: " + reason);
+        log.info("=== 전체 트랜잭션 CM 지급 시작 ===");
+        log.info("트랜잭션 ID: {}", transactionId);
+        log.info("처리할 회원 수: {}", members.size());
+        log.info("지급 금액: {}", amount);
+        log.info("사유: {}", reason);
         
         try {
             // 1단계: 모든 회원 검증
@@ -374,8 +431,8 @@ public class AjgMemberAssetDetailsService {
                 String memberId = (String) member.get("memberId");
                 memberIds.add(memberId);
                 
-                // 회원 존재 여부 확인
-                Optional<UserTesseris> memberOpt = ajgMemberAssetDetailsRepository.findByUsersId_Id(memberId);
+                // 회원 존재 여부 확인 (user_index로 조회)
+                Optional<UserTesseris> memberOpt = ajgMemberAssetDetailsRepository.findByUserIndex(Integer.parseInt(memberId));
                 if (!memberOpt.isPresent()) {
                     String errorMsg = "회원을 찾을 수 없습니다: " + memberId;
                     System.err.println(errorMsg);
@@ -386,37 +443,37 @@ public class AjgMemberAssetDetailsService {
             }
             
             // 2단계: 모든 회원 처리
-            System.out.println("=== 2단계: CM 지급 처리 시작 ===");
+            log.info("=== 2단계: CM 지급 처리 시작 ===");
             for (Map<String, Object> member : members) {
                 String memberId = (String) member.get("memberId");
                 Integer currentCmHeld = (Integer) member.get("currentCmHeld");
                 
-                System.out.println("회원 처리 시작: " + memberId);
+                log.info("회원 처리 시작: {}", memberId);
                 
                 // 개별 회원 처리
                 boolean result = processPayment(memberId, amount, reason, currentCmHeld);
                 
                 if (result) {
                     results.add(new PaymentResult(memberId, true, "처리 완료"));
-                    System.out.println("회원 처리 성공: " + memberId);
+                    log.info("회원 처리 성공: {}", memberId);
                 } else {
                     String errorMsg = "회원 처리 실패: " + memberId;
-                    System.err.println(errorMsg);
+                    log.error(errorMsg);
                     throw new RuntimeException(errorMsg);
                 }
             }
             
             // 3단계: 감사 로그 생성
-            System.out.println("=== 3단계: 감사 로그 생성 ===");
+            log.info("=== 3단계: 감사 로그 생성 ===");
             createBulkPaymentAuditLog(transactionId, memberIds, amount, reason, "SUCCESS", results);
             
-            System.out.println("=== 전체 트랜잭션 CM 지급 완료 ===");
+            log.info("=== 전체 트랜잭션 CM 지급 완료 ===");
             return new BulkPaymentResult(true, "모든 CM 지급 처리 완료", results);
             
         } catch (Exception e) {
             // 전체 롤백
-            System.err.println("=== 전체 트랜잭션 롤백 ===");
-            System.err.println("실패 원인: " + e.getMessage());
+            log.error("=== 전체 트랜잭션 롤백 ===");
+            log.error("실패 원인: {}", e.getMessage());
             
             // 실패 감사 로그 생성
             createBulkPaymentAuditLog(transactionId, memberIds, amount, reason, "FAILED", results);
@@ -435,11 +492,11 @@ public class AjgMemberAssetDetailsService {
         List<PaymentResult> results = new ArrayList<>();
         List<String> memberIds = new ArrayList<>();
         
-        System.out.println("=== 전체 트랜잭션 CM 회수 시작 ===");
-        System.out.println("트랜잭션 ID: " + transactionId);
-        System.out.println("처리할 회원 수: " + members.size());
-        System.out.println("회수 금액: " + amount);
-        System.out.println("사유: " + reason);
+        log.info("=== 전체 트랜잭션 CM 회수 시작 ===");
+        log.info("트랜잭션 ID: {}", transactionId);
+        log.info("처리할 회원 수: {}", members.size());
+        log.info("회수 금액: {}", amount);
+        log.info("사유: {}", reason);
         
         try {
             // 1단계: 모든 회원 검증
@@ -448,8 +505,8 @@ public class AjgMemberAssetDetailsService {
                 String memberId = (String) member.get("memberId");
                 memberIds.add(memberId);
                 
-                // 회원 존재 여부 확인
-                Optional<UserTesseris> memberOpt = ajgMemberAssetDetailsRepository.findByUsersId_Id(memberId);
+                // 회원 존재 여부 확인 (user_index로 조회)
+                Optional<UserTesseris> memberOpt = ajgMemberAssetDetailsRepository.findByUserIndex(Integer.parseInt(memberId));
                 if (!memberOpt.isPresent()) {
                     String errorMsg = "회원을 찾을 수 없습니다: " + memberId;
                     System.err.println(errorMsg);
@@ -460,37 +517,37 @@ public class AjgMemberAssetDetailsService {
             }
             
             // 2단계: 모든 회원 처리
-            System.out.println("=== 2단계: CM 회수 처리 시작 ===");
+            log.info("=== 2단계: CM 회수 처리 시작 ===");
             for (Map<String, Object> member : members) {
                 String memberId = (String) member.get("memberId");
                 Integer currentCmHeld = (Integer) member.get("currentCmHeld");
                 
-                System.out.println("회원 처리 시작: " + memberId);
+                log.info("회원 처리 시작: {}", memberId);
                 
                 // 개별 회원 처리
                 boolean result = processCollection(memberId, amount, reason, currentCmHeld);
                 
                 if (result) {
                     results.add(new PaymentResult(memberId, true, "처리 완료"));
-                    System.out.println("회원 처리 성공: " + memberId);
+                    log.info("회원 처리 성공: {}", memberId);
                 } else {
                     String errorMsg = "회원 처리 실패: " + memberId;
-                    System.err.println(errorMsg);
+                    log.error(errorMsg);
                     throw new RuntimeException(errorMsg);
                 }
             }
             
             // 3단계: 감사 로그 생성
-            System.out.println("=== 3단계: 감사 로그 생성 ===");
+            log.info("=== 3단계: 감사 로그 생성 ===");
             createBulkCollectionAuditLog(transactionId, memberIds, amount, reason, "SUCCESS", results);
             
-            System.out.println("=== 전체 트랜잭션 CM 회수 완료 ===");
+            log.info("=== 전체 트랜잭션 CM 회수 완료 ===");
             return new BulkPaymentResult(true, "모든 CM 회수 처리 완료", results);
             
         } catch (Exception e) {
             // 전체 롤백
-            System.err.println("=== 전체 트랜잭션 롤백 ===");
-            System.err.println("실패 원인: " + e.getMessage());
+            log.error("=== 전체 트랜잭션 롤백 ===");
+            log.error("실패 원인: {}", e.getMessage());
             
             // 실패 감사 로그 생성
             createBulkCollectionAuditLog(transactionId, memberIds, amount, reason, "FAILED", results);
@@ -504,15 +561,15 @@ public class AjgMemberAssetDetailsService {
      */
     private void createBulkPaymentAuditLog(String transactionId, List<String> memberIds, Integer amount, String reason, String status, List<PaymentResult> results) {
         try {
-            System.out.println("다중 지급 감사 로그 생성: " + transactionId);
-            System.out.println("상태: " + status);
-            System.out.println("처리된 회원 수: " + results.size());
+            log.info("다중 지급 감사 로그 생성: {}", transactionId);
+            log.info("상태: {}", status);
+            log.info("처리된 회원 수: {}", results.size());
             
             // 감사 로그 테이블에 저장 (실제 구현 시)
             // bulkPaymentAuditLogRepository.save(new BulkPaymentAuditLog(transactionId, memberIds, amount, reason, status, results));
             
         } catch (Exception e) {
-            System.err.println("감사 로그 생성 실패: " + e.getMessage());
+            log.error("감사 로그 생성 실패: {}", e.getMessage());
         }
     }
     
@@ -521,15 +578,15 @@ public class AjgMemberAssetDetailsService {
      */
     private void createBulkCollectionAuditLog(String transactionId, List<String> memberIds, Integer amount, String reason, String status, List<PaymentResult> results) {
         try {
-            System.out.println("다중 회수 감사 로그 생성: " + transactionId);
-            System.out.println("상태: " + status);
-            System.out.println("처리된 회원 수: " + results.size());
+            log.info("다중 회수 감사 로그 생성: {}", transactionId);
+            log.info("상태: {}", status);
+            log.info("처리된 회원 수: {}", results.size());
             
             // 감사 로그 테이블에 저장 (실제 구현 시)
             // bulkCollectionAuditLogRepository.save(new BulkCollectionAuditLog(transactionId, memberIds, amount, reason, status, results));
             
         } catch (Exception e) {
-            System.err.println("감사 로그 생성 실패: " + e.getMessage());
+            log.error("감사 로그 생성 실패: {}", e.getMessage());
         }
     }
     
