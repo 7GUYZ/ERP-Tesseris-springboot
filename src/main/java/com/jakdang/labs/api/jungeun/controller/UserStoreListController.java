@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.jakdang.labs.api.common.ResponseDTO;
 import com.jakdang.labs.api.jungeun.dto.UserStoreCategoryDTO;
+import com.jakdang.labs.api.jungeun.dto.UserStoreDetailDTO;
 import com.jakdang.labs.api.jungeun.dto.UserStoreListDTO;
 import com.jakdang.labs.api.jungeun.service.UserStoreListSvc;
 
@@ -32,5 +33,10 @@ public class UserStoreListController {
     public ResponseEntity<ResponseDTO<List<UserStoreListDTO>>> getFilteredStoreList(@RequestParam("user_index") Integer user_index ,
                         @RequestParam("store_category_index") Integer store_category_index){
         return ResponseEntity.ok().body(storeSvc.getFilteredStoreList(user_index, store_category_index));
+    }
+
+    @GetMapping("/detail")
+    public ResponseEntity<ResponseDTO<?>> getStoreDetail(@RequestParam("store_index") Integer store_index){
+        return ResponseEntity.ok().body(storeSvc.getStoreDetail(store_index));
     }
 }
