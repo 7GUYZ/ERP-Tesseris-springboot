@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 
 import com.jakdang.labs.api.common.ResponseDTO;
 import com.jakdang.labs.api.jungeun.dto.UserStoreCategoryDTO;
+import com.jakdang.labs.api.jungeun.dto.UserStoreDetailDTO;
 import com.jakdang.labs.api.jungeun.dto.UserStoreListDTO;
 import com.jakdang.labs.api.jungeun.repository.StoreCategoryLjeRepo;
 import com.jakdang.labs.api.jungeun.repository.StoreLjeRepo;
@@ -49,4 +50,23 @@ public class UserStoreListSvc {
 
         return ResponseDTO.createSuccessResponse("선택 항목에 따른 가맹점 리스트 불러오기 성공", dtoList);
     }
+
+//     public ResponseDTO<UserStoreDetailDTO> getStoreDetail(Integer store_index){
+//         Object[] result = (Object[]) storeRepo.findStoreDetailByStoreIndex(store_index);
+//         if (result == null) {
+//             return ResponseDTO.createErrorResponse(-200, null);
+//         }
+//         UserStoreDetailDTO detailDTO = UserStoreDetailDTO.builder()
+//             .storeIndex(result[0] == null ? null : ((Number) result[0]).intValue())
+//             .storeName((String) result[1])
+//             .storePhone((String) result[2])
+//             .storeAddress((String) result[3])
+//             .storeCategoryName((String) result[4])
+//             .userCmUse(result[5] == null ? null : ((Number) result[5]).intValue())
+//             .storeImage((String) result[6])
+//             .storeBusinessState(result[7] == null ? null : ((Number) result[7]).intValue())
+//             // 필요한 필드 추가
+//             .build();
+//         return ResponseDTO.createSuccessResponse("가맹점 상세정보 불러오기 성공", detailDTO);
+//     }
 }
