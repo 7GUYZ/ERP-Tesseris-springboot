@@ -39,7 +39,7 @@ public interface AjhUserCmLogRepository extends JpaRepository<UserCmLog, Long> {
             SELECT DISTINCT ucl FROM UserCmLog ucl
             LEFT JOIN FETCH ucl.userIndexEventTrigger etu
             LEFT JOIN FETCH ucl.userIndexEventParty epu
-            ORDER BY ucl.userCmLogCreateTime DESC
+            ORDER BY ucl.userCmLogIndex DESC
             """)
     List<UserCmLog> findTop100WithJoins(Pageable pageable);
 
@@ -60,7 +60,7 @@ public interface AjhUserCmLogRepository extends JpaRepository<UserCmLog, Long> {
             SELECT DISTINCT ucl FROM UserCmLog ucl
             LEFT JOIN FETCH ucl.userIndexEventTrigger etu
             LEFT JOIN FETCH ucl.userIndexEventParty epu
-            ORDER BY ucl.userCmLogCreateTime DESC
+            ORDER BY ucl.userCmLogIndex DESC
             """)
     Page<UserCmLog> findAllWithJoinsPaged(Pageable pageable);
 
@@ -82,7 +82,7 @@ public interface AjhUserCmLogRepository extends JpaRepository<UserCmLog, Long> {
             SELECT DISTINCT ucl FROM UserCmLog ucl
             LEFT JOIN FETCH ucl.userIndexEventTrigger etu
             LEFT JOIN FETCH ucl.userIndexEventParty epu
-            ORDER BY ucl.userCmLogCreateTime DESC
+            ORDER BY ucl.userCmLogIndex DESC
             """)
     List<UserCmLog> findAllWithJoins();
 
@@ -123,7 +123,7 @@ public interface AjhUserCmLogRepository extends JpaRepository<UserCmLog, Long> {
             LEFT JOIN FETCH ucl.userIndexEventTrigger etu
             LEFT JOIN FETCH ucl.userIndexEventParty epu
             WHERE ucl.userIndexEventTrigger = :userId OR ucl.userIndexEventParty = :userId
-            ORDER BY ucl.userCmLogCreateTime DESC
+            ORDER BY ucl.userCmLogIndex DESC
             """)
     List<UserCmLog> findTop100ByUserIndexWithJoins(@Param("userId") Long userId, Pageable pageable);
 
@@ -144,7 +144,7 @@ public interface AjhUserCmLogRepository extends JpaRepository<UserCmLog, Long> {
             LEFT JOIN FETCH ucl.userIndexEventTrigger etu
             LEFT JOIN FETCH ucl.userIndexEventParty epu
             WHERE ucl.userIndexEventTrigger = :userId OR ucl.userIndexEventParty = :userId
-            ORDER BY ucl.userCmLogCreateTime DESC
+            ORDER BY ucl.userCmLogIndex DESC
             """)
     Page<UserCmLog> findByUserIndexWithJoinsPaged(@Param("userId") Long userId, Pageable pageable);
 
@@ -167,7 +167,7 @@ public interface AjhUserCmLogRepository extends JpaRepository<UserCmLog, Long> {
             LEFT JOIN FETCH ucl.userIndexEventTrigger etu
             LEFT JOIN FETCH ucl.userIndexEventParty epu
             WHERE ucl.userIndexEventTrigger = :userId OR ucl.userIndexEventParty = :userId
-            ORDER BY ucl.userCmLogCreateTime DESC
+            ORDER BY ucl.userCmLogIndex DESC
             """)
     List<UserCmLog> findAllByUserIndexWithJoins(@Param("userId") Long userId);
 
@@ -187,9 +187,9 @@ public interface AjhUserCmLogRepository extends JpaRepository<UserCmLog, Long> {
      */
     @Query(value = """
             SELECT DISTINCT ucl.* FROM user_cm_log ucl
-            INNER JOIN user_tesseris etu ON ucl.user_index_event_trigger = etu.user_index
+            LEFT JOIN user_tesseris etu ON ucl.user_index_event_trigger = etu.user_index
             LEFT JOIN user_role etuRole ON etu.user_role_index = etuRole.user_role_index
-            INNER JOIN user_tesseris epu ON ucl.user_index_event_party = epu.user_index
+            LEFT JOIN user_tesseris epu ON ucl.user_index_event_party = epu.user_index
             LEFT JOIN user_role epuRole ON epu.user_role_index = epuRole.user_role_index
             LEFT JOIN user_cm_log_value_type vt ON ucl.user_cm_log_value_type_index = vt.user_cm_log_value_type_index
             LEFT JOIN user_cm_log_payment p ON ucl.user_cm_log_payment_index = p.user_cm_log_payment_index
@@ -205,11 +205,11 @@ public interface AjhUserCmLogRepository extends JpaRepository<UserCmLog, Long> {
               AND (:endDate IS NULL OR :endDate = '' OR ucl.user_cm_log_create_time <= STR_TO_DATE(CONCAT(:endDate, ' 23:59:59'), '%Y-%m-%d %H:%i:%s'))
               AND (:paymentIndex IS NULL OR :paymentIndex = 0 OR ucl.user_cm_log_payment_index = :paymentIndex)
               AND (:transactionTypeIndex IS NULL OR :transactionTypeIndex = 0 OR ucl.user_cm_log_transaction_type_index = :transactionTypeIndex)
-            ORDER BY ucl.user_cm_log_create_time DESC
+            ORDER BY ucl.user_cm_log_index DESC
             """, countQuery = """
             SELECT COUNT(DISTINCT ucl.user_cm_log_index) FROM user_cm_log ucl
-            INNER JOIN user_tesseris etu ON ucl.user_index_event_trigger = etu.user_index
-            INNER JOIN user_tesseris epu ON ucl.user_index_event_party = epu.user_index
+            LEFT JOIN user_tesseris etu ON ucl.user_index_event_trigger = etu.user_index
+            LEFT JOIN user_tesseris epu ON ucl.user_index_event_party = epu.user_index
             LEFT JOIN users etu_users ON etu.users_id = etu_users.id
             LEFT JOIN users epu_users ON epu.users_id = epu_users.id
             WHERE (:triggerUserId IS NULL OR :triggerUserId = '' OR etu_users.id LIKE CONCAT('%', :triggerUserId, '%'))
@@ -249,9 +249,9 @@ public interface AjhUserCmLogRepository extends JpaRepository<UserCmLog, Long> {
      */
     @Query(value = """
             SELECT DISTINCT ucl.* FROM user_cm_log ucl
-            INNER JOIN user_tesseris etu ON ucl.user_index_event_trigger = etu.user_index
+            LEFT JOIN user_tesseris etu ON ucl.user_index_event_trigger = etu.user_index
             LEFT JOIN user_role etuRole ON etu.user_role_index = etuRole.user_role_index
-            INNER JOIN user_tesseris epu ON ucl.user_index_event_party = epu.user_index
+            LEFT JOIN user_tesseris epu ON ucl.user_index_event_party = epu.user_index
             LEFT JOIN user_role epuRole ON epu.user_role_index = epuRole.user_role_index
             LEFT JOIN user_cm_log_value_type vt ON ucl.user_cm_log_value_type_index = vt.user_cm_log_value_type_index
             LEFT JOIN user_cm_log_payment p ON ucl.user_cm_log_payment_index = p.user_cm_log_payment_index
@@ -273,11 +273,11 @@ public interface AjhUserCmLogRepository extends JpaRepository<UserCmLog, Long> {
               AND (:endDate IS NULL OR :endDate = '' OR ucl.user_cm_log_create_time <= STR_TO_DATE(CONCAT(:endDate, ' 23:59:59'), '%Y-%m-%d %H:%i:%s'))
               AND (:paymentIndex IS NULL OR :paymentIndex = 0 OR ucl.user_cm_log_payment_index = :paymentIndex)
               AND (:transactionTypeIndex IS NULL OR :transactionTypeIndex = 0 OR ucl.user_cm_log_transaction_type_index = :transactionTypeIndex)
-            ORDER BY ucl.user_cm_log_create_time DESC
+            ORDER BY ucl.user_cm_log_index DESC
             """, countQuery = """
             SELECT COUNT(DISTINCT ucl.user_cm_log_index) FROM user_cm_log ucl
-            INNER JOIN user_tesseris etu ON ucl.user_index_event_trigger = etu.user_index
-            INNER JOIN user_tesseris epu ON ucl.user_index_event_party = epu.user_index
+            LEFT JOIN user_tesseris etu ON ucl.user_index_event_trigger = etu.user_index
+            LEFT JOIN user_tesseris epu ON ucl.user_index_event_party = epu.user_index
             LEFT JOIN users etu_users ON etu.users_id = etu_users.id
             LEFT JOIN users epu_users ON epu.users_id = epu_users.id
             WHERE (:triggerUserEmail IS NULL OR :triggerUserEmail = '' OR 
@@ -309,55 +309,4 @@ public interface AjhUserCmLogRepository extends JpaRepository<UserCmLog, Long> {
             @Param("transactionTypeIndex") Long transactionTypeIndex,
             Pageable pageable);
 
-    /**
-     * 🆕 페이징 없는 동적 검색 쿼리 (클라이언트 사이드 pagination용)
-     * 
-     * 목적: 클라이언트 사이드 pagination을 위해 모든 데이터를 한 번에 조회
-     * 
-     * 특징:
-     * - 페이징 없이 모든 데이터 조회
-     * - 클라이언트에서 pagination 처리
-     * - DataGrid의 내부 상태 관리 안정화
-     * 
-     * 사용 시나리오: 클라이언트 사이드 pagination이 필요한 경우
-     */
-    @Query(value = """
-            SELECT DISTINCT ucl.* FROM user_cm_log ucl
-            INNER JOIN user_tesseris etu ON ucl.user_index_event_trigger = etu.user_index
-            LEFT JOIN user_role etuRole ON etu.user_role_index = etuRole.user_role_index
-            INNER JOIN user_tesseris epu ON ucl.user_index_event_party = epu.user_index
-            LEFT JOIN user_role epuRole ON epu.user_role_index = epuRole.user_role_index
-            LEFT JOIN user_cm_log_value_type vt ON ucl.user_cm_log_value_type_index = vt.user_cm_log_value_type_index
-            LEFT JOIN user_cm_log_payment p ON ucl.user_cm_log_payment_index = p.user_cm_log_payment_index
-            LEFT JOIN user_cm_log_transaction_type tt ON ucl.user_cm_log_transaction_type_index = tt.user_cm_log_transaction_type_index
-            LEFT JOIN users etu_users ON etu.users_id = etu_users.id
-            LEFT JOIN users epu_users ON epu.users_id = epu_users.id
-            WHERE (:triggerUserEmail IS NULL OR :triggerUserEmail = '' OR 
-                   etu_users.email LIKE CONCAT('%', :triggerUserEmail, '%') OR 
-                   etu_users.id LIKE CONCAT('%', :triggerUserEmail, '%'))
-              AND (:partyUserEmail IS NULL OR :partyUserEmail = '' OR 
-                   epu_users.email LIKE CONCAT('%', :partyUserEmail, '%') OR 
-                   epu_users.id LIKE CONCAT('%', :partyUserEmail, '%'))
-              AND (:partyUserName IS NULL OR :partyUserName = '' OR 
-                   epu_users.name LIKE CONCAT('%', :partyUserName, '%'))
-              AND (:triggerRoleIndex IS NULL OR :triggerRoleIndex = 0 OR etu.user_role_index = :triggerRoleIndex)
-              AND (:partyRoleIndex IS NULL OR :partyRoleIndex = 0 OR epu.user_role_index = :partyRoleIndex)
-              AND (:valueTypeIndex IS NULL OR :valueTypeIndex = 0 OR ucl.user_cm_log_value_type_index = :valueTypeIndex)
-              AND (:startDate IS NULL OR :startDate = '' OR ucl.user_cm_log_create_time >= STR_TO_DATE(CONCAT(:startDate, ' 00:00:00'), '%Y-%m-%d %H:%i:%s'))
-              AND (:endDate IS NULL OR :endDate = '' OR ucl.user_cm_log_create_time <= STR_TO_DATE(CONCAT(:endDate, ' 23:59:59'), '%Y-%m-%d %H:%i:%s'))
-              AND (:paymentIndex IS NULL OR :paymentIndex = 0 OR ucl.user_cm_log_payment_index = :paymentIndex)
-              AND (:transactionTypeIndex IS NULL OR :transactionTypeIndex = 0 OR ucl.user_cm_log_transaction_type_index = :transactionTypeIndex)
-            ORDER BY ucl.user_cm_log_create_time DESC
-            """, nativeQuery = true)
-    List<UserCmLog> findBySearchCriteriaWithLikeNoPaging(
-            @Param("triggerUserEmail") String triggerUserEmail,
-            @Param("partyUserEmail") String partyUserEmail,
-            @Param("partyUserName") String partyUserName,
-            @Param("triggerRoleIndex") Long triggerRoleIndex,
-            @Param("partyRoleIndex") Long partyRoleIndex,
-            @Param("valueTypeIndex") Long valueTypeIndex,
-            @Param("startDate") String startDate,
-            @Param("endDate") String endDate,
-            @Param("paymentIndex") Long paymentIndex,
-            @Param("transactionTypeIndex") Long transactionTypeIndex);
 }

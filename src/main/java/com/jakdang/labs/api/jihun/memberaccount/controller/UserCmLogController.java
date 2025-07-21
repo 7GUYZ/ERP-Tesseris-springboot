@@ -52,7 +52,7 @@ public class UserCmLogController {
     @GetMapping
     public ResponseEntity<Map<String, Object>> getAllUserCmLogsPaged(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "100") int size) {
+            @RequestParam(defaultValue = "25") int size) {
         log.info("페이징 UserCmLog 조회 API 호출 - page: {}, size: {}", page, size);
 
         try {
@@ -177,4 +177,6 @@ public class UserCmLogController {
             return ResponseEntity.internalServerError().build();
         }
     }
+
+
 }
