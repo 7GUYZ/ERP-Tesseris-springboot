@@ -92,7 +92,6 @@ public class BusinessGradeService {
     try {
       // JWT에서 사용자 정보 추출
       String token = authHeader.substring(7);
-      String email = jwtUtil.getUserEmail(token);
       String userId = jwtUtil.getUserId(token);
       
       // UserTesseris에서 user_index 조회
