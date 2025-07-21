@@ -17,7 +17,6 @@ import java.time.LocalDateTime;
 public class AdminMyPageResponseDto {
     
     // 기본 사용자 정보
-    private String userId;
     private String userName;
     private String userBirthday;
     private String userGender;
@@ -27,8 +26,9 @@ public class AdminMyPageResponseDto {
     private String userEmail;
     private String userAddress;
     private String userDetailAddress;
+    private String userAddressDetail;
     
     // 어드민 정보
     private String adminTypeName;
-    private LocalDateTime adminRegistrationDate;
+    private Integer[] adminRegistrationDate;
 } 
