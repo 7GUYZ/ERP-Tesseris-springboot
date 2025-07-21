@@ -51,22 +51,27 @@ public class UserStoreListSvc {
         return ResponseDTO.createSuccessResponse("선택 항목에 따른 가맹점 리스트 불러오기 성공", dtoList);
     }
 
-//     public ResponseDTO<UserStoreDetailDTO> getStoreDetail(Integer store_index){
-//         Object[] result = (Object[]) storeRepo.findStoreDetailByStoreIndex(store_index);
-//         if (result == null) {
-//             return ResponseDTO.createErrorResponse(-200, null);
-//         }
-//         UserStoreDetailDTO detailDTO = UserStoreDetailDTO.builder()
-//             .storeIndex(result[0] == null ? null : ((Number) result[0]).intValue())
-//             .storeName((String) result[1])
-//             .storePhone((String) result[2])
-//             .storeAddress((String) result[3])
-//             .storeCategoryName((String) result[4])
-//             .userCmUse(result[5] == null ? null : ((Number) result[5]).intValue())
-//             .storeImage((String) result[6])
-//             .storeBusinessState(result[7] == null ? null : ((Number) result[7]).intValue())
-//             // 필요한 필드 추가
-//             .build();
-//         return ResponseDTO.createSuccessResponse("가맹점 상세정보 불러오기 성공", detailDTO);
-//     }
+    public ResponseDTO<?> getStoreDetail(Integer store_index){
+        Object[] result = (Object[]) storeRepo.findStoreDetailByStoreIndex(store_index);
+        if (result == null) {
+            return ResponseDTO.createErrorResponse(500, "가맹점 상세정보 불러오기 실패");
+        }
+        UserStoreDetailDTO detailDTO = UserStoreDetailDTO.builder()
+            .storeIndex(result[0] == null ? null : ((Number) result[0]).intValue()) // INT
+            .storeName(result[1] == null ? null : result[1].toString()) // VARCHAR
+            .storePhone(result[2] == null ? null : result[2].toString()) // VARCHAR or BIGINT
+            .storeAddress(result[3] == null ? null : result[3].toString())
+            .storeDetailAddress(result[4] == null ? null : result[4].toString())
+            .storeSite(result[5] == null ? null : result[5].toString())
+            .storeMemo(result[6] == null ? null : result[6].toString())
+            .storeCategoryName(result[7] == null ? null : result[7].toString())
+            .userCmUse(result[8] == null ? null : ((Number) result[8]).intValue()) // 연산 결과
+            .storeImage(result[9] == null ? null : result[9].toString())
+            .storeBusinessState(result[10] == null ? null : ((Number) result[10]).intValue()) // IF문 결과
+            .storeBusinessDate(result[11] == null ? null : result[11].toString())
+            .storeBusinessHour(result[12] == null ? null : result[12].toString())
+            .storeRestHour(result[13] == null ? null : result[13].toString())
+            .build();
+        return ResponseDTO.createSuccessResponse("가맹점 상세정보 불러오기 성공", detailDTO);
+    }
 }
