@@ -91,9 +91,9 @@ public class UserCmLogSearchRequestDto {
     private int page = 0;
     
     /**
-     * 페이지 크기 (기본값: 100)
+     * 페이지 크기 (기본값: 25)
      */
-    private int size = 100;
+    private int size = 25;
     
     /**
      * 🆕 검색 타입 (LIKE, EXACT 등)

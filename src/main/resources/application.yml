@@ -10,8 +10,13 @@ server:
       force: true
 
 spring:
+
   application:
     name: ERP-project-backend
+  
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: false
 
   servlet:
     multipart:
@@ -35,17 +40,16 @@ spring:
     password: ${DB_PASSWORD}
 
 
-  #JWT 임시 셋팅
+    #JWT 임시 셋팅
   jwt:
     refresh:
       cookie:
         name: refresh
       expired: 86400000
-      # expired: 15000  # 정은 테스트용 15초 
+            # expired: 15000  # 정은 테스트용 15초 
     access:
       expired: 36400000
-      # expired: 10000 # 정은 테스트용 10초 
-      
+            # expired: 10000 # 정은 테스트용 10초 
     secret:
       code: ${JWT_SECRET}
 
@@ -98,6 +102,12 @@ spring:
 #            client-id:
 #            client-secret:
 #            scope:
+
+# 카카오 API 설정
+kakao:
+  api:
+    key: 851df602ffd257f560df3bd8ce96f19f
+
 #              - profile_nickname
 #              - profile_image
 #              - account_email
