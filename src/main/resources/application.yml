@@ -106,7 +106,7 @@ spring:
 # 카카오 API 설정
 kakao:
   api:
-    key: {KAKAORESTAPIKEY}
+    key: ${KAKAORESTAPIKEY}
 
 #              - profile_nickname
 #              - profile_image
