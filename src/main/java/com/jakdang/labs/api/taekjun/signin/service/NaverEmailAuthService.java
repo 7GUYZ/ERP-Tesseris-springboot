@@ -43,15 +43,15 @@ public class NaverEmailAuthService {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(fromEmail);
             message.setTo(email);
-            message.setSubject("[테서리스] 이메일 인증 코드");
+            message.setSubject("[Tesseris] 이메일 인증 코드");
             message.setText(
                 "안녕하세요, " + name + "님!\n\n" +
-                "테서리스 회원가입을 위한 이메일 인증 코드입니다.\n\n" +
-                "인증 코드: " + authCode + "\n\n" +
+                "Tesseris 회원가입을 위한 이메일 인증 코드입니다.\n\n" +
+                "code: " + authCode + "\n\n" +
                 "이 코드는 5분간 유효합니다.\n" +
                 "본인이 요청하지 않은 경우 이 메일을 무시하세요.\n\n" +
                 "감사합니다.\n" +
-                "테서리스 팀"
+                "Tesseris 팀"
             );
             
             mailSender.send(message);

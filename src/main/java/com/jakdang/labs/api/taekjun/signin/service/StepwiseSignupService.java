@@ -25,6 +25,7 @@ import com.jakdang.labs.api.taekjun.signin.repository.UserGenderRepository;
 import com.jakdang.labs.api.taekjun.signin.service.ReferralService;
 import com.jakdang.labs.api.taekjun.signin.dto.ReferralRequestDTO;
 import com.jakdang.labs.api.taekjun.signin.service.NaverEmailAuthService;
+import com.jakdang.labs.api.auth.repository.AuthRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -93,9 +94,14 @@ public class StepwiseSignupService {
                 }
             }
             
-            // 3. Users 엔티티 생성 및 저장
+            // 3. Users 엔티티 생성 및 저장 (UUID 중복 방지)
+            String uuid;
+            do {
+                uuid = UUID.randomUUID().toString();
+            } while (signupRepository.existsById(uuid));
+
             UserEntity users = UserEntity.builder()
-                .id(UUID.randomUUID().toString())
+                .id(uuid)
                 .email(userInfoDTO.getEmail())
                 .password(passwordEncoder.encode(userInfoDTO.getPassword()))
                 .name(userInfoDTO.getName())
