@@ -36,8 +36,8 @@ public class UserBusinessListSvc {
         return ResponseDTO.createSuccessResponse("선택 가능한 등급 리스트", dtoList);
     }
 
-    public ResponseDTO<List<UserBusinessFilteredListDTO>> getFilteredBusinessList(Integer user_index, Integer business_grade_index){
-        List<Object[]> resultList = businessManRepo.findSubBusinessManListByBossUserIndexAndGrade(user_index, business_grade_index);
+    public ResponseDTO<List<UserBusinessFilteredListDTO>> getFilteredBusinessList(Integer business_grade_index){
+        List<Object[]> resultList = businessManRepo.findBusinessListWithBossEmail(business_grade_index);
 
         List<UserBusinessFilteredListDTO> dtoList = resultList.stream().map(arr -> 
         UserBusinessFilteredListDTO.builder()
