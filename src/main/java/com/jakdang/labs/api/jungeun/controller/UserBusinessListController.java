@@ -30,8 +30,7 @@ public class UserBusinessListController {
     }
 
     @GetMapping("/filtered")
-    public ResponseEntity<ResponseDTO<List<UserBusinessFilteredListDTO>>> getFilteredBusinessList(@RequestParam("user_index") Integer user_index,
-             @RequestParam("business_grade_index") Integer business_grade_index){
-        return ResponseEntity.ok().body(businessSvc.getFilteredBusinessList(user_index, business_grade_index));
+    public ResponseEntity<ResponseDTO<List<UserBusinessFilteredListDTO>>> getFilteredBusinessList(@RequestParam("business_grade_index") Integer business_grade_index){
+        return ResponseEntity.ok().body(businessSvc.getFilteredBusinessList(business_grade_index));
     }
 }
