@@ -10,6 +10,7 @@ import com.jakdang.labs.api.taekjun.signin.dto.Step3UserInfoDTO;
 import com.jakdang.labs.api.taekjun.signin.dto.ReferralRequestDTO;
 import com.jakdang.labs.api.taekjun.signin.dto.UserSearchDTO;
 import com.jakdang.labs.api.taekjun.signin.dto.UserSearchResultDTO;
+import com.jakdang.labs.api.taekjun.signin.repository.SignupRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,7 @@ public class SigninController {
     private final StepwiseSignupService stepwiseSignupService;
     private final ReferralService referralService;
     private final KakaoAddressService kakaoAddressService;
+    private final SignupRepository signupRepository;
     
     /**
      * 주소 검색 API
@@ -232,5 +234,26 @@ public class SigninController {
                 "message", "서버 오류가 발생했습니다."
             ));
         }
+    }
+
+    /**
+     * 이메일/닉네임 중복 검사 API
+     */
+    @GetMapping("/check-duplicate")
+    public ResponseEntity<Map<String, Object>> checkDuplicate(
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) String nickname) {
+        boolean emailExists = false;
+        boolean nicknameExists = false;
+        if (email != null && !email.isBlank()) {
+            emailExists = signupRepository.existsByEmail(email);
+        }
+        if (nickname != null && !nickname.isBlank()) {
+            nicknameExists = signupRepository.existsByNickname(nickname);
+        }
+        return ResponseEntity.ok(Map.of(
+            "emailExists", emailExists,
+            "nicknameExists", nicknameExists
+        ));
     }
 } 
