@@ -1,8 +1,8 @@
-package com.jakdang.labs.api.jiyun.mypageGeneral.controller;
+package com.jakdang.labs.api.jiyun.mypage.controller;
 
-import com.jakdang.labs.api.jiyun.mypageGeneral.dto.MypageUserInfoDto;
-import com.jakdang.labs.api.jiyun.mypageGeneral.dto.SuggestionUserListDto;
-import com.jakdang.labs.api.jiyun.mypageGeneral.service.MypageGeneralService;
+import com.jakdang.labs.api.jiyun.mypage.dto.MypageUserInfoDto;
+import com.jakdang.labs.api.jiyun.mypage.dto.SuggestionUserListDto;
+import com.jakdang.labs.api.jiyun.mypage.service.MypageGeneralService;
 import com.jakdang.labs.entity.UserTesseris;
 import com.jakdang.labs.security.jwt.utils.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -24,11 +24,11 @@ public class MypageGeneralController {
     @PersistenceContext
     private EntityManager em;
 
-    @GetMapping("/getInfo")
-    public ResponseEntity<MypageUserInfoDto> getMyInfo(@RequestHeader("Authorization") String authHeader) {
+    @GetMapping("/getNickname")
+    public ResponseEntity<MypageUserInfoDto> getNickname(@RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         String id = jwtUtil.getUserId(token); // JWT에서 id(PK)를 추출
-        return ResponseEntity.ok(mypageGeneralService.getMyInfo(id));
+        return ResponseEntity.ok(mypageGeneralService.getNickname(id));
     }
 
     @GetMapping("/suggestions")

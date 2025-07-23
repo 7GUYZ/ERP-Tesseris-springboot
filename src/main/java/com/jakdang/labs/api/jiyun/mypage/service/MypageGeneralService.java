@@ -1,14 +1,15 @@
-package com.jakdang.labs.api.jiyun.mypageGeneral.service;
+package com.jakdang.labs.api.jiyun.mypage.service;
 
-import com.jakdang.labs.api.jiyun.mypageGeneral.dto.MypageUserInfoDto;
-import com.jakdang.labs.api.jiyun.mypageGeneral.dto.SuggestionUserListDto;
-import com.jakdang.labs.api.jiyun.mypageGeneral.repository.MypageGeneralRepository;
-import com.jakdang.labs.api.jiyun.mypageGeneral.repository.SuggestionUserkjyRepository;
 import com.jakdang.labs.entity.SuggestionUser;
 import com.jakdang.labs.entity.UserTesseris;
 import com.jakdang.labs.entity.UserRole;
 import com.jakdang.labs.entity.Store;
 import com.jakdang.labs.api.auth.entity.UserEntity;
+import com.jakdang.labs.api.jiyun.mypage.dto.MypageUserInfoDto;
+import com.jakdang.labs.api.jiyun.mypage.dto.SuggestionUserListDto;
+import com.jakdang.labs.api.jiyun.mypage.repository.MypageGeneralRepository;
+import com.jakdang.labs.api.jiyun.mypage.repository.SuggestionUserkjyRepository;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,14 +28,11 @@ public class MypageGeneralService {
     private EntityManager em;
 
     @Transactional(readOnly = true)
-    public MypageUserInfoDto getMyInfo(String id) {
+    public MypageUserInfoDto getNickname(String id) {
         UserTesseris user = mypageGeneralRepository.findByUsersId_Id(id)
                 .orElseThrow(() -> new IllegalArgumentException("UserTesseris not found"));
         MypageUserInfoDto dto = new MypageUserInfoDto();
-        dto.setUserIndex(user.getUserIndex() != null ? user.getUserIndex().longValue() : null);
-        dto.setUserId(user.getUsersId().getId());
-        dto.setUserName(user.getUsersId().getName());
-        dto.setUserPhone(user.getUsersId().getPhone());
+        dto.setNickname(user.getUsersId().getNickname());
         return dto;
     }
 
