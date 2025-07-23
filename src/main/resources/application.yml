@@ -98,8 +98,6 @@ spring:
           connectiontimeout: 10000
           writetimeout: 10000
 
-
-
   # OAUTH ?? ???
 #  security:
 #    oauth2:
