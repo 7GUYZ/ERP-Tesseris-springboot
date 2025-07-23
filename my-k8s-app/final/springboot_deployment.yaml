@@ -70,3 +70,13 @@ spec:
                 secretKeyRef:
                   name: erp-tesseris-secret
                   key: KAKAORESTAPIKEY
+            - name: NAVER_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: erp-tesseris-secret
+                  key: NAVER_EMAIL
+            - name: NAVER_EMAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: erp-tesseris-secret
+                  key: NAVER_EMAIL_PASSWORD

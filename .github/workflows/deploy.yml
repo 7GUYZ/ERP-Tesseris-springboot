@@ -2,7 +2,7 @@ name: CI/CD Deploy to Kubernetes
 
 on:
   push:
-    branches: [ main , sichan]
+    branches: [ main , sichan] 
 
 jobs:
   build-and-deploy:
@@ -61,6 +61,8 @@ jobs:
             --from-literal=JWT_SECRET="${{ secrets.JWT_SECRET }}" \
             --from-literal=JASYPT_PASSWORD="${{ secrets.JASYPT_PASSWORD }}" \
             --from-literal=KAKAORESTAPIKEY="${{ secrets.KAKAORESTAPIKEY }}" \
+            --from-literal=NAVER_EMAIL="${{ secrets.NAVER_EMAIL }}" \
+            --from-literal=NAVER_EMAIL_PASSWORD="${{ secrets.NAVER_EMAIL_PASSWORD }}" \
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Replace image tag and apply deployment
