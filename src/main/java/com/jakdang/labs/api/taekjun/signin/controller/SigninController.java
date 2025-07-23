@@ -11,6 +11,7 @@ import com.jakdang.labs.api.taekjun.signin.dto.ReferralRequestDTO;
 import com.jakdang.labs.api.taekjun.signin.dto.UserSearchDTO;
 import com.jakdang.labs.api.taekjun.signin.dto.UserSearchResultDTO;
 import com.jakdang.labs.api.taekjun.signin.repository.SignupRepository;
+import com.jakdang.labs.api.taekjun.Permissionsettings.repository.UserTesserisRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +28,7 @@ public class SigninController {
     private final ReferralService referralService;
     private final KakaoAddressService kakaoAddressService;
     private final SignupRepository signupRepository;
+    private final UserTesserisRepository userTesserisRepository;
     
     /**
      * 주소 검색 API
@@ -180,7 +182,25 @@ public class SigninController {
     public ResponseEntity<Map<String, Object>> finalSignup(@RequestBody Step3UserInfoDTO userInfoDTO) {
         try {
             String userId = stepwiseSignupService.finalSignup(userInfoDTO);
-            
+
+            // 회원가입 성공 후 추천인 관계 생성 (트랜잭션 분리)
+            if (userInfoDTO.getReferralId() != null && !userInfoDTO.getReferralId().trim().isEmpty()) {
+                // 추천인 코드 찾기
+                var referrerOpt = referralService.findUserByIdentifier(userInfoDTO.getReferralId());
+                if (referrerOpt.isPresent()) {
+                    String referralCode = referrerOpt.get().getReferralCode();
+                    // 추천인 관계 생성
+                    var referralRequest = new ReferralRequestDTO();
+                    referralRequest.setReferralCode(referralCode);
+                    // userId(UUID)로 UserTesseris 조회
+                    var userTesserisOpt = userTesserisRepository.findByUsersId_Id(userId);
+                    if (userTesserisOpt.isPresent()) {
+                        referralRequest.setUserIndex(userTesserisOpt.get().getUserIndex());
+                        referralService.createReferralRelation(referralRequest);
+                    }
+                }
+            }
+
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "userId", userId,
