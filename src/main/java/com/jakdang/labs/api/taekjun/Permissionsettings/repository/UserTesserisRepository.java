@@ -19,4 +19,6 @@ public interface UserTesserisRepository extends JpaRepository<UserTesseris, Inte
     
     // UserEntity로 UserTesseris 조회
     Optional<UserTesseris> findByUsersId(UserEntity usersId);
+    // userId(UUID)로 UserTesseris 조회
+    Optional<UserTesseris> findByUsersId_Id(String id);
 }

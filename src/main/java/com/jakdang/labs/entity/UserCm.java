@@ -28,7 +28,6 @@ import lombok.NoArgsConstructor;
 public class UserCm {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_cm_index")
     private Integer userCmIndex;
 
