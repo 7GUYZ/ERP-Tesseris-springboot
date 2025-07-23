@@ -3,13 +3,14 @@ package com.jakdang.labs.api.taekjun.signin.controller;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import com.jakdang.labs.api.taekjun.signin.service.ImportAuthService;
 import com.jakdang.labs.api.taekjun.signin.service.StepwiseSignupService;
 import com.jakdang.labs.api.taekjun.signin.service.ReferralService;
+import com.jakdang.labs.api.taekjun.address.service.KakaoAddressService;
 import com.jakdang.labs.api.taekjun.signin.dto.Step3UserInfoDTO;
 import com.jakdang.labs.api.taekjun.signin.dto.ReferralRequestDTO;
 import com.jakdang.labs.api.taekjun.signin.dto.UserSearchDTO;
 import com.jakdang.labs.api.taekjun.signin.dto.UserSearchResultDTO;
+import com.jakdang.labs.api.taekjun.signin.repository.SignupRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,38 +23,107 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class SigninController {
     
-    private final ImportAuthService importAuthService;
     private final StepwiseSignupService stepwiseSignupService;
     private final ReferralService referralService;
+    private final KakaoAddressService kakaoAddressService;
+    private final SignupRepository signupRepository;
     
     /**
-     * 본인인증 토큰 생성
+     * 주소 검색 API
      */
-    @PostMapping("/generate-auth-token")
-    public ResponseEntity<Map<String, Object>> generateAuthToken(@RequestBody Map<String, String> request) {
+    @GetMapping("/search-address")
+    public ResponseEntity<Map<String, Object>> searchAddress(@RequestParam String query) {
         try {
-            String name = request.get("name");
-            String phone = request.get("phone");
-            String birth = request.get("birth");
-            String genderDigit = request.get("genderDigit");
-            String carrier = request.get("carrier");
+            log.info("주소 검색 요청 - query: {}", query);
             
-            String impUid = importAuthService.generateAuthToken(name, phone, birth, genderDigit, carrier);
+            Map<String, Object> result = kakaoAddressService.searchAddress(query);
             
-            if (impUid != null) {
+            if (result != null) {
                 return ResponseEntity.ok(Map.of(
                     "success", true,
-                    "impUid", impUid,
-                    "message", "본인인증 OTP가 요청되었습니다."
+                    "data", result,
+                    "message", "주소 검색 완료"
+                ));
+            } else {
+                return ResponseEntity.ok(Map.of(
+                    "success", false,
+                    "message", "주소를 찾을 수 없습니다."
+                ));
+            }
+            
+        } catch (Exception e) {
+            log.error("주소 검색 중 오류 발생: ", e);
+            return ResponseEntity.internalServerError().body(Map.of(
+                "success", false,
+                "message", "주소 검색 중 오류가 발생했습니다."
+            ));
+        }
+    }
+    
+    /**
+     * 키워드 검색 API (상세 주소 검색용)
+     */
+    @GetMapping("/search-address-keyword")
+    public ResponseEntity<Map<String, Object>> searchAddressKeyword(@RequestParam String query) {
+        try {
+            log.info("키워드 검색 요청 - query: {}", query);
+            
+            Map<String, Object> result = kakaoAddressService.searchKeyword(query);
+            
+            if (result != null) {
+                return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "data", result,
+                    "message", "키워드 검색 완료"
+                ));
+            } else {
+                return ResponseEntity.ok(Map.of(
+                    "success", false,
+                    "message", "검색 결과를 찾을 수 없습니다."
+                ));
+            }
+            
+        } catch (Exception e) {
+            log.error("키워드 검색 중 오류 발생: ", e);
+            return ResponseEntity.internalServerError().body(Map.of(
+                "success", false,
+                "message", "키워드 검색 중 오류가 발생했습니다."
+            ));
+        }
+    }
+    
+    /**
+     * 이메일 인증 메일 발송
+     */
+    @PostMapping("/send-auth-email")
+    public ResponseEntity<Map<String, Object>> sendAuthEmail(@RequestBody Map<String, String> request) {
+        try {
+            String email = request.get("email");
+            String name = request.get("name");
+            
+            if (email == null || name == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "이메일과 이름을 입력해주세요."
+                ));
+            }
+            
+            String authToken = stepwiseSignupService.sendAuthEmail(email, name);
+            
+            if (authToken != null) {
+                return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "authToken", authToken,
+                    "message", "인증 메일이 발송되었습니다. 이메일을 확인해주세요."
                 ));
             } else {
                 return ResponseEntity.badRequest().body(Map.of(
                     "success", false,
-                    "message", "본인인증 OTP 요청에 실패했습니다."
+                    "message", "인증 메일 발송에 실패했습니다."
                 ));
             }
         } catch (Exception e) {
-            log.error("본인인증 OTP 요청 오류: ", e);
+            log.error("인증 메일 발송 오류: ", e);
             return ResponseEntity.internalServerError().body(Map.of(
                 "success", false,
                 "message", "서버 오류가 발생했습니다."
@@ -62,51 +132,40 @@ public class SigninController {
     }
     
     /**
-     * 본인인증 OTP 완료
+     * 이메일 인증 코드 검증
      */
-    @PostMapping("/verify-auth-result")
-    public ResponseEntity<Map<String, Object>> verifyAuthResult(@RequestBody Map<String, String> request) {
+    @PostMapping("/verify-auth-email")
+    public ResponseEntity<Map<String, Object>> verifyAuthEmail(@RequestBody Map<String, String> request) {
         try {
-            String impUid = request.get("impUid");
-            String otp = request.get("otp");
+            String email = request.get("email");
+            String name = request.get("name");
+            String authCode = request.get("authCode");
+            String authToken = request.get("authToken");
             
-            boolean isValid = importAuthService.verifyAuthResult(impUid, otp);
+            if (email == null || name == null || authCode == null || authToken == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "모든 필수 정보를 입력해주세요."
+                ));
+            }
+            
+            // 임시 DTO 생성
+            com.jakdang.labs.api.taekjun.signin.dto.Step2EmailAuthDTO emailAuthDTO = 
+                new com.jakdang.labs.api.taekjun.signin.dto.Step2EmailAuthDTO();
+            emailAuthDTO.setEmail(email);
+            emailAuthDTO.setName(name);
+            emailAuthDTO.setAuthCode(authCode);
+            emailAuthDTO.setAuthToken(authToken);
+            
+            boolean isValid = stepwiseSignupService.validateEmailAuth(emailAuthDTO);
             
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "isValid", isValid,
-                "message", isValid ? "본인인증이 성공했습니다." : "본인인증에 실패했습니다."
+                "message", isValid ? "이메일 인증이 성공했습니다." : "이메일 인증에 실패했습니다."
             ));
         } catch (Exception e) {
-            log.error("본인인증 OTP 완료 오류: ", e);
-            return ResponseEntity.internalServerError().body(Map.of(
-                "success", false,
-                "message", "서버 오류가 발생했습니다."
-            ));
-        }
-    }
-    
-    /**
-     * 본인인증 상태 조회
-     */
-    @GetMapping("/get-auth-status")
-    public ResponseEntity<Map<String, Object>> getAuthStatus(@RequestParam String impUid) {
-        try {
-            Map<String, Object> status = importAuthService.getAuthStatus(impUid);
-            
-            if (status != null) {
-                return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "status", status
-                ));
-            } else {
-                return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "message", "본인인증 상태를 조회할 수 없습니다."
-                ));
-            }
-        } catch (Exception e) {
-            log.error("본인인증 상태 조회 오류: ", e);
+            log.error("이메일 인증 검증 오류: ", e);
             return ResponseEntity.internalServerError().body(Map.of(
                 "success", false,
                 "message", "서버 오류가 발생했습니다."
@@ -175,5 +234,26 @@ public class SigninController {
                 "message", "서버 오류가 발생했습니다."
             ));
         }
+    }
+
+    /**
+     * 이메일/닉네임 중복 검사 API
+     */
+    @GetMapping("/check-duplicate")
+    public ResponseEntity<Map<String, Object>> checkDuplicate(
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) String nickname) {
+        boolean emailExists = false;
+        boolean nicknameExists = false;
+        if (email != null && !email.isBlank()) {
+            emailExists = signupRepository.existsByEmail(email);
+        }
+        if (nickname != null && !nickname.isBlank()) {
+            nicknameExists = signupRepository.existsByNickname(nickname);
+        }
+        return ResponseEntity.ok(Map.of(
+            "emailExists", emailExists,
+            "nicknameExists", nicknameExists
+        ));
     }
 } 
