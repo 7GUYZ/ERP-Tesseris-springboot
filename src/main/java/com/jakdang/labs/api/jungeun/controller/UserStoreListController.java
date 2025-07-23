@@ -33,4 +33,9 @@ public class UserStoreListController {
                         @RequestParam("store_category_index") Integer store_category_index){
         return ResponseEntity.ok().body(storeSvc.getFilteredStoreList(user_index, store_category_index));
     }
+
+    @GetMapping("/detail")
+    public ResponseEntity<ResponseDTO<?>> getStoreDetail(@RequestParam("store_index") Integer store_index){
+        return ResponseEntity.ok().body(storeSvc.getStoreDetail(store_index));
+    }
 }

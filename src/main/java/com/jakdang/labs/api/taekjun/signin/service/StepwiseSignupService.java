@@ -18,13 +18,14 @@ import com.jakdang.labs.entity.UserCm;
 import com.jakdang.labs.api.taekjun.Permissionsettings.repository.UserTesserisRepository;
 import com.jakdang.labs.api.taekjun.signin.repository.UserCmRepository;
 import com.jakdang.labs.api.taekjun.signin.dto.Step1AgreementDTO;
-import com.jakdang.labs.api.taekjun.signin.dto.Step2PhoneAuthDTO;
+import com.jakdang.labs.api.taekjun.signin.dto.Step2EmailAuthDTO;
 import com.jakdang.labs.api.taekjun.signin.dto.Step3UserInfoDTO;
 import com.jakdang.labs.api.taekjun.signin.repository.SignupRepository;
 import com.jakdang.labs.api.taekjun.signin.repository.UserGenderRepository;
 import com.jakdang.labs.api.taekjun.signin.service.ReferralService;
 import com.jakdang.labs.api.taekjun.signin.dto.ReferralRequestDTO;
-import com.jakdang.labs.api.taekjun.signin.service.ImportAuthService;
+import com.jakdang.labs.api.taekjun.signin.service.NaverEmailAuthService;
+import com.jakdang.labs.api.auth.repository.AuthRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -38,7 +39,7 @@ public class StepwiseSignupService {
     private final UserGenderRepository userGenderRepository;
     private final PasswordEncoder passwordEncoder;
     private final ReferralService referralService;
-    private final ImportAuthService importAuthService;
+    private final NaverEmailAuthService naverEmailAuthService;
     
     /**
      * 1단계: 약관 동의
@@ -50,16 +51,23 @@ public class StepwiseSignupService {
     }
     
     /**
-     * 2단계: 휴대폰 인증
+     * 2단계: 이메일 인증 메일 발송
      */
-    public boolean validatePhoneAuth(Step2PhoneAuthDTO phoneAuthDTO) {
-        // NICE 본인인증 결과 검증
-        if (phoneAuthDTO.getPhone() == null || phoneAuthDTO.getAuthCode() == null) {
+    public String sendAuthEmail(String email, String name) {
+        return naverEmailAuthService.sendAuthEmail(email, name);
+    }
+    
+    /**
+     * 2단계: 이메일 인증 검증
+     */
+    public boolean validateEmailAuth(Step2EmailAuthDTO emailAuthDTO) {
+        // 이메일 인증 결과 검증
+        if (emailAuthDTO.getEmail() == null || emailAuthDTO.getAuthCode() == null || emailAuthDTO.getAuthToken() == null) {
             return false;
         }
         
-        // 아임포트 API로 인증 결과 검증
-        return importAuthService.verifyAuthResult(phoneAuthDTO.getImpUid(), phoneAuthDTO.getAuthCode());
+        // 네이버 이메일 인증으로 검증
+        return naverEmailAuthService.verifyAuthCode(emailAuthDTO.getAuthToken(), emailAuthDTO.getAuthCode());
     }
     
     /**
@@ -86,9 +94,14 @@ public class StepwiseSignupService {
                 }
             }
             
-            // 3. Users 엔티티 생성 및 저장
+            // 3. Users 엔티티 생성 및 저장 (UUID 중복 방지)
+            String uuid;
+            do {
+                uuid = UUID.randomUUID().toString();
+            } while (signupRepository.existsById(uuid));
+
             UserEntity users = UserEntity.builder()
-                .id(UUID.randomUUID().toString())
+                .id(uuid)
                 .email(userInfoDTO.getEmail())
                 .password(passwordEncoder.encode(userInfoDTO.getPassword()))
                 .name(userInfoDTO.getName())
@@ -116,6 +129,17 @@ public class StepwiseSignupService {
             user.setUserLoginStatus2(0);
             user.setUserUpgrade("N");
             user.setUserVip("N");
+            
+            // 주소 정보 설정
+            if (userInfoDTO.getZoneCode() != null) {
+                user.setUserZoneCode(userInfoDTO.getZoneCode());
+            }
+            if (userInfoDTO.getAddress() != null) {
+                user.setUserAddress(userInfoDTO.getAddress());
+            }
+            if (userInfoDTO.getDetailAddress() != null) {
+                user.setUserDetailAddress(userInfoDTO.getDetailAddress());
+            }
             
             UserTesseris savedUser = userRepository.save(user);
             
