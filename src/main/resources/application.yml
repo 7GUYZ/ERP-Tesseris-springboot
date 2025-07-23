@@ -169,19 +169,19 @@ kakao:
 #              authorization-uri: https://appleid.apple.com/auth/authorize?scope=name%20email&response_mode=form_post
 #              token-uri: https://appleid.apple.com/auth/token
 
-# AWS S3
-#cloud:
-#  aws:
-#    credentials:
-#      accessKey:
-#      secretKey: 
-#
-#    s3:
-#      bucket:
-#      region:
-#        static: ap-northeast-2
-#      stack:
-#        auto: false
+# AWS S3:
+#   cloud:
+#     aws:
+#       credentials:
+#           accessKey: ${AWS_ACCESS_KEY}
+#           secretKey: ${AWS_SECRET_KEY}
+
+#     s3:
+#       bucket: ict-erp-project
+#       region:
+#         static: ap-northeast-2
+#       stack:
+#         auto: false
 
 
 logging:
