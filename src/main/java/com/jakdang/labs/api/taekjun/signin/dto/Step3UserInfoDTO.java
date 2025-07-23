@@ -12,12 +12,12 @@ public class Step3UserInfoDTO {
     private String password; // 비밀번호
     private String nickname; // 닉네임
     
+    // 생일과 성별 필드 추가
+    private String birthday; // 생일 (YYYY-MM-DD 형식)
+    private Integer userGenderIndex; // 성별 인덱스 (1: 남성, 2: 여성)
+    
     // 주소 관련 필드 추가
     private String zoneCode; // 우편번호
     private String address; // 기본주소
     private String detailAddress; // 상세주소
-    private String roadAddress; // 도로명주소
-    private String jibunAddress; // 지번주소
-    private String latitude; // 위도
-    private String longitude; // 경도
 } 

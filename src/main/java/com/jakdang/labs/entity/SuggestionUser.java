@@ -17,7 +17,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
     name = "suggestion_user",
-    uniqueConstraints = @UniqueConstraint(columnNames = {"suggestionUserIndex", "recommendationUserIndex"})
+    uniqueConstraints = @UniqueConstraint(columnNames = {"suggestion_user_index", "recommendation_user_index"})
 )
 @Data
 @NoArgsConstructor
@@ -26,14 +26,16 @@ public class SuggestionUser {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+
+    @Column(name = "suggestion_user_id") 
     private Long suggestionUserId;
 
-    @Column(nullable = false)
+    @Column(name = "suggestion_user_index", nullable = false)
     private Integer suggestionUserIndex;
 
-    @Column(nullable = false)
+    @Column(name = "recommendation_user_index", nullable = false)
     private Integer recommendationUserIndex;
 
-    @Column(nullable = false)
+    @Column(name = "join_date", nullable = false)
     private LocalDateTime joinDate;
 }
