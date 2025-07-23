@@ -3,10 +3,10 @@ package com.jakdang.labs.api.jiyun.pinChange.controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.jakdang.labs.api.jiyun.mypage.repository.MypageGeneralRepository;
 import com.jakdang.labs.api.jiyun.pinChange.dto.PinChangeDTO;
 import com.jakdang.labs.api.jiyun.pinChange.service.PinChangeService;
 import com.jakdang.labs.security.jwt.utils.JwtUtil;
-import com.jakdang.labs.api.jiyun.mypageGeneral.repository.MypageGeneralRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -36,7 +36,7 @@ public class PinChangeController {
     if(result){
       return ResponseEntity.ok("핀번호 변경 성공");
     }else{
-      return ResponseEntity.ok("공지사항 등록 성공");
+      return ResponseEntity.ok("핀번호 등록 실패");
     }
   }
 

@@ -1,4 +1,4 @@
-package com.jakdang.labs.api.jiyun.mypageGeneral.repository;
+package com.jakdang.labs.api.jiyun.mypage.repository;
 
 import com.jakdang.labs.entity.SuggestionUser;
 import org.springframework.data.jpa.repository.JpaRepository;
