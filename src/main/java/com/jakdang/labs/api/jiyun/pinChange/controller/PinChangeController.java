@@ -5,6 +5,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.jakdang.labs.api.jiyun.pinChange.dto.PinChangeDTO;
 import com.jakdang.labs.api.jiyun.pinChange.service.PinChangeService;
+import com.jakdang.labs.security.jwt.utils.JwtUtil;
+import com.jakdang.labs.api.jiyun.mypageGeneral.repository.MypageGeneralRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -19,10 +21,17 @@ import java.util.Map;
 @RequestMapping("/api/pinChange")
 public class PinChangeController {
   private final PinChangeService pinChangeService;
-  
+  private final JwtUtil jwtUtil;
+  private final MypageGeneralRepository mypageGeneralRepository;
+
   @PostMapping("/update")
-  public ResponseEntity<?> postMethodName(@RequestBody PinChangeDTO.Response response) {
-    int userIdx=872;
+  public ResponseEntity<?> postMethodName(@RequestHeader("Authorization") String authHeader, @RequestBody PinChangeDTO.Response response) {
+    String token = authHeader.replace("Bearer ", "");
+    String id = jwtUtil.getUserId(token); 
+    // user_tesseris에서 userIndex 조회
+    Integer userIdx = mypageGeneralRepository.findByUsersId_Id(id)
+        .map(u -> u.getUserIndex())
+        .orElseThrow(() -> new IllegalArgumentException("UserTesseris not found for id: " + id));
     boolean result = pinChangeService.updatePin(response, userIdx);
     if(result){
       return ResponseEntity.ok("핀번호 변경 성공");
