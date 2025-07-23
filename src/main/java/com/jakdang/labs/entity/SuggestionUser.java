@@ -26,7 +26,7 @@ public class SuggestionUser {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "suggestion_user_id")
+    @Column(name = "suggestion_user_id") 
     private Long suggestionUserId;
 
     @Column(name = "suggestion_user_index", nullable = false)
