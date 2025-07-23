@@ -37,8 +37,8 @@ public class MypageGeneralService {
     }
 
     @Transactional(readOnly = true)
-    public List<SuggestionUserListDto> getSuggestionList(Integer suggestionUserIndex) {
-        List<SuggestionUser> suggestions = suggestionUserRepository.findBySuggestionUserIndexOrderByJoinDateDesc(suggestionUserIndex);
+    public List<SuggestionUserListDto> getSuggestionList(Integer userIndex) {
+        List<SuggestionUser> suggestions = suggestionUserRepository.findByRecommendationUserIndexOrderByJoinDateDesc(userIndex);
         List<SuggestionUserListDto> result = new ArrayList<>();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         for (SuggestionUser su : suggestions) {
@@ -47,7 +47,7 @@ public class MypageGeneralService {
             UserTesseris suggestionUser = em.find(UserTesseris.class, su.getSuggestionUserIndex());
             if (suggestionUser != null) {
                 UserEntity suggestionUserEntity = suggestionUser.getUsersId();
-                dto.setSuggestionUserId(suggestionUserEntity.getId());
+                dto.setSuggestionUserEmail(suggestionUserEntity.getEmail());
                 dto.setSuggestionUserName(suggestionUserEntity.getName());
                 // 역할
                 UserRole suggestionRole = em.find(UserRole.class, suggestionUser.getUserRoleIndex());
@@ -63,7 +63,7 @@ public class MypageGeneralService {
             UserTesseris recommendationUser = em.find(UserTesseris.class, su.getRecommendationUserIndex());
             if (recommendationUser != null) {
                 UserEntity recommendationUserEntity = recommendationUser.getUsersId();
-                dto.setRecommendationUserId(recommendationUserEntity.getId());
+                dto.setRecommendationUserEmail(recommendationUserEntity.getEmail());
                 dto.setRecommendationUserName(recommendationUserEntity.getName());
                 UserRole recommendationRole = em.find(UserRole.class, recommendationUser.getUserRoleIndex());
                 dto.setRecommendationUserRole(recommendationRole != null ? recommendationRole.getUserRoleKorNm() : null);
