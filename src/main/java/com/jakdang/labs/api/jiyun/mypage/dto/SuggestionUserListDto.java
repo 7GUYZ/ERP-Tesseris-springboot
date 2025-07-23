@@ -4,11 +4,11 @@ import lombok.Data;
 
 @Data
 public class SuggestionUserListDto {
-    private String suggestionUserId;
+    private String suggestionUserEmail;
     private String suggestionUserName;
     private String suggestionUserRole;
     private String suggestionStoreName;
-    private String recommendationUserId;
+    private String recommendationUserEmail;
     private String recommendationUserName;
     private String recommendationUserRole;
     private String joinDate;
