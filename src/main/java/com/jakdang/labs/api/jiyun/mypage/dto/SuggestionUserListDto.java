@@ -1,4 +1,4 @@
-package com.jakdang.labs.api.jiyun.mypageGeneral.dto;
+package com.jakdang.labs.api.jiyun.mypage.dto;
 
 import lombok.Data;
 
