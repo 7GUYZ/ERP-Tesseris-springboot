@@ -1,8 +1,10 @@
 package com.jakdang.labs.api.taekjun.signin.service;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -26,6 +28,8 @@ import com.jakdang.labs.api.taekjun.signin.service.ReferralService;
 import com.jakdang.labs.api.taekjun.signin.dto.ReferralRequestDTO;
 import com.jakdang.labs.api.taekjun.signin.service.NaverEmailAuthService;
 import com.jakdang.labs.api.auth.repository.AuthRepository;
+import com.jakdang.labs.entity.SuggestionUser;
+import com.jakdang.labs.api.taekjun.signin.repository.SuggestionUserRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -40,6 +44,21 @@ public class StepwiseSignupService {
     private final PasswordEncoder passwordEncoder;
     private final ReferralService referralService;
     private final NaverEmailAuthService naverEmailAuthService;
+    private final SuggestionUserRepository suggestionUserRepository;
+    
+    /**
+     * 한국 시간으로 현재 시간을 가져오는 메서드
+     */
+    private Instant getKoreanTime() {
+        return ZonedDateTime.now(ZoneId.of("Asia/Seoul")).toInstant();
+    }
+    
+    /**
+     * UTC 시간으로 현재 시간을 가져오는 메서드
+     */
+    private Instant getUtcTime() {
+        return Instant.now();
+    }
     
     /**
      * 1단계: 약관 동의
@@ -94,18 +113,13 @@ public class StepwiseSignupService {
                 }
             }
             
-            // 3. Users 엔티티 생성 및 저장 (UUID 중복 방지)
-            String uuid;
-            do {
-                uuid = UUID.randomUUID().toString();
-            } while (signupRepository.existsById(uuid));
-
+            // 3. Users 엔티티 생성 및 저장 (UUID 자동 생성 사용)
             UserEntity users = UserEntity.builder()
-                .id(uuid)
                 .email(userInfoDTO.getEmail())
                 .password(passwordEncoder.encode(userInfoDTO.getPassword()))
                 .name(userInfoDTO.getName())
                 .nickname(userInfoDTO.getNickname())
+                .phone(userInfoDTO.getPhone()) // 전화번호 추가
                 .provider("local")
                 .referralCode(referralCode)
                 .role(RoleType.ROLE_USER)
@@ -113,9 +127,19 @@ public class StepwiseSignupService {
                 .advertise(false)
                 .build();
             
+            // 한국 시간으로 시간 필드 설정 (저장 전에 설정)
+            Instant koreanTime = ZonedDateTime.now(ZoneId.of("Asia/Seoul")).toInstant();
+            users.setCreatedAt(koreanTime);
+            users.setUpdatedAt(koreanTime);
+            
             UserEntity savedUsers = signupRepository.save(users);
             
-            // 4. UserTesseris 엔티티 생성 및 저장
+            // 4. 새 사용자에게 추천인 코드 생성
+            String newUserReferralCode = referralService.generateReferralCode(savedUsers.getId());
+            savedUsers.setReferralCode(newUserReferralCode);
+            signupRepository.save(savedUsers);
+            
+            // 5. UserTesseris 엔티티 생성 및 저장
             UserTesseris user = new UserTesseris();
             user.setUsersId(savedUsers);
             user.setUserRoleIndex(1);
@@ -130,6 +154,25 @@ public class StepwiseSignupService {
             user.setUserUpgrade("N");
             user.setUserVip("N");
             
+            // 생일 정보 설정
+            if (userInfoDTO.getBirthday() != null && !userInfoDTO.getBirthday().trim().isEmpty()) {
+                try {
+                    LocalDate birthday = LocalDate.parse(userInfoDTO.getBirthday());
+                    user.setUserBirthday(birthday);
+                } catch (Exception e) {
+                    // 생일 형식이 잘못된 경우 무시
+                    System.err.println("생일 형식이 잘못되었습니다: " + userInfoDTO.getBirthday());
+                }
+            }
+            
+            // 성별 정보 설정
+            if (userInfoDTO.getUserGenderIndex() != null) {
+                Optional<UserGender> genderOpt = userGenderRepository.findById(userInfoDTO.getUserGenderIndex());
+                if (genderOpt.isPresent()) {
+                    user.setUserGender(genderOpt.get());
+                }
+            }
+            
             // 주소 정보 설정
             if (userInfoDTO.getZoneCode() != null) {
                 user.setUserZoneCode(userInfoDTO.getZoneCode());
@@ -141,11 +184,14 @@ public class StepwiseSignupService {
                 user.setUserDetailAddress(userInfoDTO.getDetailAddress());
             }
             
+            // 은행 정보 설정 (기본값: null)
+            // user.setUserBank(null); // 선택사항이므로 null로 설정
+            
             UserTesseris savedUser = userRepository.save(user);
             
-            // 5. UserCm 엔티티 생성 및 저장 (핀번호 포함)
+            // 6. UserCm 엔티티 생성 및 저장 (핀번호 포함)
             UserCm userCm = UserCm.builder()
-                .userCmIndex(savedUser.getUserIndex())
+                .userCmIndex(savedUser.getUserIndex()) // UserTesseris의 userIndex와 동일하게 설정
                 .userCmDeposit(0)
                 .userCmWithdrawal(0)
                 .userCashDeposit(0)
@@ -156,16 +202,45 @@ public class StepwiseSignupService {
                 .userCmPincode(userInfoDTO.getPin())
                 .build();
             
-            userCmRepository.save(userCm);
+            // UserCm 저장
+            UserCm savedUserCm = userCmRepository.save(userCm);
             
-            // 6. 추천인 관계 생성 (별도 트랜잭션)
-            if (referralCode != null && !referralCode.trim().isEmpty()) {
-                try {
-                    createReferralRelationAsync(referralCode, savedUser.getUserIndex());
-                } catch (Exception e) {
-                    System.err.println("추천인 관계 생성 실패: " + e.getMessage());
+            // 7. 한국 시간으로 시간 필드 설정 (UserEntity만)
+            // Instant koreanTime = ZonedDateTime.now(ZoneId.of("Asia/Seoul")).toInstant();
+            // savedUsers.setCreatedAt(koreanTime);
+            // savedUsers.setUpdatedAt(koreanTime);
+            
+            // 8. 시간이 설정된 엔티티를 다시 저장
+            signupRepository.save(savedUsers);
+            
+            // 9. 추천인 관계 생성 (SuggestionUser 테이블에 저장)
+            if (referralCode != null) {
+                // 추천인을 찾아서 userIndex 가져오기
+                Optional<UserEntity> referrerOpt = referralService.findUserByIdentifier(referralCode);
+                if (referrerOpt.isPresent()) {
+                    // 추천인의 UserTesseris 정보 가져오기
+                    Optional<UserTesseris> referrerTesserisOpt = userRepository.findByUsersId(referrerOpt.get());
+                    if (referrerTesserisOpt.isPresent()) {
+                        // SuggestionUser 엔티티 생성 및 저장
+                        SuggestionUser suggestionUser = new SuggestionUser();
+                        suggestionUser.setSuggestionUserIndex(savedUser.getUserIndex()); // 새로 가입한 사용자
+                        suggestionUser.setRecommendationUserIndex(referrerTesserisOpt.get().getUserIndex()); // 추천인
+                        suggestionUser.setJoinDate(LocalDateTime.now());
+                        
+                        // SuggestionUser 저장
+                        suggestionUserRepository.save(suggestionUser);
+                    }
                 }
             }
+            
+            // 10. UserCm의 userCmIndex를 UserTesseris의 userIndex로 업데이트
+            // ID 변경이 불가능하므로 별도의 업데이트 쿼리 사용
+            // 이는 다른 서비스에서 userCmRepository.findById(userTesseris.getUserIndex())로 조회하기 때문
+            // savedUserCm.setUserCmIndex(savedUser.getUserIndex());
+            // userCmRepository.save(savedUserCm);
+            
+            // TODO: 나중에 별도의 업데이트 쿼리로 userCmIndex를 설정해야 함
+            // 현재는 자동 생성된 ID를 사용하고, 다른 서비스에서는 findByUserCmIndex를 사용하도록 수정 필요
             
             return savedUsers.getId();
             
