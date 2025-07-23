@@ -65,3 +65,8 @@ spec:
                   key: JWT_SECRET
             - name: APP_DEV_MODE
               value: "true"
+            - name: KAKAORESTAPIKEY
+              valueFrom:
+                secretKeyRef:
+                  name: erp-tesseris-secret
+                  key: KAKAORESTAPIKEY
