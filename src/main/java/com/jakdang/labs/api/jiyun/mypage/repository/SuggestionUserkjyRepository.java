@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface SuggestionUserkjyRepository extends JpaRepository<SuggestionUser, Long> {
     List<SuggestionUser> findBySuggestionUserIndexOrderByJoinDateDesc(Integer suggestionUserIndex);
+    List<SuggestionUser> findByRecommendationUserIndexOrderByJoinDateDesc(Integer recommendationUserIndex);
 } 
