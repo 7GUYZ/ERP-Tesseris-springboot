@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.jakdang.labs.api.common.ResponseDTO;
 import com.jakdang.labs.api.jungeun.dto.UserStoreCategoryDTO;
-import com.jakdang.labs.api.jungeun.dto.UserStoreDetailDTO;
 import com.jakdang.labs.api.jungeun.dto.UserStoreListDTO;
 import com.jakdang.labs.api.jungeun.service.UserStoreListSvc;
 

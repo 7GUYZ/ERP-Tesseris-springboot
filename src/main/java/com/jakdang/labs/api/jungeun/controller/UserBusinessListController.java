@@ -29,7 +29,7 @@ public class UserBusinessListController {
         return ResponseEntity.ok().body(businessSvc.getAvailableGrades(user_index));
     }
 
-    @GetMapping("/filtered")
+    @GetMapping("/filtered") // 필터링
     public ResponseEntity<ResponseDTO<List<UserBusinessFilteredListDTO>>> getFilteredBusinessList(@RequestParam("business_grade_index") Integer business_grade_index){
         return ResponseEntity.ok().body(businessSvc.getFilteredBusinessList(business_grade_index));
     }

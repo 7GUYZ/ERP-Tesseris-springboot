@@ -79,7 +79,11 @@ public interface StoreLjeRepo extends JpaRepository<Store, Integer> {
                     s.store_memo,
                     c.store_category_name,
                     u.user_cm_deposit + u.user_cm_withdrawal,
-                    i.store_image,
+                    GROUP_CONCAT(
+                        i.store_image 
+                        ORDER BY i.store_main_image_status DESC, i.store_image_index ASC
+                        SEPARATOR ','
+                    ) AS store_images,
                     -- 영업 상태 계산 (아래는 예시, 실제 로직에 맞게 수정)
                     IF(
                         h.store_business_hours_index IS NULL,
@@ -109,8 +113,13 @@ public interface StoreLjeRepo extends JpaRepository<Store, Integer> {
                 INNER JOIN store_category c ON s.store_category_index = c.store_category_index
                 INNER JOIN user_cm u ON s.user_index = u.user_cm_index
                 LEFT JOIN store_business_hours h ON s.user_index = h.store_user_index
-                LEFT JOIN store_image i ON s.user_index = i.store_user_index AND i.store_main_image_status = 'T'
+                LEFT JOIN store_image i ON s.user_index = i.store_user_index
                 WHERE s.store_index = :store_index
+                GROUP BY s.store_index, s.store_name, s.store_phone, s.store_address, 
+                         s.store_detail_address, s.store_site, s.store_memo, c.store_category_name,
+                         u.user_cm_deposit, u.user_cm_withdrawal, h.store_business_hours_index,
+                         h.store_business_date, h.store_start_business_hour, h.store_end_business_hour,
+                         h.store_rest_start_hour, h.store_rest_end_hour
             """, nativeQuery = true)
     Object findStoreDetailByStoreIndex(@Param("store_index") Integer store_index);
 }
