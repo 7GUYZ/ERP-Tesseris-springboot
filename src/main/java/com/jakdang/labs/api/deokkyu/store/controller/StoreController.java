@@ -8,6 +8,7 @@ import com.jakdang.labs.api.deokkyu.store.dto.StoreListDto;
 import com.jakdang.labs.api.deokkyu.store.dto.StoreListSearchDto;
 import com.jakdang.labs.api.deokkyu.store.dto.StoreRegisterdListDto;
 import com.jakdang.labs.api.deokkyu.store.dto.CustomerDto;
+import com.jakdang.labs.api.deokkyu.store.dto.StoreTransactionHistoryDto;
 import com.jakdang.labs.api.deokkyu.store.service.StoreService;
 
 import java.util.List;
@@ -44,6 +45,12 @@ public class StoreController {
     public ResponseEntity<List<StoreRegisterdListDto>> getFilteredRegisterdStores(StoreListSearchDto filter) {
         List<StoreRegisterdListDto> stores = storeService.getFilteredRegisterdStores(filter);
         return ResponseEntity.ok(stores);
+    }
+
+    @GetMapping("/transaction-history/{userId}") // 가맹점 거래내역 조회
+    public ResponseEntity<List<StoreTransactionHistoryDto>> getStoreTransactionHistory(@PathVariable String userId) {
+        List<StoreTransactionHistoryDto> transactionHistory = storeService.getStoreTransactionHistory(userId);
+        return ResponseEntity.ok(transactionHistory);
     }
 
 }
