@@ -65,3 +65,18 @@ spec:
                   key: JWT_SECRET
             - name: APP_DEV_MODE
               value: "true"
+            - name: KAKAORESTAPIKEY
+              valueFrom:
+                secretKeyRef:
+                  name: erp-tesseris-secret
+                  key: KAKAORESTAPIKEY
+            - name: NAVER_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: erp-tesseris-secret
+                  key: NAVER_EMAIL
+            - name: NAVER_EMAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: erp-tesseris-secret
+                  key: NAVER_EMAIL_PASSWORD

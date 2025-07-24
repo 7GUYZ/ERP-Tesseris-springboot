@@ -19,7 +19,6 @@ jobs:
       KAKAORESTAPIKEY: ${{ secrets.KAKAORESTAPIKEY }}
       NAVER_EMAIL: ${{ secrets.NAVER_EMAIL }}
       NAVER_EMAIL_PASSWORD: ${{ secrets.NAVER_EMAIL_PASSWORD }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
