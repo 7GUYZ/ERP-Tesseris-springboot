@@ -13,8 +13,8 @@ public interface AdminMyPageJtjRepo extends JpaRepository<UserTesseris, Integer>
     @Query("SELECT ut FROM UserTesseris ut " +
            "LEFT JOIN FETCH ut.usersId " +
            "LEFT JOIN FETCH ut.userGender " +
-           "WHERE ut.userIndex = :userIndex AND ut.userRoleIndex = :userRoleIndex")
-    UserTesseris findUserTesserisWithDetails(@Param("userIndex") Integer userIndex, @Param("userRoleIndex") Integer userRoleIndex);
+           "WHERE ut.userIndex = :userIndex")
+    UserTesseris findUserTesserisWithDetails(@Param("userIndex") Integer userIndex);
     
 
 } 
