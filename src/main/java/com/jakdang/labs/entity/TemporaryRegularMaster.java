@@ -20,7 +20,7 @@ public class TemporaryRegularMaster {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_user_index")
-    private Store storeUserIndex;
+    private UserTesseris storeUserIndex;
 
     @Column(name = "temporary_store_master_transaction_name", length = 200, nullable = false)
     private String temporaryStoreMasterTransactionName;
