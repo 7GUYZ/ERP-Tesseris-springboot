@@ -2,7 +2,7 @@ name: CI/CD Deploy to Kubernetes
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main , sichan]
 
 jobs:
   build-and-deploy:
