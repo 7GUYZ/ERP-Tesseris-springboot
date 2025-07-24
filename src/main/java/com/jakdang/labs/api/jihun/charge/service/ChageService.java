@@ -17,6 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import com.jakdang.labs.api.jihun.charge.repository.AjgTemporaryRegularDetail;
+import com.jakdang.labs.api.jihun.charge.repository.AjgTemporaryRegularMaster;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -25,7 +28,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ChageService {
     private final String TOSS_SECRET_KET = "test_sk_Gv6LjeKD8aEWZO419N7k8wYxAdXy";
-
+    private final AjgTemporaryRegularMaster ajgTemporaryRegularMaster;
+    private final AjgTemporaryRegularDetail ajgTemporaryRegularDetail;
+    
     @Transactional
     public ResponseEntity<Map<String, Object>> confirmPayment(Map<String, Object> data) {
         Map<String, Object> response = new HashMap<>();
