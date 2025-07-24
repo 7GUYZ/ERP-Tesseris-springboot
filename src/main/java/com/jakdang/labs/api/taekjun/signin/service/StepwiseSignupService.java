@@ -111,6 +111,12 @@ public class StepwiseSignupService {
                 if (referrerOpt.isPresent()) {
                     referralCode = referrerOpt.get().getReferralCode();
                 }
+            } else {
+                // 추천인 미입력 시 1번 계정의 referralCode 사용
+                Optional<UserTesseris> defaultReferrer = userRepository.findByUserIndex(1);
+                if (defaultReferrer.isPresent()) {
+                    referralCode = defaultReferrer.get().getUsersId().getReferralCode();
+                }
             }
             
             // 3. Users 엔티티 생성 및 저장 (UUID 자동 생성 사용)
