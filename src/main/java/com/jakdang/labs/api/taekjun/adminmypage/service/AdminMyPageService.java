@@ -46,7 +46,7 @@ public class AdminMyPageService {
             Integer userIndexInt = Integer.parseInt(userIndex);
             
             // UserTesseris 정보 조회 (UserEntity 포함) - 관리자 권한(userRoleIndex = 4) 확인
-            UserTesseris userTesseris = adminMyPageRepository.findUserTesserisWithDetails(userIndexInt, 4);
+            UserTesseris userTesseris = adminMyPageRepository.findUserTesserisWithDetails(userIndexInt);
             if (userTesseris == null) {
                 log.warn("사용자 정보를 찾을 수 없습니다 - 사용자번호: {}", userIndex);
                 return null;
@@ -113,7 +113,7 @@ public class AdminMyPageService {
             Integer userIndexInt = Integer.parseInt(userIndex);
             
             // UserTesseris 정보 조회
-            UserTesseris userTesseris = adminMyPageRepository.findUserTesserisWithDetails(userIndexInt, 4);
+            UserTesseris userTesseris = adminMyPageRepository.findUserTesserisWithDetails(userIndexInt);
             if (userTesseris == null) {
                 log.warn("수정할 사용자 정보를 찾을 수 없습니다 - 사용자번호: {}", userIndex);
                 return false;
@@ -252,7 +252,7 @@ public class AdminMyPageService {
             Integer userIndexInt = Integer.parseInt(userIndex);
             
             // UserTesseris 정보 조회
-            UserTesseris userTesseris = adminMyPageRepository.findUserTesserisWithDetails(userIndexInt, 4);
+            UserTesseris userTesseris = adminMyPageRepository.findUserTesserisWithDetails(userIndexInt);
             if (userTesseris == null) {
                 log.warn("사용자 정보를 찾을 수 없습니다 - 사용자번호: {}", userIndex);
                 return false;
