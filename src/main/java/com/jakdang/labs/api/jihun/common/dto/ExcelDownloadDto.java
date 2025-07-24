@@ -84,7 +84,7 @@ public class ExcelDownloadDto {
     public static class MemberAssetDetailsExcelData {
         private Long userIndex;
         private String usersId;
-        private Integer userRoleIndex;
+        private String userRoleIndex; // Integer → String
         private String userName;
         private String userPhone;
         private Integer userCmCurrent;
@@ -107,7 +107,7 @@ public class ExcelDownloadDto {
             return MemberAssetDetailsExcelData.builder()
                 .userIndex(getLongValue(row, 0))
                 .usersId(getStringValue(row, 1))
-                .userRoleIndex(getIntegerValue(row, 2))
+                .userRoleIndex(getStringValue(row, 2)) // Integer → String
                 .userName(getStringValue(row, 3))
                 .userPhone(getStringValue(row, 4))
                 .userCmCurrent(getIntegerValue(row, 6))

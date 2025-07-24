@@ -87,6 +87,11 @@ public class AjgMemberAssetDetailsController {
             List<Map<String, Object>> members = (List<Map<String, Object>>) paymentRequest.get("members");
             Integer amount = (Integer) paymentRequest.get("amount");
             String reason = (String) paymentRequest.get("reason");
+
+            // amount null 체크
+            if (amount == null) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "지급 금액(amount)이 필요합니다."));
+            }
             
             // 단일 처리 호환성을 위한 처리
             if (members == null) {
@@ -143,6 +148,11 @@ public class AjgMemberAssetDetailsController {
             List<Map<String, Object>> members = (List<Map<String, Object>>) collectionRequest.get("members");
             Integer amount = (Integer) collectionRequest.get("amount");
             String reason = (String) collectionRequest.get("reason");
+
+            // amount null 체크
+            if (amount == null) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "회수 금액(amount)이 필요합니다."));
+            }
             
             // 단일 처리 호환성을 위한 처리
             if (members == null) {
