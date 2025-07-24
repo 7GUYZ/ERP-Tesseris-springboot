@@ -20,6 +20,9 @@ import org.springframework.web.client.RestTemplate;
 import com.jakdang.labs.api.jihun.charge.repository.AjgTemporaryRegularDetail;
 import com.jakdang.labs.api.jihun.charge.repository.AjgTemporaryRegularMaster;
 
+import com.jakdang.labs.api.jihun.charge.repository.AjgTemporaryRegularDetail;
+import com.jakdang.labs.api.jihun.charge.repository.AjgTemporaryRegularMaster;
+
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
