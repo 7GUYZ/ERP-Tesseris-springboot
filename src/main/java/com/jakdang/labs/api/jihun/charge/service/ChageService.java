@@ -20,6 +20,7 @@ import org.springframework.web.client.RestTemplate;
 import com.jakdang.labs.api.jihun.charge.repository.AjgTemporaryRegularDetail;
 import com.jakdang.labs.api.jihun.charge.repository.AjgTemporaryRegularMaster;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -30,9 +31,12 @@ public class ChageService {
     private final String TOSS_SECRET_KET = "test_sk_Gv6LjeKD8aEWZO419N7k8wYxAdXy";
     private final AjgTemporaryRegularMaster ajgTemporaryRegularMaster;
     private final AjgTemporaryRegularDetail ajgTemporaryRegularDetail;
-    
+    private final HttpServletRequest request;
+
     @Transactional
     public ResponseEntity<Map<String, Object>> confirmPayment(Map<String, Object> data) {
+        String requestURI = ((HttpServletRequest) request).getRequestURI();
+        String referer = request.getHeader("Referer");
         Map<String, Object> response = new HashMap<>();
         try {
             log.info("결제 요청 데이터: {}", data);
@@ -47,12 +51,42 @@ public class ChageService {
                     .build();
             HttpResponse<String> result = HttpClient.newHttpClient().send(request,
                     HttpResponse.BodyHandlers.ofString());
+            log.info("다음값  {}", referer);
+            log.info("여기서requestURI : {}", requestURI);
             log.info("결과값 : {}", result.body());
+            // DB처리하는곳
+            switch (getPathType(requestURI)) {
+                case "charge":
+                    chargeProcess(data);
+                    break;
+                case "mypage":
+                    mypageProcess(data);
+                    break;
+                default:
+                    break;
+            }
             return ResponseEntity.status(HttpStatus.OK).body(Map.of("result", result.body()));
         } catch (Exception e) {
             response.put("success", false);
             response.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
         }
+    }
+
+    private String getPathType(String requestURI) {
+        if (requestURI.contains("/charge")) {
+            return "charge";
+        } else if (requestURI.contains("/mypage")) {
+            return "mypage";
+        }
+        return null;
+    }
+
+    private void chargeProcess(Map<String, Object> data) {
+        log.info("결제 처리 시작: {}", data);
+    }
+
+    private void mypageProcess(Map<String, Object> data) {
+        log.info("마이페이지 처리 시작: {}", data);
     }
 }
