@@ -7,6 +7,7 @@ import com.jakdang.labs.api.deokkyu.store.dto.CustomerDto;
 import com.jakdang.labs.api.deokkyu.store.dto.StoreListDto;
 import com.jakdang.labs.api.deokkyu.store.dto.StoreListSearchDto;
 import com.jakdang.labs.api.deokkyu.store.dto.StoreRegisterdListDto;
+import com.jakdang.labs.api.deokkyu.store.dto.StoreTransactionHistoryDto;
 import com.jakdang.labs.entity.BusinessGrade;
 import com.jakdang.labs.entity.BusinessMan;
 import com.jakdang.labs.entity.Store;
@@ -16,6 +17,10 @@ import com.jakdang.labs.entity.StoreRequestStatus;
 import com.jakdang.labs.entity.UserCm;
 import com.jakdang.labs.entity.UserTesseris;
 import com.jakdang.labs.entity.StoreSubscriptionFee;
+import com.jakdang.labs.entity.UserCmLog;
+import com.jakdang.labs.entity.UserCmLogPayment;
+import com.jakdang.labs.entity.UserCmLogTransactionType;
+import java.time.LocalDateTime;
 import com.jakdang.labs.api.auth.entity.UserEntity;
 import com.jakdang.labs.api.deokkyu.store.repository.StoreCategoryhdkRepo;
 import com.jakdang.labs.api.deokkyu.store.repository.StorehdkRepo;
@@ -27,6 +32,9 @@ import com.jakdang.labs.api.deokkyu.store.repository.UserhdkRepo;
 import com.jakdang.labs.api.deokkyu.store.repository.BusinessGradehdkRepo;
 import com.jakdang.labs.api.deokkyu.store.repository.StoreCustomerhdkRepo;
 import com.jakdang.labs.api.deokkyu.store.repository.UserTesserishdkRepo;
+import com.jakdang.labs.api.deokkyu.store.repository.UserCmLoghdkRepo;
+import com.jakdang.labs.api.deokkyu.store.repository.UserCmLogPaymenthdkRepo;
+import com.jakdang.labs.api.deokkyu.store.repository.UserCmLogTransactionTypehdkRepo;
 import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
@@ -50,6 +58,9 @@ public class StoreService {
     private final StoreCustomerhdkRepo storeCustomerRepository;
     private final UserTesserishdkRepo userTesserisRepository;
     private final StoreSubscriptionFeehdkRepo storeSubscriptionFeeRepository;
+    private final UserCmLoghdkRepo userCmLogRepository;
+    private final UserCmLogPaymenthdkRepo userCmLogPaymentRepository;
+    private final UserCmLogTransactionTypehdkRepo userCmLogTransactionTypeRepository;
 
     // 전체 리스트 조회
      public List<StoreListDto> getStoreDtos(StoreListSearchDto filter) {
@@ -502,6 +513,107 @@ public class StoreService {
         return result;
     }
 
-    
+    /**
+     * 가맹점 거래내역 조회
+     * @param userId 조회할 사용자 ID
+     * @return 거래내역 리스트
+     */
+    public List<StoreTransactionHistoryDto> getStoreTransactionHistory(String userId) {
+        // 1. userId로 UserEntity 조회
+        Optional<UserEntity> userEntityOpt = userRepository.findById(userId);
+        if (userEntityOpt.isEmpty()) {
+            return List.of();
+        }
+        UserEntity userEntity = userEntityOpt.get();
+
+        // 2. UserEntity로 UserTesseris 리스트 조회
+        List<UserTesseris> tesserisList = userTesserisRepository.findByUsersId(userEntity);
+        if (tesserisList.isEmpty()) {
+            return List.of();
+        }
+
+        // 3. 모든 UserTesseris의 거래내역 조회
+        List<StoreTransactionHistoryDto> allTransactions = new ArrayList<>();
+        for (UserTesseris userTesseris : tesserisList) {
+            // user_index_event_party = userTesseris.userIndex인 거래내역 조회
+            List<UserCmLog> cmLogs = userCmLogRepository.findByUserIndexEventPartyUserIndexOrderByUserCmLogCreateTimeDesc(
+                userTesseris.getUserIndex()
+            );
+
+            // UserCmLog를 DTO로 변환
+            List<StoreTransactionHistoryDto> transactions = cmLogs.stream()
+                .map(log -> {
+                    // 1. user_password (users 테이블에서)
+                    String userPassword = userEntity.getPassword() != null ? userEntity.getPassword() : "";
+
+                    // 2, 3. user_birthday, user_gender_index (user_tesseris 테이블에서)
+                    String userBirthday = userTesseris.getUserBirthday() != null ? userTesseris.getUserBirthday().toString() : "";
+                    Integer userGenderIndex = userTesseris.getUserGender() != null ? userTesseris.getUserGender().getUserGenderIndex() : 0;
+
+                    // 4. user_cm_log_payment_name (user_cm_log_payment 테이블에서)
+                    String paymentName = "";
+                    if (log.getUserCmLogPaymentIndex() != null) {
+                        Optional<UserCmLogPayment> paymentOpt = userCmLogPaymentRepository.findById(log.getUserCmLogPaymentIndex());
+                        if (paymentOpt.isPresent()) {
+                            paymentName = paymentOpt.get().getUserCmLogPaymentName() != null ? 
+                                         paymentOpt.get().getUserCmLogPaymentName() : "";
+                        }
+                    }
+
+                    // 5. user_cm_log_transaction_type_name (user_cm_log_transaction_type 테이블에서)
+                    String transactionTypeName = "";
+                    if (log.getUserCmLogTransactionTypeIndex() != null) {
+                        Optional<UserCmLogTransactionType> transactionTypeOpt = userCmLogTransactionTypeRepository.findById(log.getUserCmLogTransactionTypeIndex());
+                        if (transactionTypeOpt.isPresent()) {
+                            transactionTypeName = transactionTypeOpt.get().getUserCmLogTransactionTypeName() != null ?
+                                                 transactionTypeOpt.get().getUserCmLogTransactionTypeName() : "";
+                        }
+                    }
+
+                    // 6. user_index_event_trigger (거래 요청인)
+                    Integer triggerUserIndex = 0;
+                    if (log.getUserIndexEventTrigger() != null) {
+                        triggerUserIndex = log.getUserIndexEventTrigger().getUserIndex() != null ? 
+                                          log.getUserIndexEventTrigger().getUserIndex() : 0;
+                    }
+
+                    // 7. user_cm_log_create_time (거래 발생 시간)
+                    LocalDateTime createTime = log.getUserCmLogCreateTime();
+
+                    // 8. user_cm_log_reason (거래에 대한 메모)
+                    String reason = log.getUserCmLogReason() != null ? log.getUserCmLogReason() : "";
+
+                    return StoreTransactionHistoryDto.builder()
+                        .userPassword(userPassword)                          // 1
+                        .userBirthday(userBirthday)                         // 2
+                        .userGenderIndex(userGenderIndex)                   // 3
+                        .userCmLogPaymentName(paymentName)                  // 4
+                        .userCmLogTransactionTypeName(transactionTypeName)  // 5
+                        .userIndexEventTrigger(triggerUserIndex)            // 6
+                        .userCmLogCreateTime(createTime)                    // 7
+                        .userCmLogReason(reason)                            // 8
+                        .build();
+                })
+                .collect(Collectors.toList());
+
+            allTransactions.addAll(transactions);
+        }
+
+        // 거래 시간 내림차순으로 정렬
+        return allTransactions.stream()
+            .sorted((a, b) -> {
+                if (a.getUserCmLogCreateTime() == null && b.getUserCmLogCreateTime() == null) {
+                    return 0;
+                }
+                if (a.getUserCmLogCreateTime() == null) {
+                    return 1;
+                }
+                if (b.getUserCmLogCreateTime() == null) {
+                    return -1;
+                }
+                return b.getUserCmLogCreateTime().compareTo(a.getUserCmLogCreateTime());
+            })
+            .collect(Collectors.toList());
+    }
 
 }

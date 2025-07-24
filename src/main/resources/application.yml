@@ -188,6 +188,19 @@ kakao:
 #      stack:
 #        auto: false
 
+cloud:
+  aws:
+    credentials:
+      accessKey: ${AWS_ACCESS_KEY}
+      secretKey: ${AWS_SECRET_KEY}
+    
+    s3:
+      bucket: tesseris-practice-jdb
+      region:
+        static: ap-northeast-2
+      stack:
+        auto: false
+
 logging:
   level:
     org:
