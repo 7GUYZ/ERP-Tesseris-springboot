@@ -80,3 +80,13 @@ spec:
                 secretKeyRef:
                   name: erp-tesseris-secret
                   key: NAVER_EMAIL_PASSWORD
+            - name: AWS_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: erp-tesseris-secret
+                  key: AWS_ACCESS_KEY
+            - name: AWS_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: erp-tesseris-secret
+                  key: AWS_SECRET_KEY
