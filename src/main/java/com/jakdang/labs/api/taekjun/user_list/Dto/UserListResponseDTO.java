@@ -11,12 +11,14 @@ public class UserListResponseDTO {
     private String nickname;
     private String birthday;
     private String gender;
+    private String userRole;
     private String bankName;
     private String bankNumber;
     private String bankHolder;
-    private String storeName;
+    private String address;
+    private String detailAddress;
     private String recommenderName;
-    private Integer recommenderId;
+    private String recommenderEmail;
     private String suggestionJoinDate;
     private Integer cmBalance;
     private String registrationDate;
