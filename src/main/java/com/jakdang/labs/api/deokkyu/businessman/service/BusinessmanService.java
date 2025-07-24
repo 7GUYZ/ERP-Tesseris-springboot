@@ -5,27 +5,33 @@ import lombok.RequiredArgsConstructor;
 
 import com.jakdang.labs.api.deokkyu.businessman.dto.BusinessmanListDto;
 import com.jakdang.labs.api.deokkyu.businessman.dto.BusinessmanSearchDto;
-import com.jakdang.labs.api.deokkyu.businessman.repository.TemporaryStoreMasterRepository;
-import com.jakdang.labs.api.deokkyu.businessman.repository.TemporaryStoreDetailRepository;
-import com.jakdang.labs.api.deokkyu.businessman.repository.StoreRepository;
+import com.jakdang.labs.api.deokkyu.businessman.dto.OrgChartDto;
+import com.jakdang.labs.api.deokkyu.businessman.repository.TemporaryStoreMasterhdkRepo;
+import com.jakdang.labs.api.deokkyu.businessman.repository.TemporaryStoreDetailhdkRepo;
+import com.jakdang.labs.api.deokkyu.businessman.repository.StoreBusinessmanhdkRepo;
+import com.jakdang.labs.api.deokkyu.businessman.repository.BusinessManBusinessmanhdkRepo;
 import com.jakdang.labs.entity.TemporaryStoreMaster;
 import com.jakdang.labs.entity.TemporaryStoreDetail;
 import com.jakdang.labs.entity.Store;
 import com.jakdang.labs.entity.UserTesseris;
+import com.jakdang.labs.entity.BusinessMan;
 import com.jakdang.labs.api.auth.entity.UserEntity;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
 
 @RequiredArgsConstructor
 @Service
 public class BusinessmanService {
     
-    private final TemporaryStoreMasterRepository temporaryStoreMasterRepository;
-    private final TemporaryStoreDetailRepository temporaryStoreDetailRepository;
-    private final StoreRepository storeRepository;
+    private final TemporaryStoreMasterhdkRepo temporaryStoreMasterRepository;
+    private final TemporaryStoreDetailhdkRepo temporaryStoreDetailRepository;
+    private final StoreBusinessmanhdkRepo storeRepository;
+    private final BusinessManBusinessmanhdkRepo businessmanRepository;
     
     public List<BusinessmanListDto> getAllowanceListDtos(BusinessmanSearchDto filter) {
         try {
@@ -218,5 +224,122 @@ public class BusinessmanService {
             e.printStackTrace();
             throw e;
         }
+    }
+
+    public List<OrgChartDto> getOrgChartListDtos() {
+        try {
+            System.out.println("=== BusinessmanService.getOrgChartListDtos 시작 ===");
+            
+            // 모든 사업자 조회
+            List<BusinessMan> allBusinessmen = businessmanRepository.findAll();
+            System.out.println("전체 사업자 데이터 " + allBusinessmen.size() + "개 조회됨");
+            
+            List<OrgChartDto> result = new ArrayList<>();
+            
+            for (BusinessMan businessman : allBusinessmen) {
+                System.out.println("Processing businessman: " + businessman.getBusinessManIndex());
+                
+                // ==================== 사업자 기본 정보 추출 ====================
+                UserTesseris businessUser = businessman.getUserIndex();
+                String businessManId = null;
+                String businessManName = null;
+                
+                if (businessUser != null && businessUser.getUsersId() != null) {
+                    UserEntity businessUserEntity = businessUser.getUsersId();
+                    businessManId = businessUserEntity.getId();
+                    businessManName = businessUserEntity.getName();
+                }
+                
+                // ==================== 등급 정보 추출 ====================
+                String businessGradeName = null;
+                if (businessman.getBusinessGrade() != null) {
+                    businessGradeName = businessman.getBusinessGrade().getBusinessGradeName();
+                }
+                
+                // ==================== 지역 정보 추출 ====================
+                String businessAreaName = null;
+                if (businessman.getBusinessArea() != null) {
+                    businessAreaName = businessman.getBusinessArea().getBusinessAreaName();
+                }
+                
+                // ==================== 상사 정보 추출 ====================
+                String bossUserIndex = null;
+                if (businessman.getBossUserIndex() != null) {
+                    // boss_user_index로 user_tesseris에서 users_id 얻기
+                    UserTesseris bossUser = businessmanRepository.findUserTesserisByUserIndex(businessman.getBossUserIndex());
+                    if (bossUser != null && bossUser.getUsersId() != null) {
+                        bossUserIndex = bossUser.getUsersId().getId();
+                    }
+                }
+                
+                // ==================== 현재 총 매장 수 계산 ====================
+                Integer currentTotalStore = 0;
+                if (businessUser != null) {
+                    currentTotalStore = storeRepository.countByBusinessManUserIndex(businessUser.getUserIndex());
+                }
+                
+                // ==================== 하위 사업자들의 총 매장 수 계산 ====================
+                Integer totalStore = currentTotalStore;
+                totalStore += calculateSubordinateTotalStore(businessUser != null ? businessUser.getUserIndex() : null);
+                
+                // ==================== 수당 계산 ====================
+                Double allowance = 0.0;
+                if (businessUser != null) {
+                    List<TemporaryStoreDetail> details = temporaryStoreDetailRepository.findByUserIndex(businessUser);
+                    for (TemporaryStoreDetail detail : details) {
+                        // CM 값만 더함
+                        if (detail.getTemporaryStoreCmValue() != null) {
+                            allowance += detail.getTemporaryStoreCmValue();
+                        }
+                    }
+                }
+                
+                // ==================== DTO 생성 ====================
+                OrgChartDto dto = OrgChartDto.builder()
+                    .businessManId(businessManId)
+                    .businessManName(businessManName)
+                    .businessGradeName(businessGradeName)
+                    .businessAreaName(businessAreaName)
+                    .bossUserIndex(bossUserIndex)
+                    .currentTotalStore(currentTotalStore)
+                    .totalStore(totalStore)
+                    .allowance(allowance)
+                    .build();
+                
+                result.add(dto);
+            }
+            
+            System.out.println("=== BusinessmanService.getOrgChartListDtos 완료, 총 " + result.size() + "개 조회 ===");
+            return result;
+            
+        } catch (Exception e) {
+            System.err.println("=== BusinessmanService.getOrgChartListDtos 에러 발생 ===");
+            e.printStackTrace();
+            throw e;
+        }
+    }
+    
+    // 재귀적으로 하위 사업자들의 총 매장 수를 계산하는 메서드
+    private Integer calculateSubordinateTotalStore(Integer bossUserIndex) {
+        if (bossUserIndex == null) {
+            return 0;
+        }
+        
+        List<BusinessMan> subordinates = businessmanRepository.findByBossUserIndex(bossUserIndex);
+        Integer totalSubordinateStores = 0;
+        
+        for (BusinessMan subordinate : subordinates) {
+            UserTesseris subordinateUser = subordinate.getUserIndex();
+            if (subordinateUser != null) {
+                // 하위 사업자의 현재 매장 수
+                Integer subordinateCurrentStoreCount = storeRepository.countByBusinessManUserIndex(subordinateUser.getUserIndex());
+                totalSubordinateStores += subordinateCurrentStoreCount;
+                
+                // 하위 사업자의 하위 사업자들의 매장 수 (재귀 호출)
+                totalSubordinateStores += calculateSubordinateTotalStore(subordinateUser.getUserIndex());
+            }
+        }
+        
+        return totalSubordinateStores;
     }
 }
