@@ -7,6 +7,8 @@ import com.jakdang.labs.api.jihun.memberassetdetails.repository.AjgUserCmLogRepo
 import com.jakdang.labs.api.jihun.memberassetdetails.repository.AjgUserCmLogPaymentRepository;
 import com.jakdang.labs.api.jihun.memberassetdetails.repository.AjgUserCmLogTransactionTypeRepository;
 import com.jakdang.labs.api.jihun.memberassetdetails.repository.AjgUserCmLogValueTypeRepository;
+import com.jakdang.labs.api.jihun.memberassetdetails.repository.AjgUserCmRepository;
+import com.jakdang.labs.entity.UserCm;
 import com.jakdang.labs.entity.UserCmLog;
 import com.jakdang.labs.entity.UserCmLogPayment;
 import com.jakdang.labs.entity.UserCmLogTransactionType;
@@ -42,6 +44,7 @@ public class AjgMemberAssetDetailsService {
     private final AjgUserCmLogPaymentRepository userCmLogPaymentRepository;
     private final AjgUserCmLogTransactionTypeRepository userCmLogTransactionTypeRepository;
     private final AjgUserCmLogValueTypeRepository userCmLogValueTypeRepository;
+    private final AjgUserCmRepository userCmRepository;
     
     /**
      * 현재 로그인한 사용자의 user_index를 가져오는 메서드
@@ -158,7 +161,6 @@ public class AjgMemberAssetDetailsService {
     public boolean processPayment(String memberId, Integer amount, String reason, Integer currentCmHeld) {
         try {
             log.info("CM 지급 처리: {}, 금액: {}, 사유: {}", memberId, amount, reason);
-            
             // 1. 회원 조회 (user_index로 조회)
             Optional<UserTesseris> memberOpt = ajgMemberAssetDetailsRepository.findByUserIndex(Integer.parseInt(memberId));
             if (!memberOpt.isPresent()) {
@@ -166,27 +168,36 @@ public class AjgMemberAssetDetailsService {
                 return false;
             }
             UserTesseris member = memberOpt.get();
-            
-            // 2. CM 지급 처리 (레코드가 없으면 INSERT, 있으면 UPDATE) - users_id 사용
-            int insertedRows = ajgMemberAssetDetailsRepository.insertCmDeposit(member.getUsersId().getId(), amount);
-            int updatedRows = ajgMemberAssetDetailsRepository.updateCmDeposit(member.getUsersId().getId(), amount);
-            
-            // INSERT 또는 UPDATE 중 하나라도 성공하면 처리 완료
-            if (insertedRows > 0 || updatedRows > 0) {
-                log.info("CM 지급 처리 완료: {}, 금액: {}", memberId, amount);
-                
-                // 3. 거래 내역 기록
-                boolean logResult = createPaymentLog(member, amount, reason);
-                if (!logResult) {
-                    log.error("거래 내역 기록 실패");
-                    return false;
-                }
-                
-                return true;
+
+            // 2. 기존 user_cm 값 조회 및 누적 저장 (JPA)
+            Optional<UserCm> userCmOpt = userCmRepository.findById(member.getUserIndex());
+            UserCm userCm;
+            if (userCmOpt.isPresent()) {
+                userCm = userCmOpt.get();
+                int currentDeposit = userCm.getUserCmDeposit() == null ? 0 : userCm.getUserCmDeposit();
+                userCm.setUserCmDeposit(currentDeposit + amount);
             } else {
-                log.error("CM 지급 처리 실패: 회원을 찾을 수 없습니다. {}", memberId);
+                userCm = UserCm.builder()
+                        .userCmIndex(member.getUserIndex())
+                        .userCmDeposit(amount)
+                        .userCmWithdrawal(0)
+                        .userCashDeposit(0)
+                        .userCashWithdrawal(0)
+                        .userCmpDeposit(0)
+                        .userCmpWithdrawal(0)
+                        .userCmpInit(0)
+                        .userCmPincode(null)
+                        .build();
+            }
+            userCmRepository.save(userCm);
+
+            // 3. 거래 내역 기록
+            boolean logResult = createPaymentLog(member, amount, reason);
+            if (!logResult) {
+                log.error("거래 내역 기록 실패");
                 return false;
             }
+            return true;
         } catch (Exception e) {
             log.error("CM 지급 처리 중 오류: {}", e.getMessage());
             return false;
@@ -251,7 +262,6 @@ public class AjgMemberAssetDetailsService {
     public boolean processCollection(String memberId, Integer amount, String reason, Integer currentCmHeld) {
         try {
             log.info("CM 회수 처리: {}, 금액: {}, 사유: {}", memberId, amount, reason);
-            
             // 1. 회원 조회 (user_index로 조회)
             Optional<UserTesseris> memberOpt = ajgMemberAssetDetailsRepository.findByUserIndex(Integer.parseInt(memberId));
             if (!memberOpt.isPresent()) {
@@ -259,27 +269,36 @@ public class AjgMemberAssetDetailsService {
                 return false;
             }
             UserTesseris member = memberOpt.get();
-            
-            // 2. CM 회수 처리 (레코드가 없으면 INSERT, 있으면 UPDATE) - users_id 사용
-            int insertedRows = ajgMemberAssetDetailsRepository.insertCmWithdrawal(member.getUsersId().getId(), amount);
-            int updatedRows = ajgMemberAssetDetailsRepository.updateCmWithdrawal(member.getUsersId().getId(), amount);
-            
-            // INSERT 또는 UPDATE 중 하나라도 성공하면 처리 완료
-            if (insertedRows > 0 || updatedRows > 0) {
-                log.info("CM 회수 처리 완료: {}, 금액: {}", memberId, amount);
-                
-                // 3. 거래 내역 기록
-                boolean logResult = createCollectionLog(member, amount, reason);
-                if (!logResult) {
-                    log.error("거래 내역 기록 실패");
-                    return false;
-                }
-                
-                return true;
+
+            // 2. 기존 user_cm 값 조회 및 누적 저장 (JPA)
+            Optional<UserCm> userCmOpt = userCmRepository.findById(member.getUserIndex());
+            UserCm userCm;
+            if (userCmOpt.isPresent()) {
+                userCm = userCmOpt.get();
+                int currentWithdrawal = userCm.getUserCmWithdrawal() == null ? 0 : userCm.getUserCmWithdrawal();
+                userCm.setUserCmWithdrawal(currentWithdrawal + amount);
             } else {
-                log.error("CM 회수 처리 실패: 회원을 찾을 수 없습니다. {}", memberId);
+                userCm = UserCm.builder()
+                        .userCmIndex(member.getUserIndex())
+                        .userCmDeposit(0)
+                        .userCmWithdrawal(amount)
+                        .userCashDeposit(0)
+                        .userCashWithdrawal(0)
+                        .userCmpDeposit(0)
+                        .userCmpWithdrawal(0)
+                        .userCmpInit(0)
+                        .userCmPincode(null)
+                        .build();
+            }
+            userCmRepository.save(userCm);
+
+            // 3. 거래 내역 기록
+            boolean logResult = createCollectionLog(member, amount, reason);
+            if (!logResult) {
+                log.error("거래 내역 기록 실패");
                 return false;
             }
+            return true;
         } catch (Exception e) {
             log.error("CM 회수 처리 중 오류: {}", e.getMessage());
             return false;

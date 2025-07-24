@@ -99,7 +99,7 @@ public interface AjgMemberAssetDetailsRepository extends JpaRepository<UserTesse
     
     @Query(value = """
         UPDATE user_cm 
-        SET user_cm_deposit = user_cm_deposit + :amount
+        SET user_cm_deposit = COALESCE(user_cm_deposit, 0) + :amount
         WHERE user_cm_index = (
             SELECT user_index FROM user_tesseris WHERE users_id = :userId
         )
@@ -125,7 +125,7 @@ public interface AjgMemberAssetDetailsRepository extends JpaRepository<UserTesse
     
     @Query(value = """
         UPDATE user_cm 
-        SET user_cm_withdrawal = user_cm_withdrawal + :amount
+        SET user_cm_withdrawal = COALESCE(user_cm_withdrawal, 0) + :amount
         WHERE user_cm_index = (
             SELECT user_index FROM user_tesseris WHERE users_id = :userId
         )
