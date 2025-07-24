@@ -15,6 +15,7 @@ public class BusinessmanListResponseDTO {
     private String userBankNumber;
     private String userBankHolder;
     private String businessAreaName;
+    private Integer businessAreaLevel;
     private Integer businessGradeIndex;
     private Integer businessAreaIndex;
 } 
