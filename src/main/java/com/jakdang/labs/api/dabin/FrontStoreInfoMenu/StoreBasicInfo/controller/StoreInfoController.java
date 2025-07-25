@@ -32,6 +32,8 @@ public class StoreInfoController {
         return ResponseEntity.ok(result);
     }
     
+    // 이미지 관련 API는 StoreImageController로 통합되어 더 이상 사용하지 않습니다.
+    /*
     @GetMapping("/images")
     public ResponseEntity<Map<String, Object>> getStoreImages(@RequestParam("userIndex") Integer userIndex) {
         Map<String, Object> result = storeInfoService.getStoreImages(userIndex);
@@ -70,6 +72,13 @@ public class StoreInfoController {
         response.put("message", "Store Info API is working!");
         return ResponseEntity.ok(response);
     }
+    
+    @GetMapping("/image/presigned")
+    public ResponseEntity<String> getPresignedImageUrl(@RequestParam String fileKey) {
+        String url = storeInfoService.getPresignedImageUrl(fileKey);
+        return ResponseEntity.ok(url);
+    }
+    */
     
     /**
      * 매장 카테고리 목록 조회 (PHP와 동일한 하드코딩된 카테고리)
