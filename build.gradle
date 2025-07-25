@@ -93,6 +93,15 @@ dependencies {
     // Spring Boot Mail Starter
     implementation 'org.springframework.boot:spring-boot-starter-mail'
 
+
+    // .env 파일 읽기
+    implementation 'me.paulschwarz:spring-dotenv:4.0.0'
+    implementation 'io.github.cdimascio:dotenv-java:3.0.0'
+
+
+        // AWS S3 (AWS SDK v1 - 더 안정적)
+    implementation 'com.amazonaws:aws-java-sdk-s3:1.12.261'
+
     annotationProcessor(
             "jakarta.persistence:jakarta.persistence-api",
             "jakarta.annotation:jakarta.annotation-api",

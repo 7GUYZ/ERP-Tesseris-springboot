@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.jakdang.labs.api.deokkyu.businessman.dto.BusinessmanListDto;
 import com.jakdang.labs.api.deokkyu.businessman.dto.BusinessmanSearchDto;
+import com.jakdang.labs.api.deokkyu.businessman.dto.OrgChartDto;
 import com.jakdang.labs.api.deokkyu.businessman.service.BusinessmanService;
 
 @RestController
@@ -23,5 +24,11 @@ public class BusinessmanController {
     public ResponseEntity<List<BusinessmanListDto>> getFilteredAllowance(BusinessmanSearchDto filter) {
         List<BusinessmanListDto> allowanceList = businessmanService.getAllowanceListDtos(filter);
         return ResponseEntity.ok(allowanceList);
+    }
+
+    @GetMapping("/orgchart") // 조직도 조회
+    public ResponseEntity<List<OrgChartDto>> getOrgChart() {
+        List<OrgChartDto> orgChartList = businessmanService.getOrgChartListDtos();
+        return ResponseEntity.ok(orgChartList);
     }
 }

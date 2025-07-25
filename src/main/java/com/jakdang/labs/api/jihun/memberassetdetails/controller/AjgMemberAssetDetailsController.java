@@ -21,10 +21,16 @@ public class AjgMemberAssetDetailsController {
     @GetMapping
     public ResponseEntity<Page<MemberAssetDetailsResponseDto>> getMemberAssetDetails(
             @RequestParam(defaultValue = "0") Integer page,
-            @RequestParam(defaultValue = "25") Integer size) {
+            @RequestParam(defaultValue = "50000") Integer size) {
         
-        // 요청된 크기 우선 사용, 기본값 25
-        int actualSize = size != null && size > 0 ? size : 25;
+        // 최대 크기 제한 (메모리 보호)
+        int maxSize = 100000;
+        if (size != null && size > maxSize) {
+            size = maxSize;
+        }
+        
+        // 요청된 크기 우선 사용, 기본값 50000
+        int actualSize = size != null && size > 0 ? size : 50000;
         MemberAssetDetailsSearchDto.PaginationInfo paginationInfo = new MemberAssetDetailsSearchDto.PaginationInfo(page, actualSize);
         MemberAssetDetailsSearchDto searchDto = new MemberAssetDetailsSearchDto(null, paginationInfo);
         
@@ -46,10 +52,16 @@ public class AjgMemberAssetDetailsController {
             @RequestParam(required = false) String userPhone,
             @RequestParam(required = false) Integer userRoleIndex,
             @RequestParam(defaultValue = "0") Integer page,
-            @RequestParam(defaultValue = "25") Integer size) {
+            @RequestParam(defaultValue = "50000") Integer size) {
         
-        // 요청된 크기 우선 사용, 기본값 25
-        int actualSize = size != null && size > 0 ? size : 25;
+        // 최대 크기 제한 (메모리 보호)
+        int maxSize = 100000;
+        if (size != null && size > maxSize) {
+            size = maxSize;
+        }
+        
+        // 요청된 크기 우선 사용, 기본값 50000
+        int actualSize = size != null && size > 0 ? size : 50000;
         MemberAssetDetailsSearchDto.SearchCriteria searchCriteria = new MemberAssetDetailsSearchDto.SearchCriteria(userEmail, userName, userPhone, userRoleIndex);
         MemberAssetDetailsSearchDto.PaginationInfo paginationInfo = new MemberAssetDetailsSearchDto.PaginationInfo(page, actualSize);
         MemberAssetDetailsSearchDto searchDto = new MemberAssetDetailsSearchDto(searchCriteria, paginationInfo);
@@ -75,6 +87,11 @@ public class AjgMemberAssetDetailsController {
             List<Map<String, Object>> members = (List<Map<String, Object>>) paymentRequest.get("members");
             Integer amount = (Integer) paymentRequest.get("amount");
             String reason = (String) paymentRequest.get("reason");
+
+            // amount null 체크
+            if (amount == null) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "지급 금액(amount)이 필요합니다."));
+            }
             
             // 단일 처리 호환성을 위한 처리
             if (members == null) {
@@ -131,6 +148,11 @@ public class AjgMemberAssetDetailsController {
             List<Map<String, Object>> members = (List<Map<String, Object>>) collectionRequest.get("members");
             Integer amount = (Integer) collectionRequest.get("amount");
             String reason = (String) collectionRequest.get("reason");
+
+            // amount null 체크
+            if (amount == null) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "회수 금액(amount)이 필요합니다."));
+            }
             
             // 단일 처리 호환성을 위한 처리
             if (members == null) {

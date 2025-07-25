@@ -2,6 +2,11 @@ server:
   port: 19091
   tomcat:
     uri-encoding: UTF-8
+    max-http-form-post-size: 500MB  # 대용량 데이터 처리를 위해 증가
+    max-swallow-size: 500MB  # 대용량 데이터 처리를 위해 증가
+    threads:
+      max: 200  # 스레드 풀 크기 증가
+      min-spare: 10
 
   servlet:
     encoding:
@@ -52,23 +57,26 @@ spring:
     secret:
       code: ${JWT_SECRET}
 
-  # Data JPA ??
+  # Data JPA 설정
   jpa:
-    show-sql: true # ????? ?????
+    show-sql: true # SQL 쿼리 출력 여부
     hibernate:
-      ddl-auto: none # ??. ?? ???? DB? ???
+      ddl-auto: none # 자동. 테이블 자동 생성 DB에 맞춰서 설정
       naming:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
         implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyJpaImpl
     properties:
       hibernate:
-        default_batch_fetch_size: 100
-        format_sql: true # SQL ???
-        highlight_sql: true # ANSI ??? ?? ????
+        default_batch_fetch_size: 1000  # 대용량 데이터 처리를 위해 증가
+        jdbc:
+          batch_size: 1000  # 배치 크기 증가
+          fetch_size: 1000  # 페치 크기 증가
+        format_sql: true # SQL 포맷팅
+        highlight_sql: true # ANSI 색상으로 출력
         dialect: org.hibernate.dialect.MariaDBDialect
         globally_quoted_identifiers: true
         globally_quoted_identifiers_skip_column_definitions: true
-        org.hibernate.SQL: debug # logger? ?????
+        org.hibernate.SQL: debug # logger로 출력
         org.hibernate.type: trace
         hibernate:
           globally_quoted_identifiers: true
@@ -179,6 +187,19 @@ kakao:
 #        static: ap-northeast-2
 #      stack:
 #        auto: false
+
+cloud:
+  aws:
+    credentials:
+      accessKey: ${AWS_ACCESS_KEY}
+      secretKey: ${AWS_SECRET_KEY}
+    
+    s3:
+      bucket: tesseris-practice-jdb
+      region:
+        static: ap-northeast-2
+      stack:
+        auto: false
 
 logging:
   level:
