@@ -1,7 +1,6 @@
 package com.jakdang.labs.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import com.jakdang.labs.exceptions.handler.CustomException;
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
