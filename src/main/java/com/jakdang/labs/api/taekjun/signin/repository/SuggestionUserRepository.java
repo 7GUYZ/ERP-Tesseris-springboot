@@ -4,11 +4,14 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.jakdang.labs.entity.SuggestionUser;
+
+import java.time.Instant;
 
 @Repository
 public interface SuggestionUserRepository extends JpaRepository<SuggestionUser, Long> {
@@ -31,4 +34,14 @@ public interface SuggestionUserRepository extends JpaRepository<SuggestionUser, 
     // 특정 사용자의 추천인 수 조회
     @Query("SELECT COUNT(su) FROM SuggestionUser su WHERE su.recommendationUserIndex = :recommendationUserIndex")
     long countByRecommendationUserIndex(@Param("recommendationUserIndex") Integer recommendationUserIndex);
+    
+    // SuggestionUser의 created_at, updated_at 값 설정
+    @Modifying
+    @Query(value = "UPDATE suggestion_user SET created_at = :createdAt, updated_at = :updatedAt WHERE suggestion_user_index = :id", nativeQuery = true)
+    void updateSuggestionUserTimestamps(@Param("id") Integer id, @Param("createdAt") Instant createdAt, @Param("updatedAt") Instant updatedAt);
+    
+    // SuggestionUser의 updated_at 값만 설정
+    @Modifying
+    @Query(value = "UPDATE suggestion_user SET updated_at = :updatedAt WHERE suggestion_user_index = :id", nativeQuery = true)
+    void updateSuggestionUserTimestamp(@Param("id") Integer id, @Param("updatedAt") Instant updatedAt);
 } 

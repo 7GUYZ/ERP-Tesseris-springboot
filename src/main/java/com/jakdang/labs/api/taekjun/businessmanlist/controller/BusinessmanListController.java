@@ -3,6 +3,8 @@ package com.jakdang.labs.api.taekjun.businessmanlist.controller;
 import com.jakdang.labs.api.taekjun.businessmanlist.dto.BusinessmanListResponseDTO;
 import com.jakdang.labs.api.taekjun.businessmanlist.dto.BusinessmanListSearchDTO;
 import com.jakdang.labs.api.taekjun.businessmanlist.dto.BusinessmanCreateRequestDTO;
+import com.jakdang.labs.api.taekjun.businessmanlist.dto.BusinessmanUpdateRequestDTO;
+import com.jakdang.labs.api.taekjun.businessmanlist.dto.BusinessmanDeleteRequestDTO;
 import com.jakdang.labs.api.taekjun.businessmanlist.service.BusinessmanListService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -25,5 +27,15 @@ public class BusinessmanListController {
     @PostMapping("/create")
     public ResponseEntity<?> createBusinessman(@RequestBody BusinessmanCreateRequestDTO dto) {
         return businessmanListService.createBusinessman(dto);
+    }
+    
+    @PutMapping("/update")
+    public ResponseEntity<?> updateBusinessman(@RequestBody BusinessmanUpdateRequestDTO dto) {
+        return businessmanListService.updateBusinessman(dto);
+    }
+    
+    @DeleteMapping("/delete")
+    public ResponseEntity<?> deleteBusinessman(@RequestBody BusinessmanDeleteRequestDTO dto) {
+        return businessmanListService.deleteBusinessman(dto);
     }
 } 

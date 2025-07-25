@@ -35,7 +35,7 @@ public class UserListService {
     public List<UserListResponseDTO> getUserList() {
         try {
             System.out.println("회원 목록 조회 시작");
-            List<Object[]> rawList = userListJtjRepo.findUserListRaw();
+        List<Object[]> rawList = userListJtjRepo.findUserListRaw();
             System.out.println("조회된 데이터 개수: " + rawList.size());
             return rawList.stream()
                     .map(this::mapToDto)

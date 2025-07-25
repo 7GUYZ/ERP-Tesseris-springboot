@@ -23,13 +23,15 @@ import com.jakdang.labs.api.taekjun.signin.dto.Step1AgreementDTO;
 import com.jakdang.labs.api.taekjun.signin.dto.Step2EmailAuthDTO;
 import com.jakdang.labs.api.taekjun.signin.dto.Step3UserInfoDTO;
 import com.jakdang.labs.api.taekjun.signin.repository.SignupRepository;
-import com.jakdang.labs.api.taekjun.signin.repository.UserGenderRepository;
 import com.jakdang.labs.api.taekjun.signin.service.ReferralService;
 import com.jakdang.labs.api.taekjun.signin.dto.ReferralRequestDTO;
 import com.jakdang.labs.api.taekjun.signin.service.NaverEmailAuthService;
 import com.jakdang.labs.api.auth.repository.AuthRepository;
 import com.jakdang.labs.entity.SuggestionUser;
 import com.jakdang.labs.api.taekjun.signin.repository.SuggestionUserRepository;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import lombok.RequiredArgsConstructor;
 
@@ -40,7 +42,9 @@ public class StepwiseSignupService {
     private final SignupRepository signupRepository;
     private final UserTesserisRepository userRepository;
     private final UserCmRepository userCmRepository;
-    private final UserGenderRepository userGenderRepository;
+    @Autowired
+    @Qualifier("userGenderJtjRepo")
+    private JpaRepository<UserGender, Integer> userGenderRepository;
     private final PasswordEncoder passwordEncoder;
     private final ReferralService referralService;
     private final NaverEmailAuthService naverEmailAuthService;
@@ -95,9 +99,12 @@ public class StepwiseSignupService {
     @Transactional
     public String finalSignup(Step3UserInfoDTO userInfoDTO) {
         try {
-            // 1. 중복 체크
+            // 한국 시간 설정
+            Instant koreanTime = java.time.ZonedDateTime.now(java.time.ZoneId.of("Asia/Seoul")).toInstant();
+            
+            // 1. 이메일 중복 체크
             if (signupRepository.existsByEmail(userInfoDTO.getEmail())) {
-                throw new RuntimeException("이미 존재하는 이메일입니다.");
+                throw new RuntimeException("이미 등록된 이메일입니다.");
             }
             
             if (signupRepository.existsByNickname(userInfoDTO.getNickname())) {
@@ -134,16 +141,22 @@ public class StepwiseSignupService {
                 .build();
             
             // 한국 시간으로 시간 필드 설정 (저장 전에 설정)
-            Instant koreanTime = ZonedDateTime.now(ZoneId.of("Asia/Seoul")).toInstant();
+            // Instant koreanTime = ZonedDateTime.now(ZoneId.of("Asia/Seoul")).toInstant();
             users.setCreatedAt(koreanTime);
             users.setUpdatedAt(koreanTime);
             
             UserEntity savedUsers = signupRepository.save(users);
             
+            // UserEntity의 created_at, updated_at 값 직접 설정 (한국 시간)
+            signupRepository.updateUserTimestamps(savedUsers.getId(), koreanTime, koreanTime);
+            
             // 4. 새 사용자에게 추천인 코드 생성
             String newUserReferralCode = referralService.generateReferralCode(savedUsers.getId());
             savedUsers.setReferralCode(newUserReferralCode);
             signupRepository.save(savedUsers);
+            
+            // UserEntity의 updated_at 값 업데이트 (한국 시간)
+            signupRepository.updateUserTimestamp(savedUsers.getId(), koreanTime);
             
             // 5. UserTesseris 엔티티 생성 및 저장
             UserTesseris user = new UserTesseris();
@@ -211,6 +224,9 @@ public class StepwiseSignupService {
             // UserCm 저장
             UserCm savedUserCm = userCmRepository.save(userCm);
             
+            // UserCm의 created_at, updated_at 값 직접 설정 (한국 시간)
+            userCmRepository.updateUserCmTimestamps(savedUserCm.getUserCmIndex(), koreanTime, koreanTime);
+            
             // 7. 한국 시간으로 시간 필드 설정 (UserEntity만)
             // Instant koreanTime = ZonedDateTime.now(ZoneId.of("Asia/Seoul")).toInstant();
             // savedUsers.setCreatedAt(koreanTime);
@@ -235,6 +251,9 @@ public class StepwiseSignupService {
                         
                         // SuggestionUser 저장
                         suggestionUserRepository.save(suggestionUser);
+                        
+                        // SuggestionUser의 created_at, updated_at 값 직접 설정 (한국 시간)
+                        suggestionUserRepository.updateSuggestionUserTimestamps(savedUser.getUserIndex(), koreanTime, koreanTime);
                     }
                 }
             }

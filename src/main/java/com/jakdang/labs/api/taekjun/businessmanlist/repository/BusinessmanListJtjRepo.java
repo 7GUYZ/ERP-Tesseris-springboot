@@ -2,10 +2,12 @@ package com.jakdang.labs.api.taekjun.businessmanlist.repository;
 
 import com.jakdang.labs.entity.BusinessMan;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 
 @Repository
@@ -18,6 +20,7 @@ public interface BusinessmanListJtjRepo extends JpaRepository<BusinessMan, Integ
         JOIN FETCH bm.businessGrade bg
         JOIN FETCH bm.businessArea ba
         WHERE u.userRoleIndex = 2
+          AND ue.activated = true
           AND (:email IS NULL OR ue.email LIKE %:email%)
           AND (:userName IS NULL OR ue.name LIKE %:userName%)
           AND (:userPhone IS NULL OR ue.phone LIKE %:userPhone%)
@@ -38,4 +41,20 @@ public interface BusinessmanListJtjRepo extends JpaRepository<BusinessMan, Integ
             @Param("businessAreaLevel") Integer businessAreaLevel,
             @Param("businessManDistributionFlag") String businessManDistributionFlag
     );
+    
+    @Modifying
+    @Query(value = "UPDATE business_man SET created_at = :createdAt, updated_at = :updatedAt WHERE business_man_index = :id", nativeQuery = true)
+    void updateTimestamps(@Param("id") Integer id, @Param("createdAt") Instant createdAt, @Param("updatedAt") Instant updatedAt);
+    
+    @Modifying
+    @Query(value = "UPDATE business_man SET updated_at = :updatedAt WHERE business_man_index = :id", nativeQuery = true)
+    void updateTimestamp(@Param("id") Integer id, @Param("updatedAt") Instant updatedAt);
+    
+    @Modifying
+    @Query(value = "UPDATE users SET created_at = :createdAt, updated_at = :updatedAt WHERE id = :id", nativeQuery = true)
+    void updateUserTimestamps(@Param("id") String id, @Param("createdAt") Instant createdAt, @Param("updatedAt") Instant updatedAt);
+    
+    @Modifying
+    @Query(value = "UPDATE users SET updated_at = :updatedAt WHERE id = :id", nativeQuery = true)
+    void updateUserTimestamp(@Param("id") String id, @Param("updatedAt") Instant updatedAt);
 } 
