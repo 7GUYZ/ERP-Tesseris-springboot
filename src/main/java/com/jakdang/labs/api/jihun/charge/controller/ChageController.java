@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.jakdang.labs.api.jihun.charge.service.ChageService;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -23,7 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 @RequiredArgsConstructor
 public class ChageController {
     private final ChageService chargeService;
-    @PostMapping("/confirm")
+    @PostMapping("/confirm/{path}")
     public ResponseEntity<Map<String, Object>> ChargeConfirm(@RequestBody Map<String, Object> data) {
         try {
             chargeService.confirmPayment(data);
