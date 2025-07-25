@@ -2,11 +2,11 @@ package com.jakdang.labs.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+// import org.springframework.context.annotation.Configuration; (0724 정은 주석 처리 - 오류나서)
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-@Configuration
+// @Configuration (0724 정은 주석 처리 - 오류나서)
 public class Argon2Config {
 
     @Value("${security.password.argon2.memory:16384}")

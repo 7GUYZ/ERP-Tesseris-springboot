@@ -29,6 +29,7 @@ public class SettingSvc {
             .build());
     }
 
+    // 월 CM 한도 수정
     public ResponseDTO<SettingDTO> saveCmLimit(SettingDTO updateDTO){
         Setting setting = settingRepo.findBySettingIndex(Integer.valueOf(2));
         if(setting != null){

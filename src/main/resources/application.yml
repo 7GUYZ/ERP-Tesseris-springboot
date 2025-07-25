@@ -212,6 +212,9 @@ logging:
           factory:
             support: DEBUG
       security: DEBUG
+    # Feign 로깅 활성화
+    com.jakdang.labs.api.alarm.model.AlarmServiceClient: DEBUG
+    feign: DEBUG
 
 springdoc:
   swagger-ui:
@@ -230,6 +233,11 @@ file-service:
 
 post-service:
   url: http://localhost:9000/api/posts
+
+# 정은 추가 (알림 서비스)
+alarm-service:
+  url: http://localhost:19093/api/alarms
+  
 
 feign:
   httpclient:
