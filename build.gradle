@@ -96,6 +96,7 @@ dependencies {
 
     // .env 파일 읽기
     implementation 'me.paulschwarz:spring-dotenv:4.0.0'
+    implementation 'io.github.cdimascio:dotenv-java:3.0.0'
 
 
         // AWS S3 (AWS SDK v1 - 더 안정적)
