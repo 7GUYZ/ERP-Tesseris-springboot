@@ -2,7 +2,7 @@ name: CI/CD Deploy to Kubernetes
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main , sichan]
 
 jobs:
   build-and-deploy:
@@ -14,7 +14,11 @@ jobs:
       DB_USER: ${{ secrets.DB_USER }}
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
-
+      AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+      AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+      KAKAORESTAPIKEY: ${{ secrets.KAKAORESTAPIKEY }}
+      NAVER_EMAIL: ${{ secrets.NAVER_EMAIL }}
+      NAVER_EMAIL_PASSWORD: ${{ secrets.NAVER_EMAIL_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -60,6 +64,11 @@ jobs:
             --from-literal=DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
             --from-literal=JWT_SECRET="${{ secrets.JWT_SECRET }}" \
             --from-literal=JASYPT_PASSWORD="${{ secrets.JASYPT_PASSWORD }}" \
+            --from-literal=AWS_ACCESS_KEY="${{ secrets.AWS_ACCESS_KEY }}" \
+            --from-literal=AWS_SECRET_KEY="${{ secrets.AWS_SECRET_KEY }}" \
+            --from-literal=KAKAORESTAPIKEY="${{ secrets.KAKAORESTAPIKEY }}" \
+            --from-literal=NAVER_EMAIL="${{ secrets.NAVER_EMAIL }}" \
+            --from-literal=NAVER_EMAIL_PASSWORD="${{ secrets.NAVER_EMAIL_PASSWORD }}" \
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Replace image tag and apply deployment

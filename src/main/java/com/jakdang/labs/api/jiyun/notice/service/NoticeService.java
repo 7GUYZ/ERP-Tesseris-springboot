@@ -122,23 +122,23 @@ public class NoticeService {
     NoticeDTO.Response dto = new NoticeDTO.Response();
     dto.setNoticeIndex(notice.getNoticeIndex());
     
-    // userIndex → userId 변환
-    String userId = null;
+    // userIndex → userEmail 변환
+    String userEmail = null;
     try {
       if (notice.getUserIndex() != null) {
         // userIndex로 UserTesseris를 찾아서 email 가져오기
         UserTesseris user = userRepository.findByUserIndex(notice.getUserIndex())
             .orElse(null);
         if (user != null && user.getUsersId() != null) {
-          userId = user.getUsersId().getId();
+          userEmail = user.getUsersId().getEmail();
         }
       }
     } catch (Exception e) {
       System.out.println("User 정보 조회 중 오류: " + e.getMessage());
-      userId = "unknown";
+      userEmail = "unknown";
     }
     
-    dto.setUserId(userId);
+    dto.setUserEmail(userEmail);
     dto.setNoticeTitle(notice.getNoticeTitle());
     dto.setNoticeDesc(notice.getNoticeDesc());
     dto.setNoticeCreateTime(notice.getNoticeCreateTime());
