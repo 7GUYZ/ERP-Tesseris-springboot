@@ -222,9 +222,6 @@ public class StepwiseSignupService {
             // UserCm 저장
             UserCm savedUserCm = userCmRepository.save(userCm);
             
-            // UserCm의 created_at, updated_at 값 직접 설정 (한국 시간)
-            userCmRepository.updateUserCmTimestamps(savedUserCm.getUserCmIndex(), koreanTime, koreanTime);
-            
             // 7. 한국 시간으로 시간 필드 설정 (UserEntity만)
             // Instant koreanTime = ZonedDateTime.now(ZoneId.of("Asia/Seoul")).toInstant();
             // savedUsers.setCreatedAt(koreanTime);
