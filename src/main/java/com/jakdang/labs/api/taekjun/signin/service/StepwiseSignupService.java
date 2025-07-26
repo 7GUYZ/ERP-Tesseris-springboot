@@ -114,10 +114,8 @@ public class StepwiseSignupService {
             // 2. 추천인 코드 찾기
             String referralCode = null;
             if (userInfoDTO.getReferralId() != null && !userInfoDTO.getReferralId().trim().isEmpty()) {
-                Optional<UserEntity> referrerOpt = referralService.findUserByIdentifier(userInfoDTO.getReferralId());
-                if (referrerOpt.isPresent()) {
-                    referralCode = referrerOpt.get().getReferralCode();
-                }
+                // 추천인 ID가 직접 referralCode인 경우
+                referralCode = userInfoDTO.getReferralId();
             } else {
                 // 추천인 미입력 시 1번 계정의 referralCode 사용
                 Optional<UserTesseris> defaultReferrer = userRepository.findByUserIndex(1);
@@ -235,28 +233,8 @@ public class StepwiseSignupService {
             // 8. 시간이 설정된 엔티티를 다시 저장
             signupRepository.save(savedUsers);
             
-            // 9. 추천인 관계 생성 (SuggestionUser 테이블에 저장)
-            if (referralCode != null) {
-                // 추천인을 찾아서 userIndex 가져오기
-                Optional<UserEntity> referrerOpt = referralService.findUserByIdentifier(referralCode);
-                if (referrerOpt.isPresent()) {
-                    // 추천인의 UserTesseris 정보 가져오기
-                    Optional<UserTesseris> referrerTesserisOpt = userRepository.findByUsersId(referrerOpt.get());
-                    if (referrerTesserisOpt.isPresent()) {
-                        // SuggestionUser 엔티티 생성 및 저장
-                        SuggestionUser suggestionUser = new SuggestionUser();
-                        suggestionUser.setSuggestionUserIndex(savedUser.getUserIndex()); // 새로 가입한 사용자
-                        suggestionUser.setRecommendationUserIndex(referrerTesserisOpt.get().getUserIndex()); // 추천인
-                        suggestionUser.setJoinDate(LocalDateTime.now());
-                        
-                        // SuggestionUser 저장
-                        suggestionUserRepository.save(suggestionUser);
-                        
-                        // SuggestionUser의 created_at, updated_at 값 직접 설정 (한국 시간)
-                        suggestionUserRepository.updateSuggestionUserTimestamps(savedUser.getUserIndex(), koreanTime, koreanTime);
-                    }
-                }
-            }
+            // 9. 추천인 관계 생성은 별도 서비스에서 처리하도록 제거
+            // (SigninController에서 처리)
             
             // 10. UserCm의 userCmIndex를 UserTesseris의 userIndex로 업데이트
             // ID 변경이 불가능하므로 별도의 업데이트 쿼리 사용

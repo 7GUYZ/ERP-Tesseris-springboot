@@ -24,7 +24,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import com.jakdang.labs.api.taekjun.businessmanlist.dto.BusinessmanCreateRequestDTO;
 import com.jakdang.labs.api.taekjun.businessmanlist.dto.BusinessmanUpdateRequestDTO;
-import com.jakdang.labs.api.taekjun.businessmanlist.dto.BusinessmanDeleteRequestDTO;
 import com.jakdang.labs.api.auth.entity.UserEntity;
 import com.jakdang.labs.entity.UserGender;
 import com.jakdang.labs.entity.BusinessGrade;
@@ -33,6 +32,12 @@ import com.jakdang.labs.entity.UserCm;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Instant;
+import com.jakdang.labs.api.taekjun.businessmanlist.controller.BusinessmanListController;
+import com.jakdang.labs.api.jihun.common.config.ExcelDownloadConfig;
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStreamWriter;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 @Service
 @RequiredArgsConstructor
@@ -52,19 +57,105 @@ public class BusinessmanListService {
     @Qualifier("userCmJtjRepo")
     private JpaRepository<UserCm, Integer> userCmRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ExcelDownloadConfig.ExcelDownloadProperties excelDownloadProperties;
 
     public List<BusinessmanListResponseDTO> searchBusinessmanList(BusinessmanListSearchDTO searchDTO) {
-        List<BusinessMan> list = businessmanListRepository.searchBusinessManList(
-                searchDTO.getEmail(),
-                searchDTO.getUserName(),
-                searchDTO.getUserPhone(),
-                searchDTO.getBusinessGradeName(),
-                searchDTO.getBossEmail(),
-                searchDTO.getBusinessAreaName(),
-                searchDTO.getBusinessAreaLevel(),
-                searchDTO.getBusinessManDistributionFlag()
-        );
-        return list.stream().map(this::toDto).collect(Collectors.toList());
+        System.out.println("=== BusinessmanListService.searchBusinessmanList 시작 ===");
+        System.out.println("검색 조건: " + searchDTO);
+        
+        try {
+            List<BusinessMan> list = businessmanListRepository.searchBusinessManList(
+                    searchDTO != null ? searchDTO.getEmail() : null,
+                    searchDTO != null ? searchDTO.getUserName() : null,
+                    searchDTO != null ? searchDTO.getUserPhone() : null,
+                    searchDTO != null ? searchDTO.getBusinessGradeName() : null,
+                    searchDTO != null ? searchDTO.getBossEmail() : null,
+                    searchDTO != null ? searchDTO.getBusinessAreaName() : null,
+                    searchDTO != null ? searchDTO.getBusinessAreaLevel() : null,
+                    searchDTO != null ? searchDTO.getBusinessManDistributionFlag() : null
+            );
+            
+            System.out.println("조회된 사업자 수: " + list.size());
+            
+            if (list.size() > 0) {
+                System.out.println("첫 번째 사업자 정보:");
+                BusinessMan first = list.get(0);
+                System.out.println("- UserIndex: " + first.getUserIndex().getUserIndex());
+                System.out.println("- Email: " + first.getUserIndex().getUsersId().getEmail());
+                System.out.println("- Activated: " + first.getUserIndex().getUsersId().getActivated());
+                System.out.println("- UserRoleIndex: " + first.getUserIndex().getUserRoleIndex());
+            }
+            
+            List<BusinessmanListResponseDTO> result = list.stream().map(this::toDto).collect(Collectors.toList());
+            System.out.println("변환된 DTO 수: " + result.size());
+            System.out.println("=== BusinessmanListService.searchBusinessmanList 완료 ===");
+            
+            return result;
+        } catch (Exception e) {
+            System.err.println("=== BusinessmanListService.searchBusinessmanList 에러 ===");
+            e.printStackTrace();
+            throw e;
+        }
+    }
+    
+    public List<BusinessmanListResponseDTO> getBusinessmanList() {
+        return searchBusinessmanList(null);
+    }
+    
+    public List<BusinessmanListResponseDTO> getAllActiveBusinessmen() {
+        System.out.println("=== BusinessmanListService.getAllActiveBusinessmen 시작 ===");
+        
+        try {
+            List<BusinessMan> list = businessmanListRepository.findAllActiveBusinessmen();
+            System.out.println("전체 활성 사업자 수: " + list.size());
+            
+            if (list.size() > 0) {
+                System.out.println("첫 번째 사업자 정보:");
+                BusinessMan first = list.get(0);
+                System.out.println("- UserIndex: " + first.getUserIndex().getUserIndex());
+                System.out.println("- Email: " + first.getUserIndex().getUsersId().getEmail());
+                System.out.println("- Activated: " + first.getUserIndex().getUsersId().getActivated());
+                System.out.println("- UserRoleIndex: " + first.getUserIndex().getUserRoleIndex());
+            }
+            
+            List<BusinessmanListResponseDTO> result = list.stream().map(this::toDto).collect(Collectors.toList());
+            System.out.println("변환된 DTO 수: " + result.size());
+            System.out.println("=== BusinessmanListService.getAllActiveBusinessmen 완료 ===");
+            
+            return result;
+        } catch (Exception e) {
+            System.err.println("=== BusinessmanListService.getAllActiveBusinessmen 에러 ===");
+            e.printStackTrace();
+            throw e;
+        }
+    }
+    
+    public List<BusinessmanListResponseDTO> getAllBusinessmen() {
+        System.out.println("=== BusinessmanListService.getAllBusinessmen 시작 ===");
+        
+        try {
+            List<BusinessMan> list = businessmanListRepository.findAllBusinessmen();
+            System.out.println("전체 사업자 수: " + list.size());
+            
+            if (list.size() > 0) {
+                System.out.println("첫 번째 사업자 정보:");
+                BusinessMan first = list.get(0);
+                System.out.println("- UserIndex: " + first.getUserIndex().getUserIndex());
+                System.out.println("- Email: " + first.getUserIndex().getUsersId().getEmail());
+                System.out.println("- Activated: " + first.getUserIndex().getUsersId().getActivated());
+                System.out.println("- UserRoleIndex: " + first.getUserIndex().getUserRoleIndex());
+            }
+            
+            List<BusinessmanListResponseDTO> result = list.stream().map(this::toDto).collect(Collectors.toList());
+            System.out.println("변환된 DTO 수: " + result.size());
+            System.out.println("=== BusinessmanListService.getAllBusinessmen 완료 ===");
+            
+            return result;
+        } catch (Exception e) {
+            System.err.println("=== BusinessmanListService.getAllBusinessmen 에러 ===");
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     private BusinessmanListResponseDTO toDto(BusinessMan bm) {
@@ -73,10 +164,64 @@ public class BusinessmanListService {
         BusinessmanListResponseDTO dto = new BusinessmanListResponseDTO();
         dto.setUserIndex(user.getUserIndex());
         dto.setEmail(user.getUsersId() != null ? user.getUsersId().getEmail() : null);
+        dto.setUserName(user.getUserBankHolder());
+        dto.setUserPhone(user.getUsersId() != null ? user.getUsersId().getPhone() : null);
+        
+        // 생년월일, 성별 정보 추가
+        String userBirthday = user.getUserBirthday() != null ? user.getUserBirthday().toString() : null;
+        Integer userGenderIndex = user.getUserGender() != null ? user.getUserGender().getUserGenderIndex() : null;
+        Integer userBankIndex = userBank != null ? userBank.getUserBankIndex() : null;
+        
+        dto.setUserBirthday(userBirthday);
+        dto.setUserGenderIndex(userGenderIndex);
+        
+        // bossEmail과 bossName 조회
+        String bossEmail = null;
+        String bossName = null;
+        if (bm.getBossUserIndex() != null) {
+            Optional<UserTesseris> bossUser = userTesserisRepository.findById(bm.getBossUserIndex());
+            if (bossUser.isPresent() && bossUser.get().getUsersId() != null) {
+                bossEmail = bossUser.get().getUsersId().getEmail();
+                bossName = bossUser.get().getUsersId().getName();
+            }
+        }
+        dto.setBossEmail(bossEmail);
+        dto.setBossName(bossName);
+        dto.setBusinessGradeName(bm.getBusinessGrade() != null ? bm.getBusinessGrade().getBusinessGradeName() : null);
+        dto.setBusinessManDistributionFlag(bm.getBusinessManDistributionFlag() != null && bm.getBusinessManDistributionFlag() ? "정상" : "정지");
+        dto.setUserBankName(userBank != null ? userBank.getUserBankName() : null);
+        dto.setUserBankNumber(user.getUserBankNumber());
+        dto.setUserBankHolder(user.getUserBankHolder());
+        dto.setUserBankIndex(userBank != null ? userBank.getUserBankIndex() : null);
+        dto.setBusinessAreaName(bm.getBusinessArea() != null ? bm.getBusinessArea().getBusinessAreaName() : null);
+        dto.setBusinessAreaLevel(bm.getBusinessArea() != null ? bm.getBusinessArea().getBusinessAreaLevel() : null);
+        dto.setBusinessGradeIndex(bm.getBusinessGrade() != null ? bm.getBusinessGrade().getBusinessGradeIndex() : null);
+        dto.setBusinessAreaIndex(bm.getBusinessArea() != null ? bm.getBusinessArea().getBusinessAreaIndex() : null);
+        
+        // 주소 정보 추가
+        dto.setUserZoneCode(user.getUserZoneCode());
+        dto.setUserAddress(user.getUserAddress());
+        dto.setUserDetailAddress(user.getUserDetailAddress());
+        
+        return dto;
+    }
+    
+    private BusinessmanListResponseDTO toDtoFromArray(Object[] row) {
+        BusinessMan bm = (BusinessMan) row[0];
+        String bossName = (String) row[1];
+        String userZoneCode = (String) row[2];
+        String userAddress = (String) row[3];
+        String userDetailAddress = (String) row[4];
+        
+        UserTesseris user = bm.getUserIndex();
+        UserBank userBank = user.getUserBank();
+        BusinessmanListResponseDTO dto = new BusinessmanListResponseDTO();
+        dto.setUserIndex(user.getUserIndex());
+        dto.setEmail(user.getUsersId() != null ? user.getUsersId().getEmail() : null);
         dto.setUserName(user.getUsersId() != null ? user.getUsersId().getName() : null);
         dto.setUserPhone(user.getUsersId() != null ? user.getUsersId().getPhone() : null);
         
-        // bossEmail 조회
+        // bossEmail과 bossName 설정
         String bossEmail = null;
         if (bm.getBossUserIndex() != null) {
             Optional<UserTesseris> bossUser = userTesserisRepository.findById(bm.getBossUserIndex());
@@ -85,6 +230,8 @@ public class BusinessmanListService {
             }
         }
         dto.setBossEmail(bossEmail);
+        dto.setBossName(bossName); // 상사 이름 추가
+        
         dto.setBusinessGradeName(bm.getBusinessGrade() != null ? bm.getBusinessGrade().getBusinessGradeName() : null);
         dto.setBusinessManDistributionFlag(bm.getBusinessManDistributionFlag() != null && bm.getBusinessManDistributionFlag() ? "정상" : "정지");
         dto.setUserBankName(userBank != null ? userBank.getUserBankName() : null);
@@ -94,7 +241,93 @@ public class BusinessmanListService {
         dto.setBusinessAreaLevel(bm.getBusinessArea() != null ? bm.getBusinessArea().getBusinessAreaLevel() : null);
         dto.setBusinessGradeIndex(bm.getBusinessGrade() != null ? bm.getBusinessGrade().getBusinessGradeIndex() : null);
         dto.setBusinessAreaIndex(bm.getBusinessArea() != null ? bm.getBusinessArea().getBusinessAreaIndex() : null);
+        
+        // 주소 정보 추가
+        dto.setUserZoneCode(userZoneCode);
+        dto.setUserAddress(userAddress);
+        dto.setUserDetailAddress(userDetailAddress);
+        
         return dto;
+    }
+    
+    public byte[] generateCsvFile(BusinessmanListSearchDTO searchDTO) throws IOException {
+        List<BusinessmanListResponseDTO> businessmanList;
+        
+        if (searchDTO != null && (searchDTO.getEmail() != null || searchDTO.getUserName() != null || 
+                                 searchDTO.getUserPhone() != null || searchDTO.getBusinessGradeName() != null ||
+                                 searchDTO.getBossEmail() != null || searchDTO.getBusinessAreaName() != null ||
+                                 searchDTO.getBusinessAreaLevel() != null || searchDTO.getBusinessManDistributionFlag() != null)) {
+            businessmanList = searchBusinessmanList(searchDTO);
+        } else {
+            businessmanList = searchBusinessmanList(new BusinessmanListSearchDTO());
+        }
+        
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+             OutputStreamWriter writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
+            
+            // BOM 추가 (한글 깨짐 방지)
+            outputStream.write(0xEF);
+            outputStream.write(0xBB);
+            outputStream.write(0xBF);
+            
+            // 헤더 작성
+            String[] headers = {
+                "번호", "이름", "이메일", "전화번호", "상사이름", "상사이메일", "사업등급", 
+                "사업분야", "사업분야레벨", "분배상태", "은행명", "계좌번호", "예금주"
+            };
+            
+            writer.write(String.join(",", headers));
+            writer.write("\n");
+            
+            // 데이터 작성 (ExcelDownloadConfig의 배치 크기 적용)
+            int batchSize = excelDownloadProperties.getBatchSize();
+            int processedCount = 0;
+            
+            for (int i = 0; i < businessmanList.size(); i++) {
+                BusinessmanListResponseDTO businessman = businessmanList.get(i);
+                String[] rowData = {
+                    escapeCsvField(String.valueOf(i + 1)), // 행 번호 (1부터 시작)
+                    escapeCsvField(businessman.getUserName()),
+                    escapeCsvField(businessman.getEmail()),
+                    escapeCsvField(businessman.getUserPhone()),
+                    escapeCsvField(businessman.getBossName()),
+                    escapeCsvField(businessman.getBossEmail()),
+                    escapeCsvField(businessman.getBusinessGradeName()),
+                    escapeCsvField(businessman.getBusinessAreaName()),
+                    escapeCsvField(businessman.getBusinessAreaLevel() != null ? businessman.getBusinessAreaLevel().toString() : ""),
+                    escapeCsvField(businessman.getBusinessManDistributionFlag()),
+                    escapeCsvField(businessman.getUserBankName()),
+                    escapeCsvField(businessman.getUserBankNumber()),
+                    escapeCsvField(businessman.getUserBankHolder())
+                };
+                
+                writer.write(String.join(",", rowData));
+                writer.write("\n");
+                
+                processedCount++;
+                
+                // 배치 크기에 도달하면 플러시
+                if (processedCount % batchSize == 0) {
+                    writer.flush();
+                }
+            }
+            
+            writer.flush();
+            return outputStream.toByteArray();
+        }
+    }
+    
+    private String escapeCsvField(String value) {
+        if (value == null) {
+            return "";
+        }
+        
+        // 쉼표나 따옴표가 포함된 경우 따옴표로 감싸기
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        
+        return value;
     }
 
     @Transactional
@@ -207,10 +440,11 @@ public class BusinessmanListService {
 
     @Transactional
     public ResponseEntity<?> updateBusinessman(BusinessmanUpdateRequestDTO dto) {
-        // 1. 유효성 검사
-        if (dto.getUserIndex() == null) {
-            return ResponseEntity.badRequest().body("사용자 인덱스는 필수입니다.");
-        }
+        try {
+            // 1. 유효성 검사
+            if (dto.getUserIndex() == null) {
+                return ResponseEntity.badRequest().body("사용자 인덱스는 필수입니다.");
+            }
 
         // 2. 기존 사업자 정보 조회
         Optional<UserTesseris> userTesserisOpt = userTesserisRepository.findById(dto.getUserIndex());
@@ -222,7 +456,7 @@ public class BusinessmanListService {
         UserEntity userEntity = userTesseris.getUsersId();
         
         // 3. BusinessMan 정보 조회
-        Optional<BusinessMan> businessManOpt = businessmanListRepository.findById(userTesseris.getUserIndex());
+        Optional<BusinessMan> businessManOpt = businessmanListRepository.findByUserIndex(userTesseris.getUserIndex());
         if (businessManOpt.isEmpty()) {
             return ResponseEntity.badRequest().body("사업자 정보를 찾을 수 없습니다.");
         }
@@ -261,6 +495,11 @@ public class BusinessmanListService {
             userEntity.setPhone(dto.getUserPhone());
         }
         
+        // 비밀번호 업데이트 (선택사항)
+        if (dto.getUserPw() != null && !dto.getUserPw().isEmpty()) {
+            userEntity.setPassword(passwordEncoder.encode(dto.getUserPw()));
+        }
+        
         UserEntity savedUserEntity = userEntityRepository.save(userEntity);
         
         // UserEntity의 updated_at 값 업데이트 (한국 시간)
@@ -268,8 +507,12 @@ public class BusinessmanListService {
         businessmanListRepository.updateUserTimestamp(savedUserEntity.getId(), koreanTime);
 
         // 6. UserTesseris 정보 업데이트
-        if (dto.getUserBirthday() != null) {
-            userTesseris.setUserBirthday(LocalDate.parse(dto.getUserBirthday()));
+        if (dto.getUserBirthday() != null && !dto.getUserBirthday().trim().isEmpty()) {
+            try {
+                userTesseris.setUserBirthday(LocalDate.parse(dto.getUserBirthday()));
+            } catch (Exception e) {
+                return ResponseEntity.badRequest().body("생년월일 형식이 올바르지 않습니다. (YYYY-MM-DD 형식으로 입력해주세요)");
+            }
         }
         if (userGender != null) {
             userTesseris.setUserGender(userGender);
@@ -349,52 +592,36 @@ public class BusinessmanListService {
         
         businessmanListRepository.save(businessMan);
         
-        // BusinessMan의 updated_at 값 업데이트 (한국 시간)
-        businessmanListRepository.updateTimestamp(businessMan.getBusinessManIndex(), koreanTime);
-
         return ResponseEntity.ok().body("사업자 정보 수정 성공");
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("사업자 정보 수정 중 오류가 발생했습니다: " + e.getMessage());
+        }
     }
 
     @Transactional
-    public ResponseEntity<?> deleteBusinessman(BusinessmanDeleteRequestDTO dto) {
-        // 1. 유효성 검사
-        if (dto.getUserIndex() == null) {
-            return ResponseEntity.badRequest().body("사용자 인덱스는 필수입니다.");
+    public ResponseEntity<?> deactivateBusinessman(Integer userIndex) {
+        try {
+            // UserTesseris 조회
+            Optional<UserTesseris> userTesserisOpt = userTesserisRepository.findById(userIndex);
+            if (userTesserisOpt.isEmpty()) {
+                return ResponseEntity.badRequest().body("사용자를 찾을 수 없습니다.");
+            }
+
+            UserTesseris userTesseris = userTesserisOpt.get();
+            UserEntity userEntity = userTesseris.getUsersId();
+            
+            // 활성화 상태만 false로 변경
+            userEntity.setActivated(false);
+            userEntityRepository.save(userEntity);
+            
+            // updated_at 업데이트
+            Instant koreanTime = java.time.ZonedDateTime.now(java.time.ZoneId.of("Asia/Seoul")).toInstant();
+            businessmanListRepository.updateUserTimestamp(userEntity.getId(), koreanTime);
+            
+            return ResponseEntity.ok().body("사업자 계정이 비활성화되었습니다.");
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("비활성화 중 오류가 발생했습니다: " + e.getMessage());
         }
-
-        // 2. 기존 사업자 정보 조회
-        Optional<UserTesseris> userTesserisOpt = userTesserisRepository.findById(dto.getUserIndex());
-        if (userTesserisOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body("해당 사용자를 찾을 수 없습니다.");
-        }
-
-        UserTesseris userTesseris = userTesserisOpt.get();
-        UserEntity userEntity = userTesseris.getUsersId();
-        
-        // 3. BusinessMan 정보 조회
-        Optional<BusinessMan> businessManOpt = businessmanListRepository.findById(userTesseris.getUserIndex());
-        if (businessManOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body("사업자 정보를 찾을 수 없습니다.");
-        }
-
-        BusinessMan businessMan = businessManOpt.get();
-
-        // 4. 계정 비활성화 (activated = false)
-        userEntity.setActivated(false);
-        UserEntity savedUserEntity = userEntityRepository.save(userEntity);
-        
-        // UserEntity의 updated_at 값 업데이트 (한국 시간)
-        Instant koreanTime = java.time.ZonedDateTime.now(java.time.ZoneId.of("Asia/Seoul")).toInstant();
-        businessmanListRepository.updateUserTimestamp(savedUserEntity.getId(), koreanTime);
-
-        // 5. BusinessMan 배포 상태도 비활성화로 변경
-        businessMan.setBusinessManDistributionFlag(false);
-        businessmanListRepository.save(businessMan);
-        
-        // BusinessMan의 updated_at 값 업데이트 (한국 시간)
-        businessmanListRepository.updateTimestamp(businessMan.getBusinessManIndex(), koreanTime);
-
-        return ResponseEntity.ok().body("사업자 계정이 비활성화되었습니다.");
     }
 
     private boolean isSubordinate(Integer bossUserIndex, Integer userIndex) {
@@ -419,5 +646,30 @@ public class BusinessmanListService {
         
         // 현재 사용자의 상사의 상사를 재귀적으로 확인
         return isSubordinate(bossUserIndex, currentBossIndex);
+    }
+
+    // 사업자 등급 목록 조회
+    public List<BusinessmanListController.BusinessGradeDTO> getBusinessGrades() {
+        List<BusinessGrade> businessGrades = businessGradeRepository.findAll();
+        return businessGrades.stream()
+                .map(bg -> new BusinessmanListController.BusinessGradeDTO(
+                        bg.getBusinessGradeIndex(),
+                        bg.getBusinessGradeLevel(),
+                        bg.getBusinessGradeName(),
+                        bg.getBusinessGradeRate().doubleValue()
+                ))
+                .collect(Collectors.toList());
+    }
+    
+    // 사업자 지역 목록 조회
+    public List<BusinessmanListController.BusinessAreaDTO> getBusinessAreas() {
+        List<BusinessArea> businessAreas = businessAreaJtjRepo.findAll();
+        return businessAreas.stream()
+                .map(ba -> new BusinessmanListController.BusinessAreaDTO(
+                        ba.getBusinessAreaIndex(),
+                        ba.getBusinessAreaName(),
+                        ba.getBusinessAreaLevel()
+                ))
+                .collect(Collectors.toList());
     }
 } 

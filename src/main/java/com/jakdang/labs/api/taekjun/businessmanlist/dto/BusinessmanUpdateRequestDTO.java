@@ -7,6 +7,7 @@ public class BusinessmanUpdateRequestDTO {
     private Integer userIndex;  // 수정할 사용자 인덱스
     private String email;
     private String userName;
+    private String userPw;      // 비밀번호 (선택사항)
     private String userPhone;
     private String userBirthday;
     private Integer userGenderIndex;

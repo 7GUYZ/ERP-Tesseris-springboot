@@ -24,6 +24,14 @@ public interface SuggestionUserRepository extends JpaRepository<SuggestionUser, 
     @Query("SELECT su FROM SuggestionUser su WHERE su.suggestionUserIndex = :suggestionUserIndex")
     Optional<SuggestionUser> findBySuggestionUserIndex(@Param("suggestionUserIndex") Integer suggestionUserIndex);
     
+    // 특정 사용자가 이미 추천인을 가지고 있는지 확인
+    @Query("SELECT COUNT(su) > 0 FROM SuggestionUser su WHERE su.suggestionUserIndex = :suggestionUserIndex")
+    boolean existsBySuggestionUserIndex(@Param("suggestionUserIndex") Integer suggestionUserIndex);
+    
+    // 특정 사용자가 이미 다른 사람을 추천했는지 확인
+    @Query("SELECT COUNT(su) > 0 FROM SuggestionUser su WHERE su.recommendationUserIndex = :recommendationUserIndex")
+    boolean existsByRecommendationUserIndex(@Param("recommendationUserIndex") Integer recommendationUserIndex);
+    
     // 추천인 관계가 이미 존재하는지 확인
     @Query("SELECT COUNT(su) > 0 FROM SuggestionUser su WHERE su.suggestionUserIndex = :suggestionUserIndex AND su.recommendationUserIndex = :recommendationUserIndex")
     boolean existsBySuggestionUserIndexAndRecommendationUserIndex(

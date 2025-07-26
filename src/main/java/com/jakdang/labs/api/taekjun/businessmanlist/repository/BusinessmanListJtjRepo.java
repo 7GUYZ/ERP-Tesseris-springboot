@@ -17,10 +17,11 @@ public interface BusinessmanListJtjRepo extends JpaRepository<BusinessMan, Integ
         FROM BusinessMan bm
         JOIN FETCH bm.userIndex u
         JOIN FETCH u.usersId ue
-        JOIN FETCH bm.businessGrade bg
-        JOIN FETCH bm.businessArea ba
+        LEFT JOIN FETCH bm.businessGrade bg
+        LEFT JOIN FETCH bm.businessArea ba
         WHERE u.userRoleIndex = 2
-          AND ue.activated = true
+          AND (ue IS NULL OR ue.activated = true OR ue.activated IS NULL)
+          AND (ue.activated = true OR ue.activated IS NULL)
           AND (:email IS NULL OR ue.email LIKE %:email%)
           AND (:userName IS NULL OR ue.name LIKE %:userName%)
           AND (:userPhone IS NULL OR ue.phone LIKE %:userPhone%)
@@ -42,6 +43,30 @@ public interface BusinessmanListJtjRepo extends JpaRepository<BusinessMan, Integ
             @Param("businessManDistributionFlag") String businessManDistributionFlag
     );
     
+    @Query(value = """
+        SELECT bm
+        FROM BusinessMan bm
+        JOIN FETCH bm.userIndex u
+        LEFT JOIN FETCH u.usersId ue
+        LEFT JOIN FETCH bm.businessGrade bg
+        LEFT JOIN FETCH bm.businessArea ba
+        WHERE (ue.activated = true OR ue.activated IS NULL)
+        ORDER BY bm.businessManIndex DESC
+    """)
+    List<BusinessMan> findAllActiveBusinessmen();
+    
+    @Query(value = """
+        SELECT bm
+        FROM BusinessMan bm
+        JOIN FETCH bm.userIndex u
+        JOIN FETCH u.usersId ue
+        LEFT JOIN FETCH bm.businessGrade bg
+        LEFT JOIN FETCH bm.businessArea ba
+        WHERE (ue.activated = true OR ue.activated IS NULL)
+        ORDER BY bm.businessManIndex DESC
+    """)
+    List<BusinessMan> findAllBusinessmen();
+    
     @Modifying
     @Query(value = "UPDATE business_man SET created_at = :createdAt, updated_at = :updatedAt WHERE business_man_index = :id", nativeQuery = true)
     void updateTimestamps(@Param("id") Integer id, @Param("createdAt") Instant createdAt, @Param("updatedAt") Instant updatedAt);
@@ -57,4 +82,7 @@ public interface BusinessmanListJtjRepo extends JpaRepository<BusinessMan, Integ
     @Modifying
     @Query(value = "UPDATE users SET updated_at = :updatedAt WHERE id = :id", nativeQuery = true)
     void updateUserTimestamp(@Param("id") String id, @Param("updatedAt") Instant updatedAt);
+    
+    @Query("SELECT bm FROM BusinessMan bm WHERE bm.userIndex.userIndex = :userIndex")
+    java.util.Optional<BusinessMan> findByUserIndex(@Param("userIndex") Integer userIndex);
 } 
