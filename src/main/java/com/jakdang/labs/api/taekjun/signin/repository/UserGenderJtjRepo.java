@@ -6,5 +6,5 @@ import org.springframework.stereotype.Repository;
 import com.jakdang.labs.entity.UserGender;
 
 @Repository
-public interface UserGenderRepository extends JpaRepository<UserGender, Integer> {
+public interface UserGenderJtjRepo extends JpaRepository<UserGender, Integer> {
 } 

@@ -195,7 +195,7 @@ cloud:
       secretKey: ${AWS_SECRET_KEY}
     
     s3:
-      bucket: tesseris-practice-jdb
+      bucket: ${AWS_S3_BUCKET}
       region:
         static: ap-northeast-2
       stack:

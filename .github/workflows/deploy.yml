@@ -16,6 +16,7 @@ jobs:
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
       AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+      AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
       KAKAORESTAPIKEY: ${{ secrets.KAKAORESTAPIKEY }}
       NAVER_EMAIL: ${{ secrets.NAVER_EMAIL }}
       NAVER_EMAIL_PASSWORD: ${{ secrets.NAVER_EMAIL_PASSWORD }}
@@ -66,6 +67,7 @@ jobs:
             --from-literal=JASYPT_PASSWORD="${{ secrets.JASYPT_PASSWORD }}" \
             --from-literal=AWS_ACCESS_KEY="${{ secrets.AWS_ACCESS_KEY }}" \
             --from-literal=AWS_SECRET_KEY="${{ secrets.AWS_SECRET_KEY }}" \
+            --from-literal=AWS_S3_BUCKET="${{ secrets.AWS_S3_BUCKET }}" \
             --from-literal=KAKAORESTAPIKEY="${{ secrets.KAKAORESTAPIKEY }}" \
             --from-literal=NAVER_EMAIL="${{ secrets.NAVER_EMAIL }}" \
             --from-literal=NAVER_EMAIL_PASSWORD="${{ secrets.NAVER_EMAIL_PASSWORD }}" \
