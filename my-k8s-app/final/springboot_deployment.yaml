@@ -90,3 +90,8 @@ spec:
                 secretKeyRef:
                   name: erp-tesseris-secret
                   key: AWS_SECRET_KEY
+            - name: AWS_S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: erp-tesseris-secret
+                  key: AWS_S3_BUCKET

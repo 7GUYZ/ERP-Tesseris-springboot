@@ -34,13 +34,31 @@ public class S3ImageService {
         
         amazonS3.putObject(new PutObjectRequest(bucketName, fileName, file.getInputStream(), metadata));
         
-        return "https://" + bucketName + ".s3." + region + ".amazonaws.com/" + fileName;
+        return fileName; // S3 Key만 반환
+    }
+
+    public String generatePresignedUrl(String fileKey) {
+        java.util.Date expiration = new java.util.Date(System.currentTimeMillis() + 1000 * 60 * 10); // 10분
+        com.amazonaws.services.s3.model.GeneratePresignedUrlRequest request =
+            new com.amazonaws.services.s3.model.GeneratePresignedUrlRequest(bucketName, fileKey)
+                .withMethod(com.amazonaws.HttpMethod.GET)
+                .withExpiration(expiration);
+        java.net.URL url = amazonS3.generatePresignedUrl(request);
+        return url.toString();
     }
     
     public void deleteImage(String imageUrl) {
-        if (imageUrl != null && imageUrl.contains(bucketName)) {
-            String key = imageUrl.substring(imageUrl.indexOf(bucketName) + bucketName.length() + 1);
-            amazonS3.deleteObject(bucketName, key);
+        System.out.println("[S3ImageService] deleteImage 호출, imageUrl: " + imageUrl);
+        if (imageUrl != null && !imageUrl.isEmpty()) {
+            try {
+                amazonS3.deleteObject(bucketName, imageUrl);
+                System.out.println("[S3ImageService] S3에서 삭제 명령 실행: " + bucketName + "/" + imageUrl);
+            } catch (Exception e) {
+                System.out.println("[S3ImageService] S3 삭제 실패: " + e.getMessage());
+                e.printStackTrace();
+            }
+        } else {
+            System.out.println("[S3ImageService] S3 삭제 스킵: imageUrl이 null 또는 빈값");
         }
     }
 } 
