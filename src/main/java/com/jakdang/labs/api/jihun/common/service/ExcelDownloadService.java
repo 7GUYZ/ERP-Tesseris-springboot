@@ -66,7 +66,7 @@ public class ExcelDownloadService {
         // 기존 서비스에서 받은 데이터를 엑셀 형식으로 변환
         List<Map<String, Object>> content = ((List<UserCmLogResponseDto>) searchResult.get("content")).stream()
             .map(dto -> {
-                Map<String, Object> map = new HashMap<>();
+                    Map<String, Object> map = new HashMap<>();
                 map.put("userCmLogIndex", dto.getUserCmLogIndex() != null ? dto.getUserCmLogIndex() : "");
                 map.put("userCmLogValue", dto.getUserCmLogValue() != null ? dto.getUserCmLogValue() : "");
                 map.put("userCmLogReason", dto.getUserCmLogReason() != null ? dto.getUserCmLogReason() : "");
@@ -78,8 +78,8 @@ public class ExcelDownloadService {
                 map.put("eventPartyUserName", dto.getEventPartyUserName() != null ? dto.getEventPartyUserName() : "");
                 map.put("eventPartyUserRole", dto.getEventPartyUserRole() != null ? dto.getEventPartyUserRole() : "");
                 map.put("transactionTypeName", dto.getTransactionTypeName() != null ? dto.getTransactionTypeName() : "");
-                
-                return map;
+                    
+                    return map;
             })
             .collect(Collectors.toList());
         

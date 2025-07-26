@@ -33,6 +33,6 @@ public class NoticeDTO {
         private String noticeDesc;
         @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
         private LocalDateTime noticeCreateTime;
-        private String userId; // 작성자 userId 추가
+        private String userEmail; 
     }
 } 

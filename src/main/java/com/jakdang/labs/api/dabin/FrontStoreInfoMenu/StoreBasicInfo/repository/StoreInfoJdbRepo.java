@@ -9,7 +9,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.jakdang.labs.api.dabin.FrontStoreInfoMenu.StoreBasicInfo.dto.StoreInfoResponse;
-import com.jakdang.labs.api.dabin.FrontStoreInfoMenu.StoreBasicInfo.dto.StoreImageResponse;
 import com.jakdang.labs.entity.Store;
 import com.jakdang.labs.entity.StoreImage;
 
@@ -35,18 +34,6 @@ public interface StoreInfoJdbRepo extends JpaRepository<Store, Integer> {
         WHERE s.userIndex.userIndex = :userIndex
     """)
     Optional<StoreInfoResponse> getStoreInfoByUserIndex(@Param("userIndex") Integer userIndex);
-    
-    @Query("""
-        SELECT new com.jakdang.labs.api.dabin.FrontStoreInfoMenu.StoreBasicInfo.dto.StoreImageResponse(
-            si.storeImageIndex,
-            si.storeImage,
-            si.storeMainImageStatus
-        )
-        FROM StoreImage si
-        WHERE si.storeUserIndex.userIndex.userIndex = :userIndex
-        ORDER BY si.storeMainImageStatus DESC
-    """)
-    List<StoreImageResponse> getStoreImagesByUserIndex(@Param("userIndex") Integer userIndex);
     
     @Query("SELECT s FROM Store s WHERE s.userIndex.userIndex = :userIndex")
     Optional<Store> findByUserIndex(@Param("userIndex") Integer userIndex);
