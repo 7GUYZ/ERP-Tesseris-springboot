@@ -95,7 +95,65 @@ public class SigninController {
     }
     
     /**
-     * 이메일 인증 메일 발송
+     * 이메일 중복 확인 후 인증 메일 발송
+     */
+    @PostMapping("/check-email-and-send-auth")
+    public ResponseEntity<Map<String, Object>> checkEmailAndSendAuth(@RequestBody Map<String, String> request) {
+        try {
+            String email = request.get("email");
+            String name = request.get("name");
+            
+            if (email == null || name == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "이메일과 이름을 입력해주세요."
+                ));
+            }
+            
+            // 1. 이메일 중복 확인
+            if (signupRepository.existsByEmail(email)) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "이미 등록된 이메일입니다.",
+                    "duplicate", true
+                ));
+            }
+            
+            // 2. 이메일 형식 검증
+            if (!isValidEmailFormat(email)) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "올바른 이메일 형식이 아닙니다.",
+                    "invalidFormat", true
+                ));
+            }
+            
+            // 3. 인증 메일 발송
+            String authToken = stepwiseSignupService.sendAuthEmail(email, name);
+            
+            if (authToken != null) {
+                return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "authToken", authToken,
+                    "message", "인증 메일이 발송되었습니다. 이메일을 확인해주세요."
+                ));
+            } else {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "인증 메일 발송에 실패했습니다."
+                ));
+            }
+        } catch (Exception e) {
+            log.error("이메일 확인 및 인증 메일 발송 오류: ", e);
+            return ResponseEntity.internalServerError().body(Map.of(
+                "success", false,
+                "message", "서버 오류가 발생했습니다."
+            ));
+        }
+    }
+    
+    /**
+     * 이메일 인증 메일 발송 (기존 메서드 - 중복 확인 없이)
      */
     @PostMapping("/send-auth-email")
     public ResponseEntity<Map<String, Object>> sendAuthEmail(@RequestBody Map<String, String> request) {
@@ -185,19 +243,14 @@ public class SigninController {
 
             // 회원가입 성공 후 추천인 관계 생성 (트랜잭션 분리)
             if (userInfoDTO.getReferralId() != null && !userInfoDTO.getReferralId().trim().isEmpty()) {
-                // 추천인 코드 찾기
-                var referrerOpt = referralService.findUserByIdentifier(userInfoDTO.getReferralId());
-                if (referrerOpt.isPresent()) {
-                    String referralCode = referrerOpt.get().getReferralCode();
-                    // 추천인 관계 생성
-                    var referralRequest = new ReferralRequestDTO();
-                    referralRequest.setReferralCode(referralCode);
-                    // userId(UUID)로 UserTesseris 조회
-                    var userTesserisOpt = userTesserisRepository.findByUsersId_Id(userId);
-                    if (userTesserisOpt.isPresent()) {
-                        referralRequest.setUserIndex(userTesserisOpt.get().getUserIndex());
-                        referralService.createReferralRelation(referralRequest);
-                    }
+                // 추천인 관계 생성
+                var referralRequest = new ReferralRequestDTO();
+                referralRequest.setReferralCode(userInfoDTO.getReferralId());
+                // userId(UUID)로 UserTesseris 조회
+                var userTesserisOpt = userTesserisRepository.findByUsersId_Id(userId);
+                if (userTesserisOpt.isPresent()) {
+                    referralRequest.setUserIndex(userTesserisOpt.get().getUserIndex());
+                    referralService.createReferralRelation(referralRequest);
                 }
             }
 
@@ -275,5 +328,18 @@ public class SigninController {
             "emailExists", emailExists,
             "nicknameExists", nicknameExists
         ));
+    }
+    
+    /**
+     * 이메일 형식 검증
+     */
+    private boolean isValidEmailFormat(String email) {
+        if (email == null || email.trim().isEmpty()) {
+            return false;
+        }
+        
+        // 기본적인 이메일 형식 검증 (정규식)
+        String emailRegex = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
+        return email.matches(emailRegex);
     }
 } 

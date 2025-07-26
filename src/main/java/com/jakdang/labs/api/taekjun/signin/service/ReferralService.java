@@ -160,10 +160,9 @@ public class ReferralService {
             
             UserTesseris referrerUser = referrerUserOpt.get();
             
-            // 5. 이미 추천인 관계가 있는지 확인
-            if (suggestionUserRepository.existsBySuggestionUserIndexAndRecommendationUserIndex(
-                    user.getUserIndex(), referrerUser.getUserIndex())) {
-                return new ReferralResponseDTO("이미 추천인 관계가 존재합니다.", false, null, 0, null, null);
+            // 5. 추천받는 사람이 이미 추천인을 가지고 있는지 확인 (회원가입 시에만 생성 가능)
+            if (suggestionUserRepository.existsBySuggestionUserIndex(user.getUserIndex())) {
+                return new ReferralResponseDTO("이미 추천인이 존재합니다. 추천인은 회원가입 시에만 설정 가능합니다.", false, null, 0, null, null);
             }
             
             // 6. 추천인 관계 생성 (테이블이 존재하는 경우에만)
