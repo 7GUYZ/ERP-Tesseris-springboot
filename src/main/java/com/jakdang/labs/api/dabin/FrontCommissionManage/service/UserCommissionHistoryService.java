@@ -1,12 +1,13 @@
 package com.jakdang.labs.api.dabin.FrontCommissionManage.service;
 
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import com.jakdang.labs.api.dabin.FrontCommissionManage.dto.UserCommissionHistoryResponse;
 import com.jakdang.labs.api.dabin.FrontCommissionManage.repository.UserCommissionHistoryJdbRepo;
+import com.jakdang.labs.api.dabin.FrontMyPageStoreInfo.repository.UserTesserisJdbRepo;
 
 import lombok.RequiredArgsConstructor;
 
@@ -20,11 +21,19 @@ public class UserCommissionHistoryService {
     @Qualifier("userCommissionHistoryRepository")
     private final UserCommissionHistoryJdbRepo userCommissionHistoryRepository;
     
+    private final UserTesserisJdbRepo userTesserisRepository;
+    
+    public Integer getUserIndexByUserId(String userId) {
+        return userTesserisRepository.findByUsersId_Id(userId)
+            .map(userTesseris -> userTesseris.getUserIndex())
+            .orElseThrow(() -> new RuntimeException("UserTesseris not found for userId: " + userId));
+    }
+    
     public List<UserCommissionHistoryResponse> getUserCommissionHistory(Integer userIndex, Integer page, Integer limit) {
         int offset = (page - 1) * limit;
         Long totalCount = userCommissionHistoryRepository.getTotalCount(userIndex);
         
-        List<Object[]> results = userCommissionHistoryRepository.getUserCommissionHistory(userIndex);
+        List<Object[]> results = userCommissionHistoryRepository.getUserCommissionHistoryWithPagination(userIndex, limit, offset);
         
         // Object[]를 DTO로 변환 (쿼리 결과 순서에 맞게 수정)
         List<UserCommissionHistoryResponse> dtoResults = results.stream()
@@ -39,19 +48,13 @@ public class UserCommissionHistoryService {
             })
             .toList();
         
-        // 페이지네이션 적용 및 순번 계산
-        int startIndex = offset;
-        int endIndex = Math.min(startIndex + limit, dtoResults.size());
-        
-        List<UserCommissionHistoryResponse> paginatedResults = dtoResults.subList(startIndex, endIndex);
-        
-        // 순번 재계산
-        for (int i = 0; i < paginatedResults.size(); i++) {
-            UserCommissionHistoryResponse item = paginatedResults.get(i);
+        // 순번 계산 (전체 개수에서 역순으로 계산)
+        for (int i = 0; i < dtoResults.size(); i++) {
+            UserCommissionHistoryResponse item = dtoResults.get(i);
             item.setRowNumber(totalCount.intValue() - offset - i);
         }
         
-        return paginatedResults;
+        return dtoResults;
     }
     
     public Long getTotalCount(Integer userIndex) {

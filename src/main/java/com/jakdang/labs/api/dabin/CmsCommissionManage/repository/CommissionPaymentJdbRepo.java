@@ -4,7 +4,6 @@ import java.util.List;
 import java.time.LocalDateTime;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -76,32 +75,4 @@ public interface CommissionPaymentJdbRepo extends JpaRepository<TemporaryRegular
         @Param("paymentStatus") String paymentStatus,
         @Param("description") String description
     );
-    
-    @Query("""
-        SELECT CASE 
-            WHEN t4.userRoleIndex = 1 THEN false
-            WHEN t4.userBankNumber IS NULL OR t4.userBankNumber = '' THEN false
-            WHEN t4.userBank.userBankIndex = 0 THEN false
-            WHEN t4.userJumin IS NULL OR t4.userJumin = '' THEN false
-            ELSE true
-        END
-        FROM TemporaryRegularDetail t1
-        JOIN t1.userIndex t4
-        WHERE t1.temporaryStoreDetailIndex = :detailIndex
-    """)
-    Boolean validatePaymentEligibility(@Param("detailIndex") Integer detailIndex);
-    
-    @Query("""
-        SELECT t4.userRoleIndex, t4.userBankNumber, 
-               CASE WHEN t4.userBank IS NULL THEN 0 ELSE t4.userBank.userBankIndex END, 
-               t4.userJumin
-        FROM TemporaryRegularDetail t1
-        JOIN t1.userIndex t4
-        WHERE t1.temporaryStoreDetailIndex = :detailIndex
-    """)
-    Object[] getPaymentEligibilityDetails(@Param("detailIndex") Integer detailIndex);
-    
-    @Modifying
-    @Query("UPDATE TemporaryRegularDetail t SET t.paymentStatus = :paymentStatus WHERE t.temporaryStoreDetailIndex = :detailIndex")
-    void updatePaymentStatus(@Param("detailIndex") Integer detailIndex, @Param("paymentStatus") String paymentStatus);
 } 
