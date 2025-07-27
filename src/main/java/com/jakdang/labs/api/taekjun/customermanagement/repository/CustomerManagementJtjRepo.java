@@ -18,7 +18,7 @@ public interface CustomerManagementJtjRepo extends JpaRepository<StoreCustomer, 
     List<StoreCustomer> findCustomersByStoreAndFilters(
         @Param("storeUserIndex") String storeUserIndex,
         @Param("member") String member
-    );
+     );
     
     @Query("SELECT sc FROM StoreCustomer sc " +
            "WHERE sc.storeCustomerIndex IN :customerIndexes")
@@ -43,6 +43,38 @@ public interface CustomerManagementJtjRepo extends JpaRepository<StoreCustomer, 
            "WHERE sc.storeStoreUserIndex = :storeUserIndex " +
            "AND sc.storeCustomerUserIndex = :customerUserIndex")
     Optional<StoreCustomer> findByStoreAndCustomerUserIndex(
+        @Param("storeUserIndex") String storeUserIndex,
+        @Param("customerUserIndex") String customerUserIndex
+    );
+    
+    // 내 가맹점의 고객 목록 조회 (가맹점명+고객명+상태)
+    @Query("SELECT sc.storeCustomerIndex, sc.storeCustomerStatus, " +
+           "s.storeName as storeName, " +
+           "u.name as customerName, " +
+           "u.phone as customerPhone, " +
+           "u.email as customerEmail " +
+           "FROM StoreCustomer sc " +
+           "JOIN Store s ON s.userIndex.userIndex = CAST(sc.storeStoreUserIndex AS integer) " +
+           "JOIN UserTesseris ut ON ut.userIndex = CAST(sc.storeCustomerUserIndex AS integer) " +
+           "JOIN ut.usersId u " +
+           "WHERE sc.storeStoreUserIndex = :storeUserIndex")
+    List<Object[]> findMyCustomersWithInfo(
+        @Param("storeUserIndex") String storeUserIndex
+    );
+    
+    // 내 가맹점의 특정 고객 조회
+    @Query("SELECT sc.storeCustomerIndex, sc.storeCustomerStatus, " +
+           "s.storeName as storeName, " +
+           "u.name as customerName, " +
+           "u.phone as customerPhone, " +
+           "u.email as customerEmail " +
+           "FROM StoreCustomer sc " +
+           "JOIN Store s ON s.userIndex.userIndex = CAST(sc.storeStoreUserIndex AS integer) " +
+           "JOIN UserTesseris ut ON ut.userIndex = CAST(sc.storeCustomerUserIndex AS integer) " +
+           "JOIN ut.usersId u " +
+           "WHERE sc.storeStoreUserIndex = :storeUserIndex " +
+           "AND sc.storeCustomerUserIndex = :customerUserIndex")
+    Optional<Object[]> findMyCustomerByUserIndex(
         @Param("storeUserIndex") String storeUserIndex,
         @Param("customerUserIndex") String customerUserIndex
     );

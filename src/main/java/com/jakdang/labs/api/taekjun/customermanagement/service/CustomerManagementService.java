@@ -3,13 +3,21 @@ package com.jakdang.labs.api.taekjun.customermanagement.service;
 import com.jakdang.labs.api.taekjun.customermanagement.dto.CustomerListResponseDTO;
 import com.jakdang.labs.api.taekjun.customermanagement.dto.CustomerUpdateDTO;
 import com.jakdang.labs.entity.StoreCustomer;
+import com.jakdang.labs.entity.Coupon;
+import com.jakdang.labs.entity.UserTesseris;
+import com.jakdang.labs.entity.UserCm;
 import com.jakdang.labs.api.taekjun.customermanagement.repository.CustomerManagementJtjRepo;
+import com.jakdang.labs.api.taekjun.customermanagement.repository.CouponRepository;
+import com.jakdang.labs.api.taekjun.Permissionsettings.repository.UserTesserisRepository;
+import com.jakdang.labs.api.taekjun.signin.repository.UserCmRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -19,6 +27,9 @@ import java.util.stream.Collectors;
 public class CustomerManagementService {
     
     private final CustomerManagementJtjRepo customerManagementJtjRepo;
+    private final CouponRepository couponRepository;
+    private final UserTesserisRepository userTesserisRepository;
+    private final UserCmRepository userCmRepository;
     
     /**
      * 고객 목록 조회
@@ -37,6 +48,58 @@ public class CustomerManagementService {
         return customers.stream()
             .map(this::toDto)
             .collect(Collectors.toList());
+    }
+    
+    /**
+     * 내 가맹점의 고객 목록 조회 (가맹점명+고객명+상태)
+     */
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getMyCustomers(String storeUserIndex) {
+        log.info("내 가맹점 고객 목록 조회 - storeUserIndex: {}", storeUserIndex);
+        
+        List<Object[]> results = customerManagementJtjRepo.findMyCustomersWithInfo(storeUserIndex);
+        
+        List<Map<String, Object>> customerList = results.stream()
+            .map(this::toMyCustomerDto)
+            .collect(Collectors.toList());
+        
+        log.info("조회된 내 고객 수: {}", customerList.size());
+        
+        return customerList;
+    }
+    
+    /**
+     * 내 가맹점의 특정 고객 조회
+     */
+    @Transactional(readOnly = true)
+    public Optional<Map<String, Object>> getMyCustomerByUserIndex(String storeUserIndex, String customerUserIndex) {
+        log.info("내 가맹점 특정 고객 조회 - storeUserIndex: {}, customerUserIndex: {}", storeUserIndex, customerUserIndex);
+        
+        Optional<Object[]> result = customerManagementJtjRepo.findMyCustomerByUserIndex(storeUserIndex, customerUserIndex);
+        
+        Optional<Map<String, Object>> customerInfo = result.map(this::toMyCustomerDto);
+        
+        if (customerInfo.isPresent()) {
+            log.info("내 고객 정보 조회 성공");
+        } else {
+            log.info("해당 고객이 내 가맹점에 없습니다.");
+        }
+        
+        return customerInfo;
+    }
+    
+    /**
+     * Object[]를 Map으로 변환 (내 고객 정보)
+     */
+    private Map<String, Object> toMyCustomerDto(Object[] result) {
+        return Map.of(
+            "storeCustomerIndex", result[0],
+            "storeCustomerStatus", result[1],
+            "storeName", result[2],
+            "customerName", result[3],
+            "customerPhone", result[4],
+            "customerEmail", result[5]
+        );
     }
     
     /**
@@ -115,11 +178,13 @@ public class CustomerManagementService {
     }
     
     /**
-     * 쿠폰 선물 (QR 핀 페이지로 리다이렉트)
+     * 쿠폰 선물 (즉시 쿠폰 발급)
      */
     @Transactional
-    public boolean giftCoupon(List<Integer> customerIndexes) {
-        log.info("쿠폰 선물 - customerIndexes: {}", customerIndexes);
+    public boolean giftCoupon(List<Integer> customerIndexes, String storeUserIndex, 
+                             Integer couponPrice, Integer couponLimit, String couponName, String pinCode) {
+        log.info("쿠폰 선물 - customerIndexes: {}, storeUserIndex: {}, couponPrice: {}, couponLimit: {}, couponName: {}, pinCode: {}", 
+                customerIndexes, storeUserIndex, couponPrice, couponLimit, couponName, pinCode);
         
         List<StoreCustomer> customers = customerManagementJtjRepo.findByCustomerIndexes(customerIndexes);
         
@@ -128,9 +193,122 @@ public class CustomerManagementService {
             return false;
         }
         
-        // 여기서는 단순히 로그만 남기고, 실제 쿠폰 선물 로직은 QR 핀 페이지에서 처리
-        log.info("{}명의 고객에게 쿠폰 선물 요청이 완료되었습니다.", customers.size());
+        // 발급자(가맹점) 정보 조회
+        Optional<UserTesseris> issuanceUser = userTesserisRepository.findByUserIndex(Integer.parseInt(storeUserIndex));
+        if (issuanceUser.isEmpty()) {
+            log.warn("발급자 정보를 찾을 수 없습니다. storeUserIndex: {}", storeUserIndex);
+            return false;
+        }
+        
+        // 핀번호 검증 (발급자의 핀번호와 일치하는지 확인)
+        Integer userCmIndex = Integer.parseInt(storeUserIndex);
+        Optional<UserCm> userCm = userCmRepository.findByUserCmIndex(userCmIndex);
+        if (userCm.isEmpty() || userCm.get().getUserCmPincode() == null || 
+            !userCm.get().getUserCmPincode().equals(pinCode)) {
+            log.warn("핀번호가 일치하지 않습니다. storeUserIndex: {}", storeUserIndex);
+            return false;
+        }
+        
+        // 보유 CM 확인 (UserCm 테이블에서 조회)
+        Integer currentCm = getUserCurrentCm(userCmIndex);
+        
+        // 필요 CM 계산 (쿠폰 금액 × 고객 수)
+        Integer needCm = couponPrice * customers.size();
+        
+        // CM 잔액 확인
+        if (currentCm < needCm) {
+            log.warn("보유 CM이 부족합니다. 현재: {}, 필요: {}", currentCm, needCm);
+            return false;
+        }
+        
+        // CM 차감
+        updateUserCm(userCmIndex, needCm);
+        
+        // 각 고객에게 쿠폰 발급
+        for (StoreCustomer customer : customers) {
+            // 수령자(고객) 정보 조회
+            Optional<UserTesseris> providedUser = userTesserisRepository.findByUserIndex(
+                Integer.parseInt(customer.getStoreCustomerUserIndex())
+            );
+            
+            if (providedUser.isPresent()) {
+                // 쿠폰 생성
+                Coupon coupon = new Coupon();
+                coupon.setIssuanceUser(issuanceUser.get()); // 발급자 (가맹점)
+                coupon.setProvidedUser(providedUser.get()); // 수령자 (고객)
+                coupon.setCouponPrice(couponPrice); // 쿠폰 금액
+                coupon.setCouponLimit(couponLimit); // 사용 제한
+                coupon.setCouponIssuanceStatusIndex(1); // 발급 상태 (1: 발급됨)
+                coupon.setCouponProvidedStatusIndex(1); // 제공 상태 (1: 제공됨)
+                coupon.setCouponName(couponName); // 쿠폰명
+                coupon.setCouponIssuanceTime(LocalDateTime.now()); // 발급 시간
+                coupon.setCouponProvidedTime(LocalDateTime.now()); // 제공 시간
+                coupon.setCouponLimitTime(LocalDateTime.now().plusDays(couponLimit)); // 만료 시간
+                coupon.setCouponCondition("고객 선물용 쿠폰입니다."); // 사용 조건
+                
+                // 쿠폰 저장
+                couponRepository.save(coupon);
+                
+                log.info("고객 {}에게 쿠폰 발급 완료 - 쿠폰 인덱스: {}, 금액: {}", 
+                    customer.getStoreCustomerUserIndex(), coupon.getCouponIndex(), couponPrice);
+            } else {
+                log.warn("고객 정보를 찾을 수 없습니다. customerUserIndex: {}", 
+                    customer.getStoreCustomerUserIndex());
+            }
+        }
+        
+        log.info("{}명의 고객에게 쿠폰을 성공적으로 발급했습니다. 사용된 CM: {}", customers.size(), needCm);
         return true;
+    }
+    
+    /**
+     * 현재 보유 CM 조회 (공개 메서드)
+     */
+    @Transactional(readOnly = true)
+    public Integer getCurrentCm(Integer userCmIndex) {
+        return getUserCurrentCm(userCmIndex);
+    }
+    
+    /**
+     * 사용자 현재 CM 조회 (내부 메서드)
+     */
+    private Integer getUserCurrentCm(Integer userCmIndex) {
+        // UserCm 테이블에서 현재 CM 조회
+        Optional<UserCm> userCm = userCmRepository.findByUserCmIndex(userCmIndex);
+        if (userCm.isPresent()) {
+            UserCm cm = userCm.get();
+            // CM 잔액 = 입금 - 출금
+            Integer currentCm = (cm.getUserCmDeposit() != null ? cm.getUserCmDeposit() : 0) - 
+                               (cm.getUserCmWithdrawal() != null ? cm.getUserCmWithdrawal() : 0);
+            log.info("현재 CM 잔액 조회 - userCmIndex: {}, currentCm: {}", userCmIndex, currentCm);
+            return currentCm;
+        } else {
+            log.warn("UserCm 정보를 찾을 수 없습니다. userCmIndex: {}", userCmIndex);
+            return 0;
+        }
+    }
+    
+    /**
+     * 사용자 CM 차감
+     */
+    private void updateUserCm(Integer userCmIndex, Integer useAmount) {
+        // UserCm 테이블에서 CM 차감
+        Optional<UserCm> userCmOpt = userCmRepository.findByUserCmIndex(userCmIndex);
+        if (userCmOpt.isPresent()) {
+            UserCm userCm = userCmOpt.get();
+            
+            // 현재 출금량에 차감할 금액을 뺌 (감소)
+            Integer currentWithdrawal = userCm.getUserCmWithdrawal() != null ? userCm.getUserCmWithdrawal() : 0;
+            userCm.setUserCmWithdrawal(currentWithdrawal - useAmount);
+            
+            // DB에 저장
+            userCmRepository.save(userCm);
+            
+            log.info("CM 차감 완료 - userCmIndex: {}, 차감액: {}, 새로운 출금량: {}", 
+                    userCmIndex, useAmount, userCm.getUserCmWithdrawal());
+        } else {
+            log.error("UserCm 정보를 찾을 수 없어 CM 차감을 할 수 없습니다. userCmIndex: {}", userCmIndex);
+        }
     }
     
     /**
