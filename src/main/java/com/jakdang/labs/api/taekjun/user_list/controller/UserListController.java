@@ -6,7 +6,10 @@ import com.jakdang.labs.api.taekjun.user_list.Dto.UserUpdateRequestDTO;
 import com.jakdang.labs.api.taekjun.user_list.service.UserListService;
 import com.jakdang.labs.api.taekjun.address.service.KakaoAddressService;
 import com.jakdang.labs.api.common.ResponseDTO;
+import com.jakdang.labs.api.jihun.common.config.ExcelDownloadConfig;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -19,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 public class UserListController {
     private final UserListService userListService;
     private final KakaoAddressService kakaoAddressService;
+    private final ExcelDownloadConfig.ExcelDownloadProperties excelDownloadProperties;
 
     @GetMapping
     public ResponseEntity<List<UserListResponseDTO>> getUserList() {
@@ -40,12 +44,33 @@ public class UserListController {
         return ResponseEntity.ok(list);
     }
     
+    @PostMapping("/download")
+    public ResponseEntity<byte[]> downloadUserList(@RequestBody UserListSearchDTO searchDTO) {
+        try {
+            byte[] csvData = userListService.generateCsvFile(searchDTO);
+            
+            // 파일명 생성 (현재 날짜 포함)
+            String fileName = "회원목록_" + java.time.LocalDate.now().toString().replace("-", "") + ".csv";
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            headers.setContentDispositionFormData("attachment", fileName);
+            headers.setContentLength(csvData.length);
+            
+            return ResponseEntity.ok()
+                .headers(headers)
+                .body(csvData);
+                
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
     @PutMapping("/update/{userIndex}")
     public ResponseEntity<String> updateUser(@PathVariable Integer userIndex,
-                                             @RequestBody UserUpdateRequestDTO updateDTO,
-                                             @RequestParam Integer adminUserIndex) {
+                                             @RequestBody UserUpdateRequestDTO updateDTO) {
         try {
-            boolean success = userListService.updateUser(userIndex, updateDTO, adminUserIndex);
+            boolean success = userListService.updateUser(userIndex, updateDTO);
             if (success) {
                 return ResponseEntity.ok("회원 정보가 성공적으로 수정되었습니다.");
             } else {

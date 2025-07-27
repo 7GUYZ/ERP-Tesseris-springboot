@@ -6,7 +6,6 @@ import com.jakdang.labs.api.taekjun.adminmypage.repository.AdminMyPageJtjRepo;
 import com.jakdang.labs.api.taekjun.adminmypage.repository.UserEntityJtjRepo;
 import com.jakdang.labs.api.taekjun.adminmypage.repository.AdminJTjRepo;
 import com.jakdang.labs.api.taekjun.adminmypage.repository.UpdateUserLogJtjRepo;
-import com.jakdang.labs.api.taekjun.signin.repository.UserGenderRepository;
 import com.jakdang.labs.entity.UserTesseris;
 import com.jakdang.labs.entity.Admin;
 import com.jakdang.labs.entity.UpdateUserLog;
@@ -16,6 +15,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +33,9 @@ public class AdminMyPageService {
     private final AdminJTjRepo adminRepository;
     private final UserEntityJtjRepo userEntityRepository;
     private final UpdateUserLogJtjRepo updateUserLogRepository;
-    private final UserGenderRepository userGenderRepository;
+    @Autowired
+    @Qualifier("userGenderJtjRepo")
+    private JpaRepository<UserGender, Integer> userGenderRepository;
     private final PasswordEncoder passwordEncoder;
     private final ObjectMapper objectMapper;
     
