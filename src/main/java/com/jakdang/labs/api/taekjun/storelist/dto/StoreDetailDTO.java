@@ -26,4 +26,8 @@ public class StoreDetailDTO {
     private String storeBusinessDate; // 장사요일들
     private String storeBusinessHour; // 장사시간 (store_start_business_hour ~ store_end_business_hour)
     private String storeRestHour; // 휴게시간 (store_rest_start_hour ~ store_rest_end_hour)
+    private String storeTemporaryClosingDate; // 임시 휴무 날짜
+    private String storeTemporam; // 임시 휴무 사유
+    private String storeRegularClosingInterval; // 정기 휴무 간격
+    private String storeRegularClosingWeek; // 정기 휴무 요일
 } 

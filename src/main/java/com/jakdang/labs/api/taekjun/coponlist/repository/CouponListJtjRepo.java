@@ -20,10 +20,10 @@ public interface CouponListJtjRepo extends JpaRepository<Coupon, Integer> {
     List<Coupon> findMyCoupons(@Param("userIndex") Integer userIndex);
     
     /**
-     * 만료된 쿠폰 상태를 5번으로 변경
+     * 만료된 쿠폰 상태를 3번(기한 경과)으로 변경
      */
     @Modifying
-    @Query("UPDATE Coupon c SET c.couponProvidedStatusIndex = 5 WHERE c.providedUser.userIndex = :userIndex AND c.couponLimitTime < :now")
+    @Query("UPDATE Coupon c SET c.couponProvidedStatusIndex = 3 WHERE c.providedUser.userIndex = :userIndex AND c.couponLimitTime < :now")
     void updateExpiredCoupons(@Param("userIndex") Integer userIndex, @Param("now") LocalDateTime now);
     
     /**
