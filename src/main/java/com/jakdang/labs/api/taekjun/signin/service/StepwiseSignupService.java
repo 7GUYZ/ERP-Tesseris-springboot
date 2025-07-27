@@ -23,13 +23,15 @@ import com.jakdang.labs.api.taekjun.signin.dto.Step1AgreementDTO;
 import com.jakdang.labs.api.taekjun.signin.dto.Step2EmailAuthDTO;
 import com.jakdang.labs.api.taekjun.signin.dto.Step3UserInfoDTO;
 import com.jakdang.labs.api.taekjun.signin.repository.SignupRepository;
-import com.jakdang.labs.api.taekjun.signin.repository.UserGenderRepository;
 import com.jakdang.labs.api.taekjun.signin.service.ReferralService;
 import com.jakdang.labs.api.taekjun.signin.dto.ReferralRequestDTO;
 import com.jakdang.labs.api.taekjun.signin.service.NaverEmailAuthService;
 import com.jakdang.labs.api.auth.repository.AuthRepository;
 import com.jakdang.labs.entity.SuggestionUser;
 import com.jakdang.labs.api.taekjun.signin.repository.SuggestionUserRepository;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import lombok.RequiredArgsConstructor;
 
@@ -40,7 +42,9 @@ public class StepwiseSignupService {
     private final SignupRepository signupRepository;
     private final UserTesserisRepository userRepository;
     private final UserCmRepository userCmRepository;
-    private final UserGenderRepository userGenderRepository;
+    @Autowired
+    @Qualifier("userGenderJtjRepo")
+    private JpaRepository<UserGender, Integer> userGenderRepository;
     private final PasswordEncoder passwordEncoder;
     private final ReferralService referralService;
     private final NaverEmailAuthService naverEmailAuthService;
@@ -95,9 +99,12 @@ public class StepwiseSignupService {
     @Transactional
     public String finalSignup(Step3UserInfoDTO userInfoDTO) {
         try {
-            // 1. 중복 체크
+            // 한국 시간 설정
+            Instant koreanTime = java.time.ZonedDateTime.now(java.time.ZoneId.of("Asia/Seoul")).toInstant();
+            
+            // 1. 이메일 중복 체크
             if (signupRepository.existsByEmail(userInfoDTO.getEmail())) {
-                throw new RuntimeException("이미 존재하는 이메일입니다.");
+                throw new RuntimeException("이미 등록된 이메일입니다.");
             }
             
             if (signupRepository.existsByNickname(userInfoDTO.getNickname())) {
@@ -107,10 +114,8 @@ public class StepwiseSignupService {
             // 2. 추천인 코드 찾기
             String referralCode = null;
             if (userInfoDTO.getReferralId() != null && !userInfoDTO.getReferralId().trim().isEmpty()) {
-                Optional<UserEntity> referrerOpt = referralService.findUserByIdentifier(userInfoDTO.getReferralId());
-                if (referrerOpt.isPresent()) {
-                    referralCode = referrerOpt.get().getReferralCode();
-                }
+                // 추천인 ID가 직접 referralCode인 경우
+                referralCode = userInfoDTO.getReferralId();
             } else {
                 // 추천인 미입력 시 1번 계정의 referralCode 사용
                 Optional<UserTesseris> defaultReferrer = userRepository.findByUserIndex(1);
@@ -134,16 +139,22 @@ public class StepwiseSignupService {
                 .build();
             
             // 한국 시간으로 시간 필드 설정 (저장 전에 설정)
-            Instant koreanTime = ZonedDateTime.now(ZoneId.of("Asia/Seoul")).toInstant();
+            // Instant koreanTime = ZonedDateTime.now(ZoneId.of("Asia/Seoul")).toInstant();
             users.setCreatedAt(koreanTime);
             users.setUpdatedAt(koreanTime);
             
             UserEntity savedUsers = signupRepository.save(users);
             
+            // UserEntity의 created_at, updated_at 값 직접 설정 (한국 시간)
+            signupRepository.updateUserTimestamps(savedUsers.getId(), koreanTime, koreanTime);
+            
             // 4. 새 사용자에게 추천인 코드 생성
             String newUserReferralCode = referralService.generateReferralCode(savedUsers.getId());
             savedUsers.setReferralCode(newUserReferralCode);
             signupRepository.save(savedUsers);
+            
+            // UserEntity의 updated_at 값 업데이트 (한국 시간)
+            signupRepository.updateUserTimestamp(savedUsers.getId(), koreanTime);
             
             // 5. UserTesseris 엔티티 생성 및 저장
             UserTesseris user = new UserTesseris();
@@ -219,25 +230,8 @@ public class StepwiseSignupService {
             // 8. 시간이 설정된 엔티티를 다시 저장
             signupRepository.save(savedUsers);
             
-            // 9. 추천인 관계 생성 (SuggestionUser 테이블에 저장)
-            if (referralCode != null) {
-                // 추천인을 찾아서 userIndex 가져오기
-                Optional<UserEntity> referrerOpt = referralService.findUserByIdentifier(referralCode);
-                if (referrerOpt.isPresent()) {
-                    // 추천인의 UserTesseris 정보 가져오기
-                    Optional<UserTesseris> referrerTesserisOpt = userRepository.findByUsersId(referrerOpt.get());
-                    if (referrerTesserisOpt.isPresent()) {
-                        // SuggestionUser 엔티티 생성 및 저장
-                        SuggestionUser suggestionUser = new SuggestionUser();
-                        suggestionUser.setSuggestionUserIndex(savedUser.getUserIndex()); // 새로 가입한 사용자
-                        suggestionUser.setRecommendationUserIndex(referrerTesserisOpt.get().getUserIndex()); // 추천인
-                        suggestionUser.setJoinDate(LocalDateTime.now());
-                        
-                        // SuggestionUser 저장
-                        suggestionUserRepository.save(suggestionUser);
-                    }
-                }
-            }
+            // 9. 추천인 관계 생성은 별도 서비스에서 처리하도록 제거
+            // (SigninController에서 처리)
             
             // 10. UserCm의 userCmIndex를 UserTesseris의 userIndex로 업데이트
             // ID 변경이 불가능하므로 별도의 업데이트 쿼리 사용

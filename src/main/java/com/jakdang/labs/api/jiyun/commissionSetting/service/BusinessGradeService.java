@@ -2,12 +2,19 @@ package com.jakdang.labs.api.jiyun.commissionSetting.service;
 
 import org.springframework.stereotype.Service;
 
-import com.jakdang.labs.api.jiyun.commissionSetting.repository.BusinessGradekjyRepository;
 import com.jakdang.labs.api.jiyun.dto.PasswordVerifyRequest;
 import com.jakdang.labs.api.jiyun.updateLog.repository.UpdateUserLogkjyRepository;
 import com.jakdang.labs.entity.UpdateUserLog;
 import com.jakdang.labs.api.jungeun.repository.UserTesserisLjeRepo;
 import com.jakdang.labs.entity.UserTesseris;
+import com.jakdang.labs.entity.BusinessGrade;
+import com.jakdang.labs.api.auth.repository.AuthRepository;
+import com.jakdang.labs.api.auth.entity.UserEntity;
+import com.jakdang.labs.security.jwt.utils.JwtUtil;
+import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import lombok.RequiredArgsConstructor;
 
@@ -15,18 +22,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.transaction.annotation.Transactional;
-import com.jakdang.labs.entity.BusinessGrade;
-import com.jakdang.labs.api.auth.repository.AuthRepository;
-import com.jakdang.labs.api.auth.entity.UserEntity;
-import com.jakdang.labs.security.jwt.utils.JwtUtil;
-import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class BusinessGradeService {
-  private final BusinessGradekjyRepository businessGradeRepository;
+  @Autowired
+  @Qualifier("businessGradekjyJtjRepo")
+  private JpaRepository<BusinessGrade, Integer> businessGradeRepository;
   private final AuthRepository authRepository;
   private final JwtUtil jwtUtil;
   private final Argon2PasswordEncoder passwordEncoder;
