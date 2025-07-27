@@ -9,6 +9,7 @@ import com.jakdang.labs.api.jungeun.repository.UserTesserisLjeRepo;
 import com.jakdang.labs.entity.UserTesseris;
 import com.jakdang.labs.entity.BusinessGrade;
 import com.jakdang.labs.api.auth.repository.AuthRepository;
+import com.jakdang.labs.api.alarm.service.AlarmSvc;
 import com.jakdang.labs.api.auth.entity.UserEntity;
 import com.jakdang.labs.security.jwt.utils.JwtUtil;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
@@ -36,6 +37,7 @@ public class BusinessGradeService {
   private final Argon2PasswordEncoder passwordEncoder;
   private final UpdateUserLogkjyRepository updateUserLogRepository;
   private final UserTesserisLjeRepo userTesserisRepository;
+  private final AlarmSvc alarmSvc; // 알림 송신 위해 추가(정은)
 
   // 비즈니스 등급 전체 조회
   public List<BusinessGrade> getAllBusinessGrades() {
@@ -67,6 +69,13 @@ public class BusinessGradeService {
     
     // 변경 이력 로그 기록
     saveUpdateLog(authHeader, beforeData, afterData);
+
+    // 알림 전송(정은)
+    try {
+      
+    } catch (Exception e) {
+      // TODO: handle exception
+    }
     
     return savedGrades;
   }

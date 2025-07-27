@@ -161,7 +161,7 @@ public class AlarmSvc {
         List<String> filteredUserIndexes = userIndexes.stream()
                 .filter(userIndex -> !userIndex.equals(String.valueOf(senderIndex)))
                 .collect(Collectors.toList());
-        
+
         List<String> filteredAdminIndexes = adminIndexes.stream()
                 .filter(adminIndex -> !adminIndex.equals(String.valueOf(senderIndex)))
                 .collect(Collectors.toList());
@@ -312,9 +312,9 @@ public class AlarmSvc {
             // 3. 기존 메시지 생성 메서드 활용 + "(몇CM)" 추가
             String value = String.valueOf(giftAmount) + "CM";
             sendAlarmWithValue(giftAlarmTypeId, receiveUserIndexes, new ArrayList<>(), value, sendUserIndex);
-            
+
             log.info("선물 알림 전송 완료: 받는 사람={}, 금액={}CM", receiveUserIndex, giftAmount);
-                    
+
         } catch (Exception e) {
             log.error("선물 알림 전송 중 오류: {}", e.getMessage());
         }
@@ -333,11 +333,22 @@ public class AlarmSvc {
 
             // 4. 기존의 sendAlarmWithValue 메서드 사용
             sendAlarmWithValue(couponAlarmTypeId, userIndexes, new ArrayList<>(), couponName, senderIndex);
-            
+
             log.info("쿠폰 선물 알림 전송 완료 - 쿠폰명: {}, 발신자: {}", couponName, storeUserIndex);
-                    
+
         } catch (Exception e) {
             log.error("쿠폰 선물 알림 전송 중 오류: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 5. 중계수수료 변경 알림 전송
+     */
+    public void sendCommissionChangedAlarm(Integer commission) {
+        try {
+
+        } catch (Exception e) {
+
         }
     }
 }
