@@ -1,13 +1,14 @@
 package com.jakdang.labs.api.dabin.FrontStoreInfoMenu.StoreOperation.service;
 
-
 import com.jakdang.labs.api.dabin.FrontStoreInfoMenu.StoreBasicInfo.repository.StoreInfoJdbRepo;
 import com.jakdang.labs.api.dabin.FrontStoreInfoMenu.StoreOperation.dto.BusinessHoursDto;
 import com.jakdang.labs.api.dabin.FrontStoreInfoMenu.StoreOperation.dto.StoreOperationInfoResponse;
 import com.jakdang.labs.api.dabin.FrontStoreInfoMenu.StoreOperation.dto.StoreOperationUpdateRequest;
 import com.jakdang.labs.api.dabin.FrontStoreInfoMenu.StoreOperation.repository.StoreBusinessHoursJdbRepo;
+import com.jakdang.labs.api.taekjun.Permissionsettings.repository.UserTesserisRepository;
 import com.jakdang.labs.entity.Store;
 import com.jakdang.labs.entity.StoreBusinessHours;
+import com.jakdang.labs.entity.UserTesseris;
 
 import lombok.RequiredArgsConstructor;
 
@@ -23,8 +24,55 @@ import java.util.stream.Collectors;
 public class StoreOperationService {
     
     private final StoreInfoJdbRepo storeInfoRepository;
-
     private final StoreBusinessHoursJdbRepo storeBusinessHoursRepository;
+    private final UserTesserisRepository userTesserisRepository;
+    
+    // JWT 기반 가맹점 운영정보 조회
+    public Map<String, Object> getStoreOperationInfoByUserId(String userId) {
+        System.out.println("🔍 [Service] JWT getStoreOperationInfoByUserId 시작 - userId: " + userId);
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            // userId로 UserTesseris 조회
+            UserTesseris userTesseris = userTesserisRepository.findByUsersId_Id(userId)
+                .orElseThrow(() -> new RuntimeException("UserTesseris not found for userId: " + userId));
+            
+            Integer userIndex = userTesseris.getUserIndex();
+            System.out.println("🔍 [Service] JWT userIndex 조회: " + userIndex);
+            
+            // 기존 메서드 호출
+            return getStoreOperationInfo(userIndex);
+            
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", "운영정보 조회 중 오류가 발생했습니다: " + e.getMessage());
+            return result;
+        }
+    }
+    
+    // JWT 기반 가맹점 운영정보 수정
+    @Transactional
+    public Map<String, Object> updateStoreOperationInfoByUserId(String userId, StoreOperationUpdateRequest request) {
+        System.out.println("🔍 [Service] JWT updateStoreOperationInfoByUserId 시작 - userId: " + userId);
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            // userId로 UserTesseris 조회
+            UserTesseris userTesseris = userTesserisRepository.findByUsersId_Id(userId)
+                .orElseThrow(() -> new RuntimeException("UserTesseris not found for userId: " + userId));
+            
+            Integer userIndex = userTesseris.getUserIndex();
+            System.out.println("🔍 [Service] JWT userIndex 조회: " + userIndex);
+            
+            // 기존 메서드 호출
+            return updateStoreOperationInfo(userIndex, request);
+            
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", "운영정보 수정 중 오류가 발생했습니다: " + e.getMessage());
+            return result;
+        }
+    }
     
     public Map<String, Object> getStoreOperationInfo(Integer userIndex) {
         System.out.println("🔍 [Service] getStoreOperationInfo 시작 - userIndex: " + userIndex);
