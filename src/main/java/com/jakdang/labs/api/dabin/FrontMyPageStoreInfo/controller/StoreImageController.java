@@ -6,49 +6,27 @@ import com.jakdang.labs.entity.Store;
 import com.jakdang.labs.entity.StoreImage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.jakdang.labs.api.auth.dto.CustomUserDetails;
+import com.jakdang.labs.api.dabin.FrontMyPageStoreInfo.service.FrontMyPageStoreInfoService;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/store/images")
+@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class StoreImageController {
     private final StoreImageService storeImageService;
+    private final FrontMyPageStoreInfoService storeInfoService;
 
-    // 매장 이미지 전체 조회 (DTO 변환)
-    @GetMapping
-    public ResponseEntity<List<StoreImageDto>> getImages(@RequestParam Integer storeIndex) {
-        List<StoreImage> images = storeImageService.getImages(storeIndex);
-        List<StoreImageDto> dtos = images.stream()
-            .map(img -> new StoreImageDto(
-                img.getStoreImageIndex(),
-                img.getStoreImage(),
-                img.getStoreMainImageStatus()
-            ))
-            .toList();
-        return ResponseEntity.ok(dtos);
-    }
-
-    // userIndex로 이미지 전체 조회 (DTO 변환)
-    @GetMapping("/by-user")
-    public ResponseEntity<List<StoreImageDto>> getImagesByUserIndex(@RequestParam Integer userIndex) {
-        Store store = storeImageService.findStoreByUserIndex(userIndex);
+    // JWT 인증을 사용한 가맹점 이미지 조회
+    @GetMapping("/my")
+    public ResponseEntity<List<StoreImageDto>> getMyStoreImages(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        String userId = userDetails.getUserId();
+        Store store = storeInfoService.getStoreByUserId(userId);
         List<StoreImage> images = storeImageService.getImages(store.getStoreIndex());
-        List<StoreImageDto> dtos = images.stream()
-            .map(img -> new StoreImageDto(
-                img.getStoreImageIndex(),
-                img.getStoreImage(),
-                img.getStoreMainImageStatus()
-            ))
-            .toList();
-        return ResponseEntity.ok(dtos);
-    }
-
-    // 상태별 이미지 조회 (DTO 변환)
-    @GetMapping("/by-status")
-    public ResponseEntity<List<StoreImageDto>> getImagesByStatus(@RequestParam Integer storeIndex, @RequestParam String status) {
-        List<StoreImage> images = storeImageService.getImagesByStatus(storeIndex, status);
         List<StoreImageDto> dtos = images.stream()
             .map(img -> new StoreImageDto(
                 img.getStoreImageIndex(),

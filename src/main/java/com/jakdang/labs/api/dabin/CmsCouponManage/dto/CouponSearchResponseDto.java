@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 
 @Data
@@ -17,11 +18,14 @@ public class CouponSearchResponseDto {
     private Integer couponLimit;
     private String couponName;
     private String couponIssuanceStatus;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime couponIssuanceTime;
     private String providedUserRole;
     private String providedUser;
     private String couponProvidedStatus;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime couponProvidedTime;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime couponLimitTime;
 
     // JPQL DTO 생성자 추가
@@ -41,8 +45,8 @@ public class CouponSearchResponseDto {
         LocalDateTime couponLimitTime
     ) {
         this.couponName = couponName;
-        this.couponPrice = couponPrice != null ? couponPrice.toString() : null;
-        this.couponLimit = couponLimit;
+        this.couponPrice = couponPrice != null ? couponPrice.toString() : "0";
+        this.couponLimit = couponLimit != null ? couponLimit : 0;
         this.issuanceUser = issuanceUser;
         this.issuanceUserRole = issuanceUserRole;
         this.providedUser = providedUser;

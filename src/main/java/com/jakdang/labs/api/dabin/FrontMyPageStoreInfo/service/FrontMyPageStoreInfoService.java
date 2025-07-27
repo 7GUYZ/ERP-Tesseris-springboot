@@ -11,12 +11,12 @@ import com.jakdang.labs.entity.UserTesseris;
 
 import lombok.RequiredArgsConstructor;
 
-import com.jakdang.labs.api.auth.entity.UserEntity;
-import com.jakdang.labs.api.auth.repository.UserRepository;
+
 import com.jakdang.labs.api.dabin.FrontMyPageStoreInfo.dto.StoreInfoResponseDto;
 import com.jakdang.labs.api.dabin.FrontMyPageStoreInfo.repository.FrontMyPageStoreInfoJdbRepo;
 import com.jakdang.labs.api.dabin.FrontMyPageStoreInfo.repository.StoreCategoryJdbRepo;
-import com.jakdang.labs.api.taekjun.Permissionsettings.repository.UserTesserisRepository;
+import com.jakdang.labs.api.dabin.FrontMyPageStoreInfo.repository.UserTesserisJdbRepo;
+
 
 @Service
 @RequiredArgsConstructor
@@ -24,8 +24,7 @@ public class FrontMyPageStoreInfoService {
 
     private final FrontMyPageStoreInfoJdbRepo storeRepository;
     private final StoreCategoryJdbRepo storeCategoryRepository;
-    private final UserRepository userRepository;
-    private final UserTesserisRepository userTesserisRepository;
+    private final UserTesserisJdbRepo userTesserisRepository;
 
     public StoreInfoResponseDto getStoreInfoByUserIndex(Integer userIndex) {
         Store store = storeRepository.findFirstByUserIndex(userIndex)
@@ -52,10 +51,15 @@ public class FrontMyPageStoreInfoService {
     }
 
     public StoreInfoResponseDto getStoreInfoByUserId(String userId) {
-        UserEntity userEntity = userRepository.findById(userId)
-            .orElseThrow(() -> new RuntimeException("UserEntity not found for userId: " + userId));
-        UserTesseris userTesseris = userTesserisRepository.findByUsersId(userEntity)
+        UserTesseris userTesseris = userTesserisRepository.findByUsersId_Id(userId)
             .orElseThrow(() -> new RuntimeException("UserTesseris not found for userId: " + userId));
         return getStoreInfoByUserIndex(userTesseris.getUserIndex());
+    }
+
+    public Store getStoreByUserId(String userId) {
+        UserTesseris userTesseris = userTesserisRepository.findByUsersId_Id(userId)
+            .orElseThrow(() -> new RuntimeException("UserTesseris not found for userId: " + userId));
+        return storeRepository.findFirstByUserIndex(userTesseris.getUserIndex())
+            .orElseThrow(() -> new RuntimeException("Store not found for userId: " + userId));
     }
 }

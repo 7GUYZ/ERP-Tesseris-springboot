@@ -5,6 +5,7 @@ import lombok.Setter;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 @Getter
 @Setter
@@ -16,6 +17,7 @@ public class CommissionPaymentResponse {
     private String userName;
     private String userPhone;
     private String transactionName;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime chargeTime;
     private Integer cmValue;
     private Integer cashValue;

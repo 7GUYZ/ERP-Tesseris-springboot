@@ -2,10 +2,12 @@ package com.jakdang.labs.api.dabin.AdvertisementManagement.repository;
 
 import com.jakdang.labs.entity.Advertisement;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -28,4 +30,11 @@ public interface AdvertisementRepository extends JpaRepository<Advertisement, In
         WHERE a.advertisementIndex = :advertisementIndex
     """)
     List<Object[]> findAdvertisementWithUserInfo(@Param("advertisementIndex") Integer advertisementIndex);
+    
+    @Modifying
+    @Query("UPDATE Advertisement a SET a.advertisementPhoto = :advertisementPhoto, a.advertisementUrl = :advertisementUrl, a.advertisementCreateTime = :advertisementCreateTime WHERE a.advertisementIndex = :advertisementIndex")
+    int updateAdvertisementPhotoUrlAndCreateTime(@Param("advertisementIndex") Integer advertisementIndex, 
+                                               @Param("advertisementPhoto") String advertisementPhoto,
+                                               @Param("advertisementUrl") String advertisementUrl,
+                                               @Param("advertisementCreateTime") LocalDateTime advertisementCreateTime);
 } 

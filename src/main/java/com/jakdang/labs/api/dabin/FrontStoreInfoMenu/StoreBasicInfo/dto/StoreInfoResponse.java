@@ -19,4 +19,5 @@ public class StoreInfoResponse {
     private String storeMemo;
     private String storePos1;
     private String storePos2;
+    private Integer businessManUserIndex;
 } 
