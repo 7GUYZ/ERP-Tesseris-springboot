@@ -30,7 +30,19 @@ public class CmLimitController {
 
     @PostMapping("/save")
     public ResponseEntity<ResponseDTO<SettingDTO>> saveCmLimit(@RequestBody SettingDTO settingUpdateDTO){
-        return ResponseEntity.ok().body(settingSvc.saveCmLimit(settingUpdateDTO));
+        // 1. DB 저장 (트랜잭션 내에서)
+        ResponseDTO<SettingDTO> response = settingSvc.saveCmLimit(settingUpdateDTO);
+        
+        // 2. DB 저장 성공 후 알림 전송 (트랜잭션 커밋 후)
+        try {
+            Integer cmLimit = Integer.valueOf(settingUpdateDTO.getSettingValue());
+            settingSvc.sendCmLimitChangedAlarm(cmLimit);
+        } catch (Exception e) {
+            log.error("월 CM 한도 변경 알림 전송 실패: {}", e.getMessage());
+            // 알림 전송 실패해도 DB 저장은 성공으로 처리
+        }
+        
+        return ResponseEntity.ok().body(response);
     }
 
 }

@@ -37,27 +37,38 @@ public class SettingSvc {
     public ResponseDTO<SettingDTO> saveCmLimit(SettingDTO updateDTO){
         Setting setting = settingRepo.findBySettingIndex(Integer.valueOf(2));
         if(setting != null){
-         setting.setSettingIndex(Integer.valueOf(2));
-         setting.setSettingName("cm_use_limit");
-         setting.setSettingValue(updateDTO.getSettingValue());
-         settingRepo.save(setting);
-         
-         // CM 한도 변경 알림 전송
-         try {
-             alarmSvc.sendMonthlyCmLimitChangedAlarm(Integer.valueOf(updateDTO.getSettingValue()));
-             log.info("월 CM 한도 변경 알림 전송 완료: {}", updateDTO.getSettingValue());
-         } catch (Exception e) {
-             log.error("월 CM 한도 변경 알림 전송 실패: {}", e.getMessage());
-             // 알림 전송 실패해도 저장은 성공으로 처리
-         }
-         
-         return ResponseDTO.createSuccessResponse("월CM한도 업데이트 성공", 
-         SettingDTO.builder()
-            .settingName(setting.getSettingName())
-            .settingValue(setting.getSettingValue())
-            .build());
-        }else{
+            try {
+                // 1. DB 저장 (트랜잭션 내에서)
+                setting.setSettingIndex(Integer.valueOf(2));
+                setting.setSettingName("cm_use_limit");
+                setting.setSettingValue(updateDTO.getSettingValue());
+                settingRepo.save(setting);
+                
+                return ResponseDTO.createSuccessResponse("월CM한도 업데이트 성공", 
+                    SettingDTO.builder()
+                        .settingName(setting.getSettingName())
+                        .settingValue(setting.getSettingValue())
+                        .build());
+                        
+            } catch (Exception e) {
+                log.error("월 CM 한도 저장 실패: {}", e.getMessage());
+                throw new CustomException("월CM한도 저장에 실패했습니다.", -200);
+            }
+        } else {
             throw new CustomException("월CM한도 설정값을 불러올 수 없습니다.", -200);
+        }
+    }
+    
+    /**
+     * 월 CM 한도 변경 알림 전송 (트랜잭션 외부에서 호출)
+     */
+    public void sendCmLimitChangedAlarm(Integer cmLimit) {
+        try {
+            alarmSvc.sendMonthlyCmLimitChangedAlarm(cmLimit);
+            log.info("월 CM 한도 변경 알림 전송 완료: {}", cmLimit);
+        } catch (Exception e) {
+            log.error("월 CM 한도 변경 알림 전송 실패: {}", e.getMessage());
+            // 알림 전송 실패해도 DB 저장은 성공으로 처리
         }
     }
 }
