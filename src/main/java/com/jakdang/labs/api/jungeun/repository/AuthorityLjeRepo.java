@@ -13,4 +13,7 @@ import com.jakdang.labs.entity.AuthorityType;
 public interface AuthorityLjeRepo extends JpaRepository<AuthorityType, Integer> {
     @Query("SELECT at FROM AuthorityType at WHERE at.adminTypeIndex.adminTypeIndex = :adminTypeIndex")
    List<AuthorityType> findByAdminTypeIndex(@Param("adminTypeIndex") Integer adminTypeIndex);
+   
+    @Query("SELECT at FROM AuthorityType at WHERE at.programIndex.programIndex = :programIndex")
+   List<AuthorityType> findByProgramIndex(@Param("programIndex") Integer programIndex);
 }
