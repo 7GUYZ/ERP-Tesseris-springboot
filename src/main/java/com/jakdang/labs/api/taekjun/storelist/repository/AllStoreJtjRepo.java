@@ -41,7 +41,10 @@ public interface AllStoreJtjRepo extends JpaRepository<Store, Integer> {
                         ),
                         2
                     )
-                ) AS store_business_state
+                ) AS store_business_state,
+                t4.store_business_date,
+                CONCAT(t4.store_start_business_hour, '~', t4.store_end_business_hour) AS store_business_hour,
+                CONCAT(t4.store_rest_start_hour, '~', t4.store_rest_end_hour) AS store_rest_hour
             FROM
                 store t1
             LEFT JOIN store_category t2 ON t1.store_category_index = t2.store_category_index
@@ -94,15 +97,20 @@ public interface AllStoreJtjRepo extends JpaRepository<Store, Integer> {
                             ),
                             2
                         )
-                    ),
+                    ) AS store_business_state,
                     h.store_business_date,
                     CONCAT(h.store_start_business_hour, '~', h.store_end_business_hour) AS store_business_hour,
-                    CONCAT(h.store_rest_start_hour, '~', h.store_rest_end_hour) AS store_rest_hour
+                    CONCAT(h.store_rest_start_hour, '~', h.store_rest_end_hour) AS store_rest_hour,
+                    s.store_temporary_closing_date,
+                    s.store_temporary_closing_comment,
+                    s.store_regular_closing_interval,
+                    s.store_regular_closing_week
                 FROM store s
                 INNER JOIN store_category c ON s.store_category_index = c.store_category_index
                 INNER JOIN user_cm u ON s.user_index = u.user_cm_index
                 LEFT JOIN store_business_hours h ON s.user_index = h.store_user_index
                 LEFT JOIN store_image i ON s.user_index = i.store_user_index
+                -- 임시 휴무와 정기 휴무 정보는 store 테이블에 직접 저장됨
                 WHERE s.store_index = :store_index
                 GROUP BY s.store_index, s.store_name, s.store_phone, s.store_address, 
                          s.store_detail_address, s.store_site, s.store_memo, c.store_category_name,

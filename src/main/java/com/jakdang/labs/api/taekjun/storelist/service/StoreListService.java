@@ -47,6 +47,9 @@ public class StoreListService {
             .userCmUse(arr[5] == null ? null : ((Number) arr[5]).intValue())
             .storeImage((String) arr[6])
             .storeBusinessState(arr[7] == null ? null : ((Number) arr[7]).intValue())
+            .storeBusinessDate(arr[8] == null ? null : arr[8].toString())
+            .storeBusinessHour(arr[9] == null ? null : arr[9].toString())
+            .storeRestHour(arr[10] == null ? null : arr[10].toString())
             .build()
         ).toList();
 
@@ -83,6 +86,10 @@ public class StoreListService {
             .storeBusinessDate(result[11] == null ? null : result[11].toString())
             .storeBusinessHour(result[12] == null ? null : result[12].toString())
             .storeRestHour(result[13] == null ? null : result[13].toString())
+            .storeTemporaryClosingDate(result[14] == null ? null : result[14].toString())
+            .storeTemporam(result[15] == null ? null : result[15].toString())
+            .storeRegularClosingInterval(result[16] == null ? null : result[16].toString())
+            .storeRegularClosingWeek(result[17] == null ? null : result[17].toString())
             .build();
         return ResponseDTO.createSuccessResponse("가맹점 상세정보 불러오기 성공", detailDTO);
     }
