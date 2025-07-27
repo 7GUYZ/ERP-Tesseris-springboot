@@ -16,23 +16,23 @@ import com.jakdang.labs.api.jiyun.notice.repository.NoticekjyRepository;
 import com.jakdang.labs.security.jwt.utils.JwtUtil;
 import com.jakdang.labs.api.jiyun.notice.dto.NoticeDTO.DeleteRequest;
 import com.jakdang.labs.api.auth.repository.AuthRepository;
+import com.jakdang.labs.api.alarm.service.AlarmSvc;
 import com.jakdang.labs.api.auth.entity.UserEntity;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 
 import lombok.RequiredArgsConstructor;
-import com.jakdang.labs.api.alarm.service.AlarmSvc; // 알림 송신 위해 추가
-import com.jakdang.labs.api.jungeun.repository.UserTesserisLjeRepo; // 알림 송신 위해 추가
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j // 로그 출력을 위해 추가(정은)
 public class NoticeService {
   private final NoticekjyRepository noticeRepository;
   private final NoticeUserkjyRepository userRepository;
   private final JwtUtil jwtUtil;
   private final AuthRepository authRepository;
   private final Argon2PasswordEncoder passwordEncoder;
-  private final AlarmSvc alarmSvc; // 알림 송신 위해 추가
-  private final UserTesserisLjeRepo userRepo; // 알림 송신 위해 추가
+  private final AlarmSvc alarmSvc; // 알림 송신 위해 추가(정은)
 
   // 공지사항 등록
   @Transactional
@@ -51,21 +51,11 @@ public class NoticeService {
       notice.setNoticeDesc(request.getNoticeDesc());
       notice.setNoticeCreateTime(LocalDateTime.now());
       noticeRepository.save(notice);
-      
-      // 공지사항 등록 성공 시 알림 전송 (알림 송신 위해 추가)
-      try {
-        sendNoticeAlarm(request.getNoticeTitle());
-      } catch (Exception e) {
-        // 알림 전송 실패해도 공지사항 등록은 성공으로 처리
-        System.err.println("공지사항 알림 전송 실패: " + e.getMessage());
-      }
-      
       return true;
     } catch (Exception e) {
       return false;
     }
   }
-  
 
   // 공지사항 상세
   @Transactional(readOnly = true)
@@ -162,22 +152,15 @@ public class NoticeService {
   /**
    * 공지사항 알림 전송
    */
-  private void sendNoticeAlarm(String noticeTitle) {
+  public void sendNoticeAlarm(String noticeTitle) {
     try {
-      // 모든 사용자 목록 조회
-      List<String> allUserIndexes = new ArrayList<>();
-      allUserIndexes.addAll(userRepo.findUserIndexesByRole(1)); // 일반(정회원)
-      allUserIndexes.addAll(userRepo.findUserIndexesByRole(2)); // 사업자
-      allUserIndexes.addAll(userRepo.findUserIndexesByRole(3)); // 가맹점
-
-      // 공지사항 알림 타입 ID (실제 DB의 alarmTypes 테이블에서 확인 필요)
-      Integer noticeAlarmTypeId = 4; // TODO: 실제 알림 타입 ID로 변경
-
       // 알림 전송
-      alarmSvc.sendAlarmWithValue(noticeAlarmTypeId, allUserIndexes, new ArrayList<>(), noticeTitle);
-      
+      alarmSvc.sendNoticeAlarm(noticeTitle);
+      log.info("공지사항 알림 전송 완료: {}", noticeTitle);
+
     } catch (Exception e) {
       System.err.println("공지사항 알림 전송 중 오류: " + e.getMessage());
+      // 알림 전송 실패해도 공지사항 등록은 성공으로 처리
     }
   }
 } 

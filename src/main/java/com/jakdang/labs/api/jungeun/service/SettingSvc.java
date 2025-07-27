@@ -44,9 +44,6 @@ public class SettingSvc {
                 setting.setSettingValue(updateDTO.getSettingValue());
                 settingRepo.save(setting);
                 
-                // 2. DB 저장 성공 후 알림 전송 (트랜잭션 커밋 후)
-                Integer cmLimit = Integer.valueOf(updateDTO.getSettingValue());
-                
                 return ResponseDTO.createSuccessResponse("월CM한도 업데이트 성공", 
                     SettingDTO.builder()
                         .settingName(setting.getSettingName())
