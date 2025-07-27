@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.jakdang.labs.api.alarm.service.AlarmSvc;
 import com.jakdang.labs.api.common.ResponseDTO;
 import com.jakdang.labs.api.jungeun.dto.CurrentCmDTO;
 import com.jakdang.labs.api.jungeun.dto.GiftPinCheckDTO;
@@ -27,6 +28,7 @@ public class GiftCmSvc {
     private final UserCmLjeRepo userCmRepo;
     private final UserCmLogLjeRepo userCmLogRepo;
     private final UserTesserisLjeRepo userTesserisRepo;
+    private final AlarmSvc alarmSvc;
 
     public ResponseDTO<CurrentCmDTO> getCurrentCM(Integer user_index){
         UserCm userCm = userCmRepo.findByUserCmIndex(user_index);
@@ -121,6 +123,15 @@ public class GiftCmSvc {
                 .userCmLogCreateTime(LocalDateTime.now())
                 .build();
             userCmLogRepo.save(receiveUserLog);
+
+
+            // 선물 보내기 및 DB 저장 성공 후 알림 전송
+            try {
+                sendGiftAlarm(giftTransferDTO.getReceiveUserIndex(), giftAmount, sendUserTesseris.getUserIndex());
+            } catch (Exception e) {
+               log.error("선물 보내기 알림 전송 실패: {}", e.getMessage());
+               // 알림 전송 실패해도 DB 저장은 성공으로 처리
+            }
             
             return ResponseDTO.createSuccessResponse("선물 전송 성공", GiftTransferDTO.builder()
                 .sendUserIndex(sendUserCm.getUserCmIndex())
@@ -134,4 +145,18 @@ public class GiftCmSvc {
             return ResponseDTO.createErrorResponse(400, "선물 전송 중 오류가 발생했습니다");
         }
     }
+
+    /**
+     * 선물 보내기 알림 전송 (트랜잭션 외부에서 호출)
+     */
+    public void sendGiftAlarm(Integer receiveUserIndex, Integer giftAmount, Integer sendUserIndex) {
+        try {
+            alarmSvc.sendGiftAlarm(receiveUserIndex, giftAmount, sendUserIndex);
+            log.info("선물 보내기 알림 전송 완료: {}", receiveUserIndex);
+        } catch (Exception e) {
+            log.error("선물 보내기 알림 전송 실패: {}", e.getMessage());
+            // 알림 전송 실패해도 DB 저장은 성공으로 처리
+        }
+    }
+
 }

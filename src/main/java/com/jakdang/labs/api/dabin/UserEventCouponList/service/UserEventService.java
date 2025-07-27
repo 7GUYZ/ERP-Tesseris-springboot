@@ -3,11 +3,13 @@ package com.jakdang.labs.api.dabin.UserEventCouponList.service;
 import com.jakdang.labs.api.common.ResponseDTO;
 import com.jakdang.labs.api.dabin.UserEventCouponList.dto.UserEventDetailDto;
 import com.jakdang.labs.api.dabin.UserEventCouponList.dto.UserEventListDto;
-import com.jakdang.labs.api.dabin.UserEventCouponList.repository.UserEventRepository;
 import com.jakdang.labs.api.dabin.UserEventCouponList.repository.UserEventDetailRepository;
 import com.jakdang.labs.api.dabin.UserEventCouponList.repository.UserEventJdbcRepository;
-import com.jakdang.labs.entity.EventMaster;
+import com.jakdang.labs.api.dabin.UserEventCouponList.repository.UserEventRepository;
 import com.jakdang.labs.api.dabin.FrontEventCouponRegistration.repository.EventMasterRepository;
+import com.jakdang.labs.entity.EventMaster;
+import com.jakdang.labs.security.jwt.utils.JwtUtil;
+import com.jakdang.labs.api.taekjun.Permissionsettings.repository.UserTesserisRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,24 +28,48 @@ public class UserEventService {
     private final UserEventDetailRepository userEventDetailRepository;
     private final UserEventJdbcRepository userEventJdbcRepository;
     private final EventMasterRepository eventMasterRepository;
+    private final JwtUtil jwtUtil;
+    private final UserTesserisRepository userTesserisRepository;
     
     /**
      * 진행중인 이벤트 목록 조회
      */
-    public ResponseDTO<List<UserEventListDto>> getActiveEvents() {
+    public ResponseDTO<List<UserEventListDto>> getActiveEvents(String authHeader) {
         try {
+            // JWT 토큰에서 사용자 ID 추출
+            String token = authHeader.replace("Bearer ", "");
+            String userId = jwtUtil.getUserId(token);
+            log.info("🔍 JWT에서 추출한 userId: {}", userId);
+            
+            // userId로 userIndex 조회
+            var userTesseris = userTesserisRepository.findByUsersId_Id(userId)
+                .orElseThrow(() -> new RuntimeException("사용자 정보를 찾을 수 없습니다: " + userId));
+            Integer userIndex = userTesseris.getUserIndex();
+            log.info("🔍 DB에서 조회한 userIndex: {}", userIndex);
+            
             List<Object[]> results = userEventRepository.findActiveEvents();
             
             List<UserEventListDto> events = results.stream()
-                .map(row -> UserEventListDto.builder()
-                    .eventMasterIndex(((Number) row[0]).intValue())
-                    .eventMasterName((String) row[1])
-                    .eventMasterCondition((String) row[2])
-                    .totalCouponPrice(((Number) row[3]).longValue())
-                    .storeAddress((String) row[4])
-                    .storeName((String) row[5])
-                    .eventMasterCount(((Number) row[6]).intValue())
-                    .build())
+                .map(row -> {
+                    Integer eventMasterIndex = ((Number) row[0]).intValue();
+                    Integer eventMasterCount = ((Number) row[6]).intValue();
+                    Integer eventMasterLimit = ((Number) row[7]).intValue();
+                    
+                    // PHP 코드와 동일한 로직: 개별 사용자의 남은 다운로드 가능 횟수 계산
+                    Integer attendCount = userEventRepository.getUserEventAttendCount(eventMasterIndex, userIndex);
+                    Integer remainingDownloads = eventMasterLimit - attendCount;
+                    
+                    return UserEventListDto.builder()
+                        .eventMasterIndex(eventMasterIndex)
+                        .eventMasterName((String) row[1])
+                        .eventMasterCondition((String) row[2])
+                        .totalCouponPrice(((Number) row[3]).longValue())
+                        .storeAddress((String) row[4])
+                        .storeName((String) row[5])
+                        .eventMasterCount(eventMasterCount)
+                        .remainingDownloads(remainingDownloads)
+                        .build();
+                })
                 .collect(Collectors.toList());
             
             return ResponseDTO.<List<UserEventListDto>>createSuccessResponse("진행중인 이벤트 목록 조회 성공", events);
@@ -56,20 +82,42 @@ public class UserEventService {
     /**
      * 종료된 이벤트 목록 조회
      */
-    public ResponseDTO<List<UserEventListDto>> getEndedEvents() {
+    public ResponseDTO<List<UserEventListDto>> getEndedEvents(String authHeader) {
         try {
+            // JWT 토큰에서 사용자 ID 추출
+            String token = authHeader.replace("Bearer ", "");
+            String userId = jwtUtil.getUserId(token);
+            log.info("🔍 JWT에서 추출한 userId: {}", userId);
+            
+            // userId로 userIndex 조회
+            var userTesseris = userTesserisRepository.findByUsersId_Id(userId)
+                .orElseThrow(() -> new RuntimeException("사용자 정보를 찾을 수 없습니다: " + userId));
+            Integer userIndex = userTesseris.getUserIndex();
+            log.info("🔍 DB에서 조회한 userIndex: {}", userIndex);
+            
             List<Object[]> results = userEventRepository.findEndedEvents();
             
             List<UserEventListDto> events = results.stream()
-                .map(row -> UserEventListDto.builder()
-                    .eventMasterIndex(((Number) row[0]).intValue())
-                    .eventMasterName((String) row[1])
-                    .eventMasterCondition((String) row[2])
-                    .totalCouponPrice(0L) // 종료된 이벤트는 0
-                    .storeAddress((String) row[4])
-                    .storeName((String) row[5])
-                    .eventMasterCount(((Number) row[6]).intValue())
-                    .build())
+                .map(row -> {
+                    Integer eventMasterIndex = ((Number) row[0]).intValue();
+                    Integer eventMasterCount = ((Number) row[6]).intValue();
+                    Integer eventMasterLimit = ((Number) row[7]).intValue();
+                    
+                    // PHP 코드와 동일한 로직: 개별 사용자의 남은 다운로드 가능 횟수 계산
+                    Integer attendCount = userEventRepository.getUserEventAttendCount(eventMasterIndex, userIndex);
+                    Integer remainingDownloads = eventMasterLimit - attendCount;
+                    
+                    return UserEventListDto.builder()
+                        .eventMasterIndex(eventMasterIndex)
+                        .eventMasterName((String) row[1])
+                        .eventMasterCondition((String) row[2])
+                        .totalCouponPrice(0L) // 종료된 이벤트는 0
+                        .storeAddress((String) row[4])
+                        .storeName((String) row[5])
+                        .eventMasterCount(eventMasterCount)
+                        .remainingDownloads(remainingDownloads)
+                        .build();
+                })
                 .collect(Collectors.toList());
             
             return ResponseDTO.<List<UserEventListDto>>createSuccessResponse("종료된 이벤트 목록 조회 성공", events);
@@ -117,7 +165,18 @@ public class UserEventService {
                 return (ResponseDTO<UserEventDetailDto>) ResponseDTO.createErrorResponse(404, "쿠폰 정보를 찾을 수 없습니다.");
             }
             
-            Object[] couponRow = couponResults.get(0);
+            // 모든 쿠폰 정보를 CouponInfo 리스트로 변환
+            List<UserEventDetailDto.CouponInfo> coupons = couponResults.stream()
+                .map(couponRow -> UserEventDetailDto.CouponInfo.builder()
+                    .couponIndex(((Number) couponRow[0]).longValue())
+                    .couponName((String) couponRow[1])
+                    .couponPrice(((Number) couponRow[2]).intValue())
+                    .couponIssuanceStatus((String) couponRow[3])
+                    .couponIssuanceTime(couponRow[4] != null ? (LocalDateTime) couponRow[4] : null)
+                    .couponLimit(((Number) couponRow[5]).intValue())
+                    .couponLimitTime(couponRow[6] != null ? (LocalDateTime) couponRow[6] : null)
+                    .build())
+                .collect(Collectors.toList());
             
             UserEventDetailDto response = UserEventDetailDto.builder()
                 .storeIndex(((Number) storeRow[0]).intValue())
@@ -129,13 +188,7 @@ public class UserEventService {
                 .storeImage((String) storeRow[6])
                 .storeBusinessState(storeRow[7] != null ? storeRow[7].toString() : null)
                 .storeTransactionStatus(storeRow[8] != null ? storeRow[8].toString() : null)
-                .couponIndex(((Number) couponRow[0]).longValue())
-                .couponName((String) couponRow[1])
-                .couponPrice(((Number) couponRow[2]).intValue())
-                .couponIssuanceStatus((String) couponRow[3])
-                .couponIssuanceTime(couponRow[4] != null ? (LocalDateTime) couponRow[4] : null)
-                .couponLimit(((Number) couponRow[5]).intValue())
-                .couponLimitTime(couponRow[6] != null ? (LocalDateTime) couponRow[6] : null)
+                .coupons(coupons)
                 .build();
             
             return ResponseDTO.<UserEventDetailDto>createSuccessResponse("이벤트 상세 정보 조회 성공", response);
@@ -149,10 +202,18 @@ public class UserEventService {
      * 쿠폰 다운로드 (사용자용)
      */
     @Transactional
-    public ResponseDTO<String> downloadCoupon(Integer eventMasterIndex, Integer couponIndex) {
+    public ResponseDTO<String> downloadCoupon(Integer eventMasterIndex, Integer couponIndex, String authHeader) {
         try {
-            // TODO: 실제 사용자 인덱스는 세션에서 가져와야 함
-            Integer userIndex = 1; // 임시로 1 설정
+            // JWT 토큰에서 사용자 ID 추출
+            String token = authHeader.replace("Bearer ", "");
+            String userId = jwtUtil.getUserId(token);
+            log.info("🔍 JWT에서 추출한 userId: {}", userId);
+            
+            // userId로 userIndex 조회
+            var userTesseris = userTesserisRepository.findByUsersId_Id(userId)
+                .orElseThrow(() -> new RuntimeException("사용자 정보를 찾을 수 없습니다: " + userId));
+            Integer userIndex = userTesseris.getUserIndex();
+            log.info("🔍 DB에서 조회한 userIndex: {}", userIndex);
             
             log.info("쿠폰 다운로드 시작 - eventMasterIndex: {}, couponIndex: {}, userIndex: {}", 
                     eventMasterIndex, couponIndex, userIndex);

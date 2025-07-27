@@ -24,7 +24,6 @@ public class FrontMyPageStoreInfoController {
     @GetMapping("/my")
     public StoreInfoResponseDto getMyStoreInfo(@AuthenticationPrincipal CustomUserDetails userDetails) {
         String userId = userDetails.getUserId();
-        userId = "store1";
         return storeService.getStoreInfoByUserId(userId);
     }
 } 

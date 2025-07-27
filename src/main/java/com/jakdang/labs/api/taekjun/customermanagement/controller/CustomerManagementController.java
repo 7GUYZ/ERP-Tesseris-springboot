@@ -413,6 +413,13 @@ public class CustomerManagementController {
                 response.put("success", true);
                 response.put("message", customerIndexes.size() + "명의 고객에게 쿠폰을 성공적으로 발급했습니다.");
                 log.info("쿠폰 선물 완료");
+                // 쿠폰 선물 알림 전송
+                try{
+                    customerManagementService.sendCouponAlarm(customerIndexes, storeUserIndex, couponName);
+                }catch(Exception e){
+                    log.error("쿠폰 선물 알림 전송 실패: {}", e.getMessage());
+                    // 알림 전송 실패해도 실패해도 DB 저장은 성공으로 처리
+                }
                 return ResponseEntity.ok(response);
             } else {
                 response.put("success", false);

@@ -10,8 +10,10 @@ import com.jakdang.labs.api.dabin.CmsCouponManage.dto.CouponSearchResponseDto;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
+import lombok.extern.slf4j.Slf4j;
 
 @Repository
+@Slf4j
 public class CouponJdbRepoImpl implements CouponJdbRepoCustom {
     @PersistenceContext
     private EntityManager em;
@@ -71,6 +73,26 @@ public class CouponJdbRepoImpl implements CouponJdbRepoCustom {
         query.setParameter("limitStart", dto.getLimitStart());
         query.setParameter("limitEnd", dto.getLimitEnd());
 
-        return query.getResultList();
+        List<CouponSearchResponseDto> results = query.getResultList();
+        
+        // 결과 로깅
+        log.info("쿠폰 검색 결과 개수: {}", results.size());
+        for (int i = 0; i < Math.min(results.size(), 10); i++) {
+            CouponSearchResponseDto coupon = results.get(i);
+            log.info("쿠폰 {}: name={}, price={}, limit={}, issuanceTime={}", 
+                i + 1, coupon.getCouponName(), coupon.getCouponPrice(), 
+                coupon.getCouponLimit(), coupon.getCouponIssuanceTime());
+            
+            // null이나 0 값이 있는 쿠폰 특별 로깅
+            if (coupon.getCouponPrice() == null || coupon.getCouponPrice().equals("0") || 
+                coupon.getCouponLimit() == null || coupon.getCouponLimit() == 0 ||
+                coupon.getCouponIssuanceTime() == null) {
+                log.warn("문제가 있는 쿠폰 발견: name={}, price={}, limit={}, issuanceTime={}", 
+                    coupon.getCouponName(), coupon.getCouponPrice(), 
+                    coupon.getCouponLimit(), coupon.getCouponIssuanceTime());
+            }
+        }
+
+        return results;
     }
 } 
