@@ -1,4 +1,4 @@
-package com.jakdang.labs.api.jungeun.controller;
+package com.jakdang.labs.api.alarm.controller;
 
 import java.util.List;
 import java.util.Map;
@@ -49,4 +49,4 @@ public class WebSocketController {
         sendToUserList(userIndexes, notification);
     }
 
-}
+} 

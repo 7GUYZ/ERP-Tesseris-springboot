@@ -3,6 +3,7 @@ package com.jakdang.labs.api.jungeun.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.jakdang.labs.api.alarm.service.AlarmSvc;
 import com.jakdang.labs.api.common.ResponseDTO;
 import com.jakdang.labs.api.jungeun.dto.SettingDTO;
 import com.jakdang.labs.api.jungeun.repository.SettingLjeRepo;
