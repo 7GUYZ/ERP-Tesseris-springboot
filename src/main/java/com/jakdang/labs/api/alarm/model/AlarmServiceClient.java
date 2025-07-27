@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
+import com.jakdang.labs.api.alarm.dto.AlarmTypesDTO;
 import com.jakdang.labs.api.alarm.dto.UserAlarmsDTO;
 import com.jakdang.labs.api.alarm.dto.AlarmHistoryRequest;
 import com.jakdang.labs.config.FeignConfig;
@@ -42,4 +43,10 @@ public interface AlarmServiceClient {
      */
     @PostMapping("/saveAlarmHistory")
     String saveAlarmHistory(@RequestBody AlarmHistoryRequest request);
+    
+    /**
+     * 특정 알림 타입 조회
+     */
+    @GetMapping("/getAlarmType/{alarmTypeId}")
+    AlarmTypesDTO getAlarmType(@PathVariable("alarmTypeId") Integer alarmTypeId);
 }

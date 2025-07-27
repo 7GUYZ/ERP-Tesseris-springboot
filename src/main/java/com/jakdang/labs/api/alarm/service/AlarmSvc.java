@@ -3,11 +3,13 @@ package com.jakdang.labs.api.alarm.service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
 import com.jakdang.labs.api.alarm.model.AlarmServiceClient;
+import com.jakdang.labs.api.alarm.dto.AlarmTypesDTO;
 import com.jakdang.labs.api.alarm.dto.UserAlarmsDTO;
 import com.jakdang.labs.api.alarm.dto.AlarmHistoryRequest;
 import com.jakdang.labs.api.alarm.controller.WebSocketController;
@@ -15,7 +17,6 @@ import com.jakdang.labs.api.jungeun.repository.UserTesserisLjeRepo;
 import com.jakdang.labs.api.jungeun.repository.AuthorityLjeRepo;
 import com.jakdang.labs.entity.AuthorityType;
 
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -57,7 +58,9 @@ public class AlarmSvc {
     }
 
     /**
-     * 알림 설정이 활성화된 사용자만 필터링
+     * 알림 설정에 따른 사용자 필터링
+     * - userAlarms에 행이 없는 사용자: 알림 전송
+     * - userAlarms에 행이 있는 사용자: is_active=1이면 제외, is_active=0이면 전송
      */
     private List<String> filterActiveAlarmUsers(List<String> userIndexes) {
         List<String> activeUsers = new ArrayList<>();
@@ -69,26 +72,42 @@ public class AlarmSvc {
                 // alarm-service에서 해당 사용자의 알림 설정 조회
                 List<UserAlarmsDTO> userAlarms = alarmServiceClient.getUserAlarmsByUserIndex(userIndex);
                 
-                // 월 CM 한도 변경 알림 타입 ID (실제 DB의 alarmTypes 테이블에서 확인 필요)
-                Integer cmLimitAlarmTypeId = 3; // TODO: 실제 알림 타입 ID로 변경
+                // 월 CM 한도 변경 알림 타입 ID
+                Integer cmLimitAlarmTypeId = 3;
                 
-                // 해당 알림 타입이 활성화되어 있는지 확인
-                boolean isActive = userAlarms.stream()
-                        .anyMatch(alarm -> cmLimitAlarmTypeId.equals(alarm.getAlarmTypesId()) && 
-                                         alarm.getIsActive() == 1);
+                // userAlarms에 해당 알림 타입의 설정이 있는지 확인
+                boolean hasAlarmSetting = userAlarms.stream()
+                        .anyMatch(alarm -> cmLimitAlarmTypeId.equals(alarm.getAlarmTypesId()));
                 
-                // 알림 설정이 없거나 활성화된 경우
-                if (userAlarms.isEmpty() || isActive) {
+                log.info("사용자 {} 알림 설정 조회 결과: {}개 설정, hasAlarmSetting={}", 
+                        userIndex, userAlarms.size(), hasAlarmSetting);
+                
+                if (!hasAlarmSetting) {
+                    // 설정이 없는 경우: 알림 전송
                     activeUsers.add(userIndexStr);
-                    log.debug("알림 활성화된 사용자: {}", userIndex);
+                    log.info("알림 전송 (설정 없음): {}", userIndex);
                 } else {
-                    log.debug("알림 비활성화된 사용자: {}", userIndex);
+                    // 설정이 있는 경우: is_active 값 확인
+                    boolean isActive = userAlarms.stream()
+                            .anyMatch(alarm -> cmLimitAlarmTypeId.equals(alarm.getAlarmTypesId()) && 
+                                             alarm.getIsActive() == 1);
+                    
+                    log.info("사용자 {} is_active 확인: {}", userIndex, isActive);
+                    
+                    if (isActive) {
+                        // is_active = 1: 알림 제외
+                        log.info("알림 제외 (is_active=1): {}", userIndex);
+                    } else {
+                        // is_active = 0: 알림 전송
+                        activeUsers.add(userIndexStr);
+                        log.info("알림 전송 (is_active=0): {}", userIndex);
+                    }
                 }
                 
             } catch (Exception e) {
                 log.warn("사용자 {} 알림 설정 조회 중 오류: {}", userIndexStr, e.getMessage());
-                // 오류 발생 시 기본적으로 알림 전송 (안전장치)
-                activeUsers.add(userIndexStr);
+                // 오류 발생 시 알림 제외 (보안상 안전)
+                log.info("오류로 인해 사용자 {} 알림 제외", userIndexStr);
             }
         }
         
@@ -98,7 +117,7 @@ public class AlarmSvc {
     /**
      * 알림 내역을 alarm-service에 저장
      */
-    private void saveAlarmHistory(List<String> userIndexes, List<String> adminIndexes, String message) {
+    private void saveAlarmHistory(List<String> userIndexes, List<String> adminIndexes, String message, Integer alarmTypeId) {
         try {
             // 모든 수신자 목록 생성
             List<String> allReceivers = new ArrayList<>();
@@ -112,7 +131,7 @@ public class AlarmSvc {
             
             // 알림 내역 저장 요청 생성
             AlarmHistoryRequest request = AlarmHistoryRequest.builder()
-                    .alarmTypesId(3) // 월 CM 한도 변경 알림 타입 ID
+                    .alarmTypesId(alarmTypeId)
                     .alarmMessage(message)
                     .senderIndex(0) // 시스템 발신
                     .receiverIndexes(receiverIndexes)
@@ -130,11 +149,114 @@ public class AlarmSvc {
     }
 
     /**
-     * 월 CM 한도 변경 알림 (알림 설정 필터링 + 내역 저장)
+     * 공통 알림 전송 메서드 (수치 포함)
+     */
+    public void sendAlarmWithValue(Integer alarmTypeId, List<String> userIndexes, List<String> adminIndexes, String value) {
+        // 1. 알림 메시지 생성
+        String alarmMessage = createAlarmMessage(alarmTypeId, value);
+        
+        // 2. 알림 설정이 활성화된 사용자만 필터링
+        List<String> activeUserIndexes = filterActiveAlarmUsers(userIndexes);
+        List<String> activeAdminIndexes = filterActiveAlarmUsers(adminIndexes);
+
+        // 3. WebSocket으로 알림 전송 (즉시)
+        Map<String, Object> notification = createNotification(alarmTypeId, alarmMessage);
+
+        webSocketController.sendToManyUsers(activeUserIndexes, notification);
+        webSocketController.sendToManyUsers(activeAdminIndexes, notification);
+
+        // 4. 알림 내역을 alarm-service에 비동기로 저장
+        CompletableFuture.runAsync(() -> {
+            try {
+                saveAlarmHistory(activeUserIndexes, activeAdminIndexes, alarmMessage, alarmTypeId);
+                log.info("알림 내역 저장 완료 (비동기) - 활성 사용자: {}명, 활성 관리자: {}명",
+                        activeUserIndexes.size(), activeAdminIndexes.size());
+            } catch (Exception e) {
+                log.error("알림 내역 저장 실패 (비동기): {}", e.getMessage());
+            }
+        });
+
+        log.info("알림 전송 완료 - 활성 사용자: {}명, 활성 관리자: {}명",
+                activeUserIndexes.size(), activeAdminIndexes.size());
+    }
+    
+    /**
+     * AlarmTypes 정보를 기반으로 알림 메시지 생성
+     */
+    private String createAlarmMessage(Integer alarmTypeId, String value) {
+        try {
+            // alarm-service에서 AlarmTypes 정보 조회
+            AlarmTypesDTO alarmType = alarmServiceClient.getAlarmType(alarmTypeId);
+            
+            // 동적 메시지 생성
+            String description = alarmType.getAlarmTypesDescription();
+            if (description == null || description.isEmpty()) {
+                description = "신규 알림이 왔습니다.";
+            }
+            
+            // 수치가 있는 경우 () 안에 추가
+            if (value != null && !value.isEmpty()) {
+                return String.format("%s (%s)", description, value);
+            } else {
+                return String.format("%s", description);
+            }
+            
+        } catch (Exception e) {
+            log.warn("AlarmTypes 정보 조회 실패, 기본 메시지 사용: {}", e.getMessage());
+            if (value != null && !value.isEmpty()) {
+                return String.format("알림이 발생했습니다. (%s)", value);
+            } else {
+                return "알림이 발생했습니다.";
+            }
+        }
+    }
+    
+    /**
+     * 알림 타입에 따른 알림 객체 생성
+     */
+    private Map<String, Object> createNotification(Integer alarmTypeId, String message) {
+        try {
+            // alarm-service에서 AlarmTypes 정보 조회
+            AlarmTypesDTO alarmType = alarmServiceClient.getAlarmType(alarmTypeId);
+            
+            String alarmTypeCode = alarmType.getAlarmTypesCode();
+            String alarmTypeLabel = alarmType.getAlarmTypesLabel();
+            
+            if (alarmTypeCode == null || alarmTypeCode.isEmpty()) {
+                alarmTypeCode = "ERROR_NOTIFICATION";
+            }
+            if (alarmTypeLabel == null || alarmTypeLabel.isEmpty()) {
+                alarmTypeLabel = "알림 오류";
+            }
+            
+            return Map.of(
+                    "type", alarmTypeCode,
+                    "title", alarmTypeLabel,
+                    "message", message,
+                    "timestamp", System.currentTimeMillis(),
+                    "action", alarmTypeCode, // alarmTypesCode 활용
+                    "alarmTypeId", alarmTypeId
+            );
+            
+        } catch (Exception e) {
+            log.warn("알림 객체 생성 실패, 기본값 사용: {}", e.getMessage());
+            return Map.of(
+                    "type", "ERROR_NOTIFICATION",
+                    "title", "알림 오류",
+                    "message", message,
+                    "timestamp", System.currentTimeMillis(),
+                    "action", "ERROR_NOTIFICATION" // 기본값도 일관성 있게
+            );
+        }
+    }
+
+
+    // -----------------------------------------------------------기능 알림 서비스-----------------------------------------------------------------------
+
+    /**
+     * 1. 월 CM 한도 변경 알림 (기존 메서드 - 호환성 유지)
      */
     public void sendMonthlyCmLimitChangedAlarm(Integer cmLimit) {
-        String alarmMessage = "월 CM 한도가 " + cmLimit + "CM으로 변경되었습니다.";
-        
         // 1. 모든 사용자 목록 조회
         List<String> allUserIndexes = new ArrayList<>();
         allUserIndexes.addAll(userRepo.findUserIndexesByRole(1)); // 일반(정회원)
@@ -144,26 +266,8 @@ public class AlarmSvc {
         // 2. CM 한도 관리 권한을 가진 관리자 목록 조회
         List<String> adminUserIndexes = findAdminsWithAuthority(8); // CM 한도 관리 프로그램
 
-        // 3. 알림 설정이 활성화된 사용자만 필터링
-        List<String> activeUserIndexes = filterActiveAlarmUsers(allUserIndexes);
-        List<String> activeAdminIndexes = filterActiveAlarmUsers(adminUserIndexes);
-
-        // 4. WebSocket으로 알림 전송
-        Map<String, Object> notification = Map.of(
-                "type", "MONTHLY_CM_LIMIT_UPDATED",
-                "title", "월 CM 한도 변경 알림",
-                "message", alarmMessage,
-                "timestamp", System.currentTimeMillis(),
-                "action", "MONTHLY_CM_LIMIT");
-
-        webSocketController.sendToManyUsers(activeUserIndexes, notification);
-        webSocketController.sendToManyUsers(activeAdminIndexes, notification);
-
-        // 5. 알림 내역을 alarm-service에 저장
-        saveAlarmHistory(activeUserIndexes, activeAdminIndexes, alarmMessage);
-
-        log.info("월 CM 한도 변경 알림 전송 완료 - 활성 사용자: {}명, 활성 관리자: {}명",
-                activeUserIndexes.size(), activeAdminIndexes.size());
+        // 3. 공통 알림 전송 메서드 호출
+        sendAlarmWithValue(3, allUserIndexes, adminUserIndexes, String.valueOf(cmLimit) + "CM");
     }
 
 } 
