@@ -1,5 +1,7 @@
 package com.jakdang.labs.api.jungeun.dto;
 
+import java.util.Map;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -24,4 +26,5 @@ public class LoginResponseDTO {
     private String admin_type_index;
     private String admin_type_name;
     private String user_index;
+    private Map<String, Object> websocketInfo;
 }
