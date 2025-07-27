@@ -1,11 +1,12 @@
 package com.jakdang.labs.api.dabin.FrontEventCouponList.service;
 
 import com.jakdang.labs.api.dabin.FrontEventCouponList.dto.CouponDetailResponse;
-import com.jakdang.labs.api.dabin.FrontEventCouponList.repository.CouponRepository;
+import com.jakdang.labs.api.dabin.FrontEventCouponList.repository.FrontEventCouponRepository;
 import com.jakdang.labs.security.jwt.utils.JwtUtil;
 import com.jakdang.labs.api.taekjun.Permissionsettings.repository.UserTesserisRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -15,7 +16,8 @@ import java.util.Optional;
 public class CouponService {
 
     @Autowired
-    private CouponRepository couponRepository;
+    @Qualifier("frontEventCouponJdbRepo")
+    private FrontEventCouponRepository couponRepository;
     
     @Autowired
     private JwtUtil jwtUtil;

@@ -9,8 +9,8 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
-@Repository
-public interface CouponRepository extends JpaRepository<Coupon, Integer> {
+@Repository("frontEventCouponJdbRepo")
+public interface FrontEventCouponRepository extends JpaRepository<Coupon, Integer> {
     
     @Query("""
         SELECT 
