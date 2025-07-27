@@ -27,7 +27,8 @@ public interface StoreInfoJdbRepo extends JpaRepository<Store, Integer> {
             s.storeDetailAddress,
             s.storeMemo,
             s.storePos1,
-            s.storePos2
+            s.storePos2,
+            s.businessManUserIndex
         )
         FROM Store s
         JOIN s.storeCategory sc

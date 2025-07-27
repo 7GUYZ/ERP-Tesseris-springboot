@@ -40,16 +40,30 @@ public class EventRegistrationService {
             );
             log.info("쿼리 결과 개수: {}", results.size());
             
+            // 쿼리 결과 상세 로깅
+            for (int i = 0; i < results.size(); i++) {
+                Object[] row = results.get(i);
+                log.info("Row {}: couponIndex={}, couponName={}, couponPrice={}, status={}, issuanceTime={}, limit={}, limitTime={}", 
+                    i, row[0], row[1], row[2], row[3], row[4], row[5], row[6]);
+            }
+            
             List<CouponForEventResponse> coupons = results.stream()
-                .map(row -> CouponForEventResponse.builder()
-                    .couponIndex(((Number) row[0]).longValue())
-                    .couponName((String) row[1])
-                    .couponPrice((Integer) row[2])
-                    .couponIssuanceStatus((String) row[3])
-                    .couponIssuanceTime((LocalDateTime) row[4])
-                    .couponLimit((Integer) row[5])
-                    .couponLimitTime((LocalDateTime) row[6])
-                    .build())
+                .map(row -> {
+                    CouponForEventResponse coupon = CouponForEventResponse.builder()
+                        .couponIndex(((Number) row[0]).longValue())
+                        .couponName((String) row[1])
+                        .couponPrice((Integer) row[2])
+                        .couponIssuanceStatus((String) row[3])
+                        .couponIssuanceTime((LocalDateTime) row[4])
+                        .couponLimit((Integer) row[5])
+                        .couponLimitTime((LocalDateTime) row[6])
+                        .build();
+                    
+                    // couponLimitTime 값 로깅
+                    log.info("쿠폰 {} - couponLimitTime: {}", coupon.getCouponName(), coupon.getCouponLimitTime());
+                    
+                    return coupon;
+                })
                 .collect(Collectors.toList());
             
             log.info("변환된 쿠폰 목록: {}", coupons.stream().map(c -> c.getCouponPrice()).collect(Collectors.toList()));
@@ -76,11 +90,13 @@ public class EventRegistrationService {
                 return (ResponseDTO<String>) ResponseDTO.createErrorResponse(400, "쿠폰을 선택해주세요.");
             }
             
+
+            
             // 1. 이벤트 마스터 생성
             Integer nextEventNum = eventMasterRepository.getNextEventMasterNum();
             
             EventMaster eventMaster = new EventMaster();
-            eventMaster.setEventMasterName(request.getEventName());
+            eventMaster.setEventMasterName(request.getEventName().trim());
             eventMaster.setEventMasterCondition(request.getEventCondition());
             eventMaster.setEventMasterLimit(request.getEventDownLimit());
             eventMaster.setEventMasterCount(request.getCouponIssuanceIndexList().size());
@@ -104,9 +120,18 @@ public class EventRegistrationService {
             
             return ResponseDTO.<String>createSuccessResponse("이벤트 등록 완료", "이벤트가 성공적으로 등록되었습니다.");
             
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // 데이터베이스 제약 조건 위반 (중복 키 등)
+            log.error("이벤트 등록 실패 (제약 조건 위반): {}", e.getMessage(), e);
+            if (e.getMessage().contains("Duplicate entry") || e.getMessage().contains("evnet_master_name")) {
+                return (ResponseDTO<String>) ResponseDTO.createErrorResponse(400, "이미 존재하는 이벤트 이름입니다. 다른 이름을 사용해주세요.");
+            }
+            return (ResponseDTO<String>) ResponseDTO.createErrorResponse(400, "이벤트 등록에 실패했습니다. 입력 정보를 확인해주세요.");
         } catch (Exception e) {
             log.error("이벤트 등록 실패: {}", e.getMessage(), e);
             return (ResponseDTO<String>) ResponseDTO.createErrorResponse(500, "이벤트 등록에 실패했습니다.");
         }
     }
+    
+
 } 

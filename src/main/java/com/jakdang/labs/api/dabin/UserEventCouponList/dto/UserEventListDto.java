@@ -17,4 +17,5 @@ public class UserEventListDto {
     private String storeAddress;
     private String storeName;
     private Integer eventMasterCount;
+    private Integer remainingDownloads; // 개별 사용자의 남은 다운로드 가능 횟수
 } 

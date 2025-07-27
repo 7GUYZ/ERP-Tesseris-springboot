@@ -7,6 +7,8 @@ import com.jakdang.labs.api.dabin.FrontEventCouponList.repository.EventListDetai
 import com.jakdang.labs.api.dabin.FrontEventCouponList.repository.EventListRepository;
 import com.jakdang.labs.entity.EventMaster;
 import com.jakdang.labs.api.dabin.FrontEventCouponRegistration.repository.EventMasterRepository;
+import com.jakdang.labs.security.jwt.utils.JwtUtil;
+import com.jakdang.labs.api.taekjun.Permissionsettings.repository.UserTesserisRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,6 +26,8 @@ public class EventListService {
     private final EventListRepository eventListRepository;
     private final EventListDetailRepository eventListDetailRepository;
     private final EventMasterRepository eventMasterRepository;
+    private final JwtUtil jwtUtil;
+    private final UserTesserisRepository userTesserisRepository;
     
     /**
      * 진행중인 이벤트 목록 조회
@@ -143,10 +147,18 @@ public class EventListService {
      * 쿠폰 다운로드 (사용자용)
      */
     @Transactional
-    public ResponseDTO<String> downloadCoupon(Integer eventMasterIndex, Integer couponIndex) {
+    public ResponseDTO<String> downloadCoupon(Integer eventMasterIndex, Integer couponIndex, String authHeader) {
         try {
-            // TODO: 실제 사용자 인덱스는 세션에서 가져와야 함
-            Integer userIndex = 1; // 임시로 1 설정
+            // JWT 토큰에서 사용자 ID 추출
+            String token = authHeader.replace("Bearer ", "");
+            String userId = jwtUtil.getUserId(token);
+            log.info("🔍 JWT에서 추출한 userId: {}", userId);
+            
+            // userId로 userIndex 조회
+            var userTesseris = userTesserisRepository.findByUsersId_Id(userId)
+                .orElseThrow(() -> new RuntimeException("사용자 정보를 찾을 수 없습니다: " + userId));
+            Integer userIndex = userTesseris.getUserIndex();
+            log.info("🔍 DB에서 조회한 userIndex: {}", userIndex);
             
             // 1. 이벤트 상태 확인
             EventMaster eventMaster = eventMasterRepository.findById(eventMasterIndex)
