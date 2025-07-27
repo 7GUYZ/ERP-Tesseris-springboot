@@ -237,8 +237,10 @@ post-service:
 # 정은 추가 (알림 서비스)
 alarm-service:
   url: http://localhost:19093/api/alarms
+# 지훈 추가 (채팅)
+chat-service:
+  url: http://localhost:19092/api/chat
   
-
 feign:
   httpclient:
     hc5:

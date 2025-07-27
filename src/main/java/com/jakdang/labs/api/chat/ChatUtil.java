@@ -1,4 +1,4 @@
-package com.jakdang.labs.api.alarm;
+package com.jakdang.labs.api.chat;
 
 import org.springframework.stereotype.Component;
 
@@ -8,6 +8,6 @@ import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
-public class AlarmUtil {
+public class ChatUtil {
     private final UserService userService;
 }
