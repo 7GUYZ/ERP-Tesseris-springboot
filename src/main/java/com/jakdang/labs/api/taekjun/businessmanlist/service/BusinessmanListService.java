@@ -101,7 +101,7 @@ public class BusinessmanListService {
     public List<BusinessmanListResponseDTO> getBusinessmanList() {
         return searchBusinessmanList(null);
     }
-    
+
     public List<BusinessmanListResponseDTO> getAllActiveBusinessmen() {
         System.out.println("=== BusinessmanListService.getAllActiveBusinessmen 시작 ===");
         
