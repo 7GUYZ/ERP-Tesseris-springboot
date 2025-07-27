@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.jakdang.labs.api.dabin.FrontMyPageStoreInfo.dto.StoreInfoResponseDto;
+import com.jakdang.labs.api.dabin.FrontMyPageStoreInfo.repository.UserTesserisJdbRepo;
+import com.jakdang.labs.api.dabin.FrontMyPageStoreInfo.repository.FrontMyPageStoreInfoJdbRepo;
 import com.jakdang.labs.api.dabin.FrontStoreInfoMenu.StoreBasicInfo.dto.StoreUpdateRequest;
 import com.jakdang.labs.api.dabin.FrontStoreInfoMenu.StoreBasicInfo.repository.StoreInfoJdbRepo;
 import com.jakdang.labs.api.dabin.FrontMyPageStoreInfo.repository.StoreCategoryJdbRepo;
 import com.jakdang.labs.entity.Store;
 import com.jakdang.labs.entity.StoreCategory;
-import com.jakdang.labs.entity.StoreImage;
 import com.jakdang.labs.entity.UserTesseris;
-import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class StoreInfoService {
@@ -28,15 +28,18 @@ public class StoreInfoService {
     @Autowired
     private StoreCategoryJdbRepo storeCategoryRepository;
     
+    @Autowired
+    private UserTesserisJdbRepo userTesserisRepository;
+    
+    @Autowired
+    private FrontMyPageStoreInfoJdbRepo frontMyPageStoreInfoJdbRepo;
+    
     /**
      * 모든 매장 카테고리 목록 조회
      */
     public List<StoreCategory> getAllStoreCategories() {
         return storeCategoryRepository.findAll();
     }
-    
-    @Autowired
-    private S3ImageService s3ImageService;
     
     public Map<String, Object> getStoreInfo(Integer userIndex) {
         Map<String, Object> result = new HashMap<>();
@@ -62,6 +65,57 @@ public class StoreInfoService {
                 
                 result.put("success", true);
                 result.put("storeInfo", convertedResponse);
+            } else {
+                result.put("success", false);
+                result.put("message", "가맹점 정보를 찾을 수 없습니다.");
+            }
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", "가맹점 정보 조회 중 오류가 발생했습니다: " + e.getMessage());
+        }
+        
+        return result;
+    }
+    
+    /**
+     * JWT 방식의 가맹점 정보 조회
+     */
+    public Map<String, Object> getStoreInfoByUserId(String userId) {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            // userId로 UserTesseris 조회
+            UserTesseris userTesseris = userTesserisRepository.findByUsersId_Id(userId)
+                .orElseThrow(() -> new RuntimeException("UserTesseris not found for userId: " + userId));
+            
+            // userIndex로 가맹점 정보 조회
+            Optional<com.jakdang.labs.api.dabin.FrontStoreInfoMenu.StoreBasicInfo.dto.StoreInfoResponse> storeInfo = storeInfoRepository.getStoreInfoByUserIndex(userTesseris.getUserIndex());
+            if (storeInfo.isPresent()) {
+                // DTO 변환: FrontStoreInfoMenu.StoreBasicInfo.dto.StoreInfoResponse -> FrontMyPageStoreInfo.dto.StoreInfoResponse
+                com.jakdang.labs.api.dabin.FrontStoreInfoMenu.StoreBasicInfo.dto.StoreInfoResponse basicInfo = storeInfo.get();
+                
+                // 담당자 아이디 조회
+                String businessUserId = "";
+                if (basicInfo.getBusinessManUserIndex() != null) {
+                    businessUserId = frontMyPageStoreInfoJdbRepo.findBusinessUserIdByUserIndex(basicInfo.getBusinessManUserIndex())
+                        .orElse("Unknown");
+                }
+                
+                StoreInfoResponseDto convertedResponse = new StoreInfoResponseDto(
+                    basicInfo.getStoreIndex(),
+                    basicInfo.getStoreName(),
+                    basicInfo.getStoreCategoryName(),
+                    basicInfo.getStoreAddress(),
+                    basicInfo.getStorePhone(),
+                    basicInfo.getStoreSite(),
+                    basicInfo.getStoreZoneCode(),
+                    basicInfo.getStoreDetailAddress(),
+                    basicInfo.getStoreMemo(),
+                    businessUserId // 담당자 아이디
+                );
+                
+                result.put("success", true);
+                result.put("data", convertedResponse);
             } else {
                 result.put("success", false);
                 result.put("message", "가맹점 정보를 찾을 수 없습니다.");
@@ -124,6 +178,28 @@ public class StoreInfoService {
         }
         
         return result;
+    }
+    
+    /**
+     * JWT 방식의 가맹점 정보 수정 (userId로 조회)
+     */
+    @Transactional
+    public Map<String, Object> updateStoreInfoByUserId(String userId, StoreUpdateRequest request) {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            // userId로 UserTesseris 조회
+            UserTesseris userTesseris = userTesserisRepository.findByUsersId_Id(userId)
+                .orElseThrow(() -> new RuntimeException("UserTesseris not found for userId: " + userId));
+            
+            // userIndex로 가맹점 정보 업데이트
+            return updateStoreInfo(userTesseris.getUserIndex(), request);
+            
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", "가맹점 정보 수정 중 오류가 발생했습니다: " + e.getMessage());
+            return result;
+        }
     }
     
     // 이미지 관련 메서드 전체 삭제 (StoreImageService로 통합)
