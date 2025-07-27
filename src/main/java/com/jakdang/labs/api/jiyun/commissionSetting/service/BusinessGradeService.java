@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 import java.util.Map;
@@ -28,6 +29,7 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j // 로그 출력을 위해 추가(정은)
 public class BusinessGradeService {
   @Autowired
   @Qualifier("businessGradekjyJtjRepo")
@@ -72,9 +74,11 @@ public class BusinessGradeService {
 
     // 알림 전송(정은)
     try {
-      
+      alarmSvc.sendCommissionChangedAlarm();
+      log.info("중계수수료 변경 알림 전송 완료");
     } catch (Exception e) {
-      // TODO: handle exception
+      log.error("중계수수료 변경 알림 전송 실패: {}", e.getMessage());
+      // 알림 전송 실패해도 DB 저장은 성공으로 처리
     }
     
     return savedGrades;
