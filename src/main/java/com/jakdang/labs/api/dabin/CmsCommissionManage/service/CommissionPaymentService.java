@@ -46,9 +46,7 @@ public class CommissionPaymentService {
                 request.getTransactionName(),
                 request.getSuggestionUserId(),
                 request.getSuggestionUserName(),
-                request.getUserRoleIndex(),
-                request.getPaymentStatus(),
-                request.getDescription()
+                request.getUserRoleIndex()
             );
             
             return ResponseDTO.<List<CommissionPaymentResponse>>builder()

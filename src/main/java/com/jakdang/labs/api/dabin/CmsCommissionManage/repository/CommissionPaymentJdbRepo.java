@@ -54,12 +54,10 @@ public interface CommissionPaymentJdbRepo extends JpaRepository<TemporaryRegular
         AND (:userPhone IS NULL OR :userPhone = '' OR us.phone LIKE CONCAT('%', :userPhone, '%'))
         AND (:chargeTimeStart IS NULL OR t1.temporaryStoreMasterChargeTime >= :chargeTimeStart)
         AND (:chargeTimeEnd IS NULL OR t1.temporaryStoreMasterChargeTime <= :chargeTimeEnd)
-        AND (:transactionName IS NULL OR :transactionName = '' OR t1.temporaryStoreMasterTransactionName = :transactionName)
+        AND (:transactionName IS NULL OR :transactionName = '' OR t1.temporaryStoreMasterTransactionName LIKE CONCAT('%', :transactionName, '%'))
         AND (:suggestionUserId IS NULL OR :suggestionUserId = '' OR t6.usersId.id LIKE CONCAT('%', :suggestionUserId, '%'))
         AND (:suggestionUserName IS NULL OR :suggestionUserName = '' OR us2.name LIKE CONCAT('%', :suggestionUserName, '%'))
         AND (:userRoleIndex IS NULL OR t6.userRoleIndex = :userRoleIndex)
-        AND (:paymentStatus IS NULL OR :paymentStatus = '' OR t4.paymentStatus = :paymentStatus)
-        AND (:description IS NULL OR :description = '' OR t4.description = :description)
         ORDER BY t1.temporaryStoreMasterChargeTime DESC
     """)
     List<CommissionPaymentResponse> searchCommissionPayments(
@@ -71,8 +69,6 @@ public interface CommissionPaymentJdbRepo extends JpaRepository<TemporaryRegular
         @Param("transactionName") String transactionName,
         @Param("suggestionUserId") String suggestionUserId,
         @Param("suggestionUserName") String suggestionUserName,
-        @Param("userRoleIndex") Integer userRoleIndex,
-        @Param("paymentStatus") String paymentStatus,
-        @Param("description") String description
+        @Param("userRoleIndex") Integer userRoleIndex
     );
 } 

@@ -114,6 +114,10 @@ public class AdvertisementService {
         Map<String, Object> result = new java.util.HashMap<>();
         
         try {
+            System.out.println("=== AdvertisementService.updateAdvertisement() 호출 ===");
+            System.out.println("advertisementIndex: " + advertisementIndex);
+            System.out.println("file: " + (file != null ? file.getOriginalFilename() : "null"));
+            
             Optional<Advertisement> optionalAdvertisement = advertisementRepository.findById(advertisementIndex);
             if (optionalAdvertisement.isEmpty()) {
                 result.put("success", false);
@@ -122,24 +126,54 @@ public class AdvertisementService {
             }
 
             Advertisement advertisement = optionalAdvertisement.get();
+            
+            System.out.println("기존 광고 정보:");
+            System.out.println("  - advertisementIndex: " + advertisement.getAdvertisementIndex());
+            System.out.println("  - advertisementPhoto: " + advertisement.getAdvertisementPhoto());
+            System.out.println("  - advertisementCreateTime: " + advertisement.getAdvertisementCreateTime());
 
+            String newImageUrl = advertisement.getAdvertisementPhoto();
+            
             // 새 이미지가 업로드된 경우
             if (file != null && !file.isEmpty()) {
                 // 기존 이미지 삭제
                 if (advertisement.getAdvertisementPhoto() != null) {
-                    s3ImageService.deleteImage(advertisement.getAdvertisementPhoto());
+                    try {
+                        s3ImageService.deleteImage(advertisement.getAdvertisementPhoto());
+                        System.out.println("기존 S3 파일 삭제 완료: " + advertisement.getAdvertisementPhoto());
+                    } catch (Exception e) {
+                        System.err.println("기존 S3 파일 삭제 실패: " + e.getMessage());
+                        // 기존 파일 삭제 실패해도 계속 진행
+                    }
                 }
                 // 새 이미지 업로드
-                String imageUrl = s3ImageService.uploadImage(file, "advertisements");
-                advertisement.setAdvertisementPhoto(imageUrl);
+                newImageUrl = s3ImageService.uploadImage(file, "advertisements");
+                System.out.println("새 S3 파일 업로드 완료: " + newImageUrl);
             }
 
-            advertisement.setAdvertisementUrl(request.getAdvertisementUrl());
-            advertisementRepository.save(advertisement);
+            // 등록일 업데이트 (수정 시점으로)
+            LocalDateTime newCreateTime = LocalDateTime.now();
+            System.out.println("등록일 업데이트: " + newCreateTime);
+            
+            // 직접 SQL 업데이트로 DB에 반영
+            int updateResult = advertisementRepository.updateAdvertisementPhotoUrlAndCreateTime(
+                advertisementIndex, 
+                newImageUrl, 
+                request.getAdvertisementUrl(), 
+                newCreateTime
+            );
+            System.out.println("DB 업데이트 결과: " + updateResult + "행이 업데이트됨");
+            
+            if (updateResult == 0) {
+                throw new RuntimeException("DB 업데이트가 실패했습니다. 업데이트된 행이 없습니다.");
+            }
 
             result.put("success", true);
             result.put("message", "광고를 수정하였습니다.");
         } catch (Exception e) {
+            System.err.println("=== AdvertisementService.updateAdvertisement() 실패 ===");
+            System.err.println("에러 메시지: " + e.getMessage());
+            e.printStackTrace();
             result.put("success", false);
             result.put("message", "광고 수정 중 오류가 발생했습니다: " + e.getMessage());
         }
