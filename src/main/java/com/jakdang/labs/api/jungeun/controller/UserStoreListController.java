@@ -19,7 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequiredArgsConstructor
 @Slf4j
-@RequestMapping("/api/user/userStoreList")
+@RequestMapping("/api/user/storeList")
 public class UserStoreListController {
     private final UserStoreListSvc storeSvc;
 

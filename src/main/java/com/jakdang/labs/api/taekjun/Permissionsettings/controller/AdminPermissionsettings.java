@@ -20,7 +20,6 @@ import lombok.RequiredArgsConstructor;
 
 import com.jakdang.labs.api.taekjun.Permissionsettings.dto.AuthorityProgramDTO;
 import com.jakdang.labs.api.taekjun.Permissionsettings.dto.AuthorityUpdateDTO;
-import com.jakdang.labs.api.taekjun.Permissionsettings.dto.AuthorityUpdateByIndexDTO;
 import com.jakdang.labs.api.taekjun.Permissionsettings.dto.MenuDTO;
 import com.jakdang.labs.api.taekjun.Permissionsettings.dto.ProgramDTO;
 
@@ -119,31 +118,5 @@ public class AdminPermissionsettings {
        return AdminPermissinonsettingsservice.getAdminType();
     }
 
-    /**
-     * authorityTypeIndex로 권한 업데이트 (더 효율적인 방식)
-     */
-    @PutMapping("/update-authority-by-index")
-    public ResponseEntity<String> updateAuthorityByIndex(@RequestBody AuthorityUpdateByIndexDTO updateDTO) {
-        // 필수 필드 검증
-        if (updateDTO.getAuthorityTypeIndex() == null) {
-            return ResponseEntity.badRequest().body("authorityTypeIndex는 필수 필드입니다.");
-        }
-        
-        // 패스워드 검증이 필요한 경우 먼저 검증 수행
-        if (updateDTO.getUserIndex() != null && updateDTO.getPassword() != null) {
-            boolean passwordValid = AdminPermissinonsettingsservice.validateUserPassword(
-                updateDTO.getUserIndex(), updateDTO.getPassword());
-            if (!passwordValid) {
-                return ResponseEntity.badRequest().body("사용자 인증에 실패했습니다. userIndex와 password를 확인해주세요.");
-            }
-        }
-        
-        boolean success = AdminPermissinonsettingsservice.updateAuthorityByIndex(updateDTO);
-        
-        if (success) {
-            return ResponseEntity.ok("권한이 성공적으로 업데이트되었습니다.");
-        } else {
-            return ResponseEntity.badRequest().body("권한 업데이트에 실패했습니다.");
-        }
-    }
+
 } 
