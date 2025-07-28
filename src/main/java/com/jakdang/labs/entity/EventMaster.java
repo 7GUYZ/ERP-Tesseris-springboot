@@ -29,9 +29,9 @@ public class EventMaster {
     @Column(name = "event_master_count")
     private Integer eventMasterCount;
 
-    @Column(name = "event_master_userIndex", columnDefinition = "event_master_userIndex")
+    @Column(name = "event_master_userIndex")
     private Integer eventMasterUserIndex;
 
     @Column(name = "event_master_num")
     private Integer eventMasterNum;
-}
+} 

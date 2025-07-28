@@ -7,6 +7,7 @@ import com.jakdang.labs.entity.Qna;
 import com.jakdang.labs.entity.UserTesseris;
 import com.jakdang.labs.api.taekjun.Permissionsettings.repository.UserTesserisRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +17,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class QnaService {
 
     private final QnaRepository qnaRepository;
@@ -41,15 +43,41 @@ public class QnaService {
     @Transactional(readOnly = true)
     public List<QnaResponseDto> getInquiryList(String userIndex) {
         try {
-            Integer userIndexInt = Integer.parseInt(userIndex);
-            // 간단한 메서드 사용
-            List<Qna> qnaList = qnaRepository.findByQuestionUser_UserIndexOrderByQnaCreateTimeDesc(userIndexInt);
+            log.info("QnA 목록 조회 시작 - userIndex: {}", userIndex);
+
+            if (userIndex == null || userIndex.trim().isEmpty()) {
+                log.error("사용자 ID가 null이거나 비어있음");
+                throw new RuntimeException("유효하지 않은 사용자 ID입니다.");
+            }
+
+            Integer userIndexInt;
+            try {
+                userIndexInt = Integer.parseInt(userIndex);
+            } catch (NumberFormatException e) {
+                log.error("유효하지 않은 사용자 ID 형식: {}", userIndex, e);
+                throw new RuntimeException("유효하지 않은 사용자 ID 형식입니다.");
+            }
+
+            // 사용자 존재 여부 확인
+            UserTesseris user = userTesserisRepository.findByUserIndex(userIndexInt)
+                    .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다: " + userIndex));
+
+            log.info("사용자 확인 완료: {}", user.getUserIndex());
+
+            // QnA 목록 조회
+            List<Qna> qnaList = qnaRepository.findByQuestionUserIndex(userIndexInt);
+
+            log.info("QnA 목록 조회 완료 - 개수: {}", qnaList.size());
+
             return qnaList.stream()
                     .map(this::convertToResponseDto)
                     .collect(Collectors.toList());
-        } catch (NumberFormatException e) {
-            throw new RuntimeException("유효하지 않은 사용자 ID입니다.");
+
+        } catch (RuntimeException e) {
+            log.error("QnA 목록 조회 중 런타임 오류 발생 - userIndex: {}", userIndex, e);
+            throw e;
         } catch (Exception e) {
+            log.error("QnA 목록 조회 중 예상치 못한 오류 발생 - userIndex: {}", userIndex, e);
             throw new RuntimeException("QnA 목록을 조회하는 중 오류가 발생했습니다: " + e.getMessage());
         }
     }
@@ -64,25 +92,49 @@ public class QnaService {
 
     // Entity를 ResponseDto로 변환
     private QnaResponseDto convertToResponseDto(Qna qna) {
-        QnaResponseDto responseDto = new QnaResponseDto();
-        responseDto.setQnaIndex(qna.getQnaIndex());
-        responseDto.setQuestionTitle(qna.getQuestionTitle());
-        responseDto.setQuestionDesc(qna.getQuestionDesc());
-        responseDto.setAnswerTitle(qna.getAnswerTitle());
-        responseDto.setAnswerDesc(qna.getAnswerDesc());
-        responseDto.setQnaCreateTime(qna.getQnaCreateTime());
-        responseDto.setAnswerCreateTime(qna.getAnswerCreateTime());
+        try {
+            QnaResponseDto responseDto = new QnaResponseDto();
+            responseDto.setQnaIndex(qna.getQnaIndex());
+            responseDto.setQuestionTitle(qna.getQuestionTitle());
+            responseDto.setQuestionDesc(qna.getQuestionDesc());
+            responseDto.setAnswerTitle(qna.getAnswerTitle());
+            responseDto.setAnswerDesc(qna.getAnswerDesc());
+            responseDto.setQnaCreateTime(qna.getQnaCreateTime());
+            responseDto.setAnswerCreateTime(qna.getAnswerCreateTime());
 
-        if (qna.getQuestionUser() != null && qna.getQuestionUser().getUsersId() != null) {
-            responseDto.setQuestionUserName(qna.getQuestionUser().getUsersId().getName());
+            // 안전한 null 체크 - 더 강화된 버전
+            try {
+                if (qna.getQuestionUser() != null &&
+                        qna.getQuestionUser().getUsersId() != null &&
+                        qna.getQuestionUser().getUsersId().getName() != null) {
+                    responseDto.setQuestionUserName(qna.getQuestionUser().getUsersId().getName());
+                } else {
+                    responseDto.setQuestionUserName("알 수 없음");
+                }
+            } catch (Exception e) {
+                log.warn("질문자 이름 설정 중 오류: {}", e.getMessage());
+                responseDto.setQuestionUserName("알 수 없음");
+            }
+
+            try {
+                if (qna.getAnswerUser() != null &&
+                        qna.getAnswerUser().getUsersId() != null &&
+                        qna.getAnswerUser().getUsersId().getName() != null) {
+                    responseDto.setAnswerUserName(qna.getAnswerUser().getUsersId().getName());
+                } else {
+                    responseDto.setAnswerUserName("관리자");
+                }
+            } catch (Exception e) {
+                log.warn("답변자 이름 설정 중 오류: {}", e.getMessage());
+                responseDto.setAnswerUserName("관리자");
+            }
+
+            responseDto.setIsAnswered(qna.getAnswerDesc() != null && !qna.getAnswerDesc().isEmpty());
+
+            return responseDto;
+        } catch (Exception e) {
+            log.error("QnaResponseDto 변환 중 오류 발생", e);
+            throw new RuntimeException("데이터 변환 중 오류가 발생했습니다.");
         }
-
-        if (qna.getAnswerUser() != null && qna.getAnswerUser().getUsersId() != null) {
-            responseDto.setAnswerUserName(qna.getAnswerUser().getUsersId().getName());
-        }
-
-        responseDto.setIsAnswered(qna.getAnswerDesc() != null && !qna.getAnswerDesc().isEmpty());
-
-        return responseDto;
     }
 }

@@ -61,18 +61,10 @@ spring:
   jpa:
     show-sql: true # SQL 쿼리 출력 여부
     hibernate:
-      ddl-auto: validate # 자동. 테이블 자동 생성 DB에 맞춰서 설정
-    defer-datasource-initialization: true
-  sql:
-    init:
-      mode: always
-      schema-locations: classpath:schema.sql
+      ddl-auto: none # 자동. 테이블 자동 생성 DB에 맞춰서 설정
       naming:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
         implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyJpaImpl
-        hibernate:
-          globally_quoted_identifiers: true
-          globally_quoted_identifiers_skip_column_definitions: true
     properties:
       hibernate:
         default_batch_fetch_size: 1000  # 대용량 데이터 처리를 위해 증가

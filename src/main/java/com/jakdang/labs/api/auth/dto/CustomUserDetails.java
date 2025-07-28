@@ -23,7 +23,6 @@ public class CustomUserDetails implements UserDetails {
     /** 사용자 엔티티 */
     private final UserEntity userEntity;
 
-
     /**
      * 사용자의 권한 정보를 반환
      * Spring Security에서 권한 기반 접근 제어에 사용
@@ -59,13 +58,13 @@ public class CustomUserDetails implements UserDetails {
     }
 
     /**
-     * 사용자명 반환 (이름 사용)
+     * 사용자명 반환 (userId 사용)
      * 
-     * @return 사용자명
+     * @return 사용자 ID
      */
     @Override
     public String getUsername() {
-        return userEntity.getName();
+        return userEntity.getId();
     }
 
     /**
@@ -95,7 +94,6 @@ public class CustomUserDetails implements UserDetails {
     public String getPhone() {
         return userEntity.getPhone();
     }
-
 
     /**
      * 계정 만료 여부 확인
@@ -127,15 +125,15 @@ public class CustomUserDetails implements UserDetails {
         return UserDetails.super.isCredentialsNonExpired();
     }
 
-//    /**
-//     * 계정 활성화 여부 확인 (주석 처리됨)
-//     * 
-//     * @return 계정 활성화 여부
-//     */
-//    @Override
-//    public boolean isEnabled() {
-//        return UserDetails.super.isEnabled();
-//    }
+    // /**
+    // * 계정 활성화 여부 확인 (주석 처리됨)
+    // *
+    // * @return 계정 활성화 여부
+    // */
+    // @Override
+    // public boolean isEnabled() {
+    // return UserDetails.super.isEnabled();
+    // }
 
     /**
      * 계정 활성화 여부 확인
