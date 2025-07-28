@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.jakdang.labs.api.chat.dto.MessageRequestDTO;
 import com.jakdang.labs.api.chat.dto.RoomRequestDTO;
 import com.jakdang.labs.api.chat.dto.UserListDTO;
 import com.jakdang.labs.api.chat.model.ChatServiceClient;
@@ -93,6 +94,20 @@ public class ChatController {
         } catch (Exception e) {
             log.error("Error: {}", e.getMessage());
             return ResponseEntity.ok(new ResponseDTO<List<RoomRequestDTO>>(404, e.getMessage(), null));
+        }
+    }
+    /**
+     * send message
+     */
+    @PostMapping("/sendmessage")
+    public ResponseEntity<String> SendMessage(@RequestBody MessageRequestDTO messageRequestDTO) {
+        try {
+            String result = chatServiceClient.SendMessage(messageRequestDTO);
+            log.info("SendMessage: {}", result);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("Error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 }
