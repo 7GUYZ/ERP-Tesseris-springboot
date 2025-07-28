@@ -16,19 +16,23 @@ import com.jakdang.labs.api.jiyun.notice.repository.NoticekjyRepository;
 import com.jakdang.labs.security.jwt.utils.JwtUtil;
 import com.jakdang.labs.api.jiyun.notice.dto.NoticeDTO.DeleteRequest;
 import com.jakdang.labs.api.auth.repository.AuthRepository;
+import com.jakdang.labs.api.alarm.service.AlarmSvc;
 import com.jakdang.labs.api.auth.entity.UserEntity;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j // 로그 출력을 위해 추가(정은)
 public class NoticeService {
   private final NoticekjyRepository noticeRepository;
   private final NoticeUserkjyRepository userRepository;
   private final JwtUtil jwtUtil;
   private final AuthRepository authRepository;
   private final Argon2PasswordEncoder passwordEncoder;
+  private final AlarmSvc alarmSvc; // 알림 송신 위해 추가(정은)
 
   // 공지사항 등록
   @Transactional
@@ -143,5 +147,20 @@ public class NoticeService {
     dto.setNoticeDesc(notice.getNoticeDesc());
     dto.setNoticeCreateTime(notice.getNoticeCreateTime());
     return dto;
+  }
+
+  /**
+   * 공지사항 알림 전송
+   */
+  public void sendNoticeAlarm(String noticeTitle) {
+    try {
+      // 알림 전송
+      alarmSvc.sendNoticeAlarm(noticeTitle);
+      log.info("공지사항 알림 전송 완료: {}", noticeTitle);
+
+    } catch (Exception e) {
+      System.err.println("공지사항 알림 전송 중 오류: " + e.getMessage());
+      // 알림 전송 실패해도 공지사항 등록은 성공으로 처리
+    }
   }
 } 

@@ -20,4 +20,7 @@ public class StoreListDTO {
     private Integer storeBusinessState; 
     // storeBusinessState
     // -> 0이면 영업종료, 1이면 영업중, 2면 영업요일 아님, 3면 브레이크타임, 4면 영업일 미지정
+    private String storeBusinessDate; // 영업일
+    private String storeBusinessHour; // 영업시간
+    private String storeRestHour; // 휴게시간
 } 

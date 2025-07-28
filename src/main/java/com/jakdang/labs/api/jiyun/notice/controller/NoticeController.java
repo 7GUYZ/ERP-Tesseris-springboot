@@ -1,6 +1,8 @@
 package com.jakdang.labs.api.jiyun.notice.controller;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,6 +15,7 @@ import com.jakdang.labs.api.jiyun.notice.dto.NoticeDTO.DeleteRequest;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/notice")
+@Slf4j // 로그 출력을 위해 추가(정은)
 public class NoticeController {
     private final NoticeService noticeService;
 
@@ -21,6 +24,14 @@ public class NoticeController {
     public ResponseEntity<?> createNotice(@RequestBody NoticeDTO.CreateRequest request, @RequestHeader("Authorization") String authHeader) {
         boolean result = noticeService.createNotice(request, authHeader);
         if (result) {
+            // 공지사항 등록 성공 시 알림 전송(정은)
+            try {
+                String noticeTitle = request.getNoticeTitle();
+                noticeService.sendNoticeAlarm(noticeTitle);
+            } catch (Exception e) {
+                log.error("공지사항 등록 알림 전송 실패: {}", e.getMessage());
+                // 알림 전송 실패해도 공지사항 등록은 성공으로 처리
+            }
             return ResponseEntity.ok("공지사항 등록 성공");
         } else {
             return ResponseEntity.badRequest().body("공지사항 등록 실패");
