@@ -61,7 +61,12 @@ spring:
   jpa:
     show-sql: true # SQL 쿼리 출력 여부
     hibernate:
-      ddl-auto: none # 자동. 테이블 자동 생성 DB에 맞춰서 설정
+      ddl-auto: validate # 자동. 테이블 자동 생성 DB에 맞춰서 설정
+    defer-datasource-initialization: true
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
       naming:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
         implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyJpaImpl
