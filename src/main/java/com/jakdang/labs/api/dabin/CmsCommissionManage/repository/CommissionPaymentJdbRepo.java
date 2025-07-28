@@ -4,7 +4,6 @@ import java.util.List;
 import java.time.LocalDateTime;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -55,12 +54,10 @@ public interface CommissionPaymentJdbRepo extends JpaRepository<TemporaryRegular
         AND (:userPhone IS NULL OR :userPhone = '' OR us.phone LIKE CONCAT('%', :userPhone, '%'))
         AND (:chargeTimeStart IS NULL OR t1.temporaryStoreMasterChargeTime >= :chargeTimeStart)
         AND (:chargeTimeEnd IS NULL OR t1.temporaryStoreMasterChargeTime <= :chargeTimeEnd)
-        AND (:transactionName IS NULL OR :transactionName = '' OR t1.temporaryStoreMasterTransactionName = :transactionName)
+        AND (:transactionName IS NULL OR :transactionName = '' OR t1.temporaryStoreMasterTransactionName LIKE CONCAT('%', :transactionName, '%'))
         AND (:suggestionUserId IS NULL OR :suggestionUserId = '' OR t6.usersId.id LIKE CONCAT('%', :suggestionUserId, '%'))
         AND (:suggestionUserName IS NULL OR :suggestionUserName = '' OR us2.name LIKE CONCAT('%', :suggestionUserName, '%'))
         AND (:userRoleIndex IS NULL OR t6.userRoleIndex = :userRoleIndex)
-        AND (:paymentStatus IS NULL OR :paymentStatus = '' OR t4.paymentStatus = :paymentStatus)
-        AND (:description IS NULL OR :description = '' OR t4.description = :description)
         ORDER BY t1.temporaryStoreMasterChargeTime DESC
     """)
     List<CommissionPaymentResponse> searchCommissionPayments(
@@ -72,36 +69,6 @@ public interface CommissionPaymentJdbRepo extends JpaRepository<TemporaryRegular
         @Param("transactionName") String transactionName,
         @Param("suggestionUserId") String suggestionUserId,
         @Param("suggestionUserName") String suggestionUserName,
-        @Param("userRoleIndex") Integer userRoleIndex,
-        @Param("paymentStatus") String paymentStatus,
-        @Param("description") String description
+        @Param("userRoleIndex") Integer userRoleIndex
     );
-    
-    @Query("""
-        SELECT CASE 
-            WHEN t4.userRoleIndex = 1 THEN false
-            WHEN t4.userBankNumber IS NULL OR t4.userBankNumber = '' THEN false
-            WHEN t4.userBank.userBankIndex = 0 THEN false
-            WHEN t4.userJumin IS NULL OR t4.userJumin = '' THEN false
-            ELSE true
-        END
-        FROM TemporaryRegularDetail t1
-        JOIN t1.userIndex t4
-        WHERE t1.temporaryStoreDetailIndex = :detailIndex
-    """)
-    Boolean validatePaymentEligibility(@Param("detailIndex") Integer detailIndex);
-    
-    @Query("""
-        SELECT t4.userRoleIndex, t4.userBankNumber, 
-               CASE WHEN t4.userBank IS NULL THEN 0 ELSE t4.userBank.userBankIndex END, 
-               t4.userJumin
-        FROM TemporaryRegularDetail t1
-        JOIN t1.userIndex t4
-        WHERE t1.temporaryStoreDetailIndex = :detailIndex
-    """)
-    Object[] getPaymentEligibilityDetails(@Param("detailIndex") Integer detailIndex);
-    
-    @Modifying
-    @Query("UPDATE TemporaryRegularDetail t SET t.paymentStatus = :paymentStatus WHERE t.temporaryStoreDetailIndex = :detailIndex")
-    void updatePaymentStatus(@Param("detailIndex") Integer detailIndex, @Param("paymentStatus") String paymentStatus);
 } 

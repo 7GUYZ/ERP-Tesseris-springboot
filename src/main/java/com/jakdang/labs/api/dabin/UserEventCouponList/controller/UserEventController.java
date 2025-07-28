@@ -18,9 +18,10 @@ public class UserEventController {
      * 활성 이벤트 목록 조회 (사용자용)
      */
     @GetMapping("/active")
-    public ResponseEntity<?> getActiveEvents(@RequestParam Map<String, Object> params) {
+    public ResponseEntity<?> getActiveEvents(@RequestParam Map<String, Object> params,
+                                           @RequestHeader("Authorization") String authHeader) {
         try {
-            var result = userEventService.getActiveEvents();
+            var result = userEventService.getActiveEvents(authHeader);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of("error", "이벤트 목록 조회 중 오류가 발생했습니다: " + e.getMessage()));
@@ -31,9 +32,10 @@ public class UserEventController {
      * 종료된 이벤트 목록 조회 (사용자용)
      */
     @GetMapping("/ended")
-    public ResponseEntity<?> getEndedEvents(@RequestParam Map<String, Object> params) {
+    public ResponseEntity<?> getEndedEvents(@RequestParam Map<String, Object> params,
+                                          @RequestHeader("Authorization") String authHeader) {
         try {
-            var result = userEventService.getEndedEvents();
+            var result = userEventService.getEndedEvents(authHeader);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of("error", "종료된 이벤트 목록 조회 중 오류가 발생했습니다: " + e.getMessage()));
@@ -58,12 +60,13 @@ public class UserEventController {
      * 쿠폰 다운로드 (사용자용)
      */
     @PostMapping("/coupon/download")
-    public ResponseEntity<?> downloadCoupon(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<?> downloadCoupon(@RequestBody Map<String, Object> request,
+                                          @RequestHeader("Authorization") String authHeader) {
         try {
             Integer eventMasterIndex = (Integer) request.get("eventMasterIndex");
             Integer couponIndex = (Integer) request.get("couponIndex");
             
-            var result = userEventService.downloadCoupon(eventMasterIndex, couponIndex);
+            var result = userEventService.downloadCoupon(eventMasterIndex, couponIndex, authHeader);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of("error", "쿠폰 다운로드 중 오류가 발생했습니다: " + e.getMessage()));
