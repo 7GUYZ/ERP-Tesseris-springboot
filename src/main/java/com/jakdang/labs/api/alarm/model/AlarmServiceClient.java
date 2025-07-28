@@ -2,11 +2,14 @@ package com.jakdang.labs.api.alarm.model;
 
 import java.util.List;
 
+import java.util.Map;
+
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import com.jakdang.labs.api.alarm.dto.AlarmTypesDTO;
 import com.jakdang.labs.api.alarm.dto.UserAlarmsDTO;
@@ -49,4 +52,13 @@ public interface AlarmServiceClient {
      */
     @GetMapping("/getAlarmType/{alarmTypeId}")
     AlarmTypesDTO getAlarmType(@PathVariable("alarmTypeId") Integer alarmTypeId);
+    
+    /**
+     * 사용자의 알림 설정 업데이트
+     */
+    @PostMapping("/update-user-alarm-setting")
+    Map<String, Object> updateUserAlarmSetting(
+            @RequestParam("userIndex") Integer userIndex,
+            @RequestParam("alarmTypesId") Integer alarmTypesId,
+            @RequestParam("isActive") Integer isActive);
 }
