@@ -26,19 +26,33 @@ public class StoreRegisterController {
 
     /**
      * 가맹점 신청 등록
-     * @param formData 가맹점 신청 데이터
+     * @param storeData 가맹점 신청 데이터 (JSON 문자열)
+     * @param storeBusinessLicensePhoto 사업자등록증 사진
+     * @param storeSignPhoto 간판 사진
+     * @param storeFrontPhoto 외관 사진
      * @return 등록 결과
      */
     @PostMapping("/store/register")
     public ResponseEntity<Map<String, Object>> registerStore(
             @RequestParam("storeData") String storeData,
-            @RequestParam(value = "files", required = false) MultipartFile[] files) {
+            @RequestParam(value = "storeBusinessLicensePhoto", required = false) MultipartFile storeBusinessLicensePhoto,
+            @RequestParam(value = "storeSignPhoto", required = false) MultipartFile storeSignPhoto,
+            @RequestParam(value = "storeFrontPhoto", required = false) MultipartFile storeFrontPhoto) {
         try {
-            log.info("가맹점 신청 등록 요청: {}", storeData);
-            Map<String, Object> result = storeRegisterService.registerStore(storeData, files);
+            log.info("=== 가맹점 신청 등록 API 호출됨 ===");
+            log.info("storeData: {}", storeData);
+            log.info("storeBusinessLicensePhoto: {}", storeBusinessLicensePhoto != null ? storeBusinessLicensePhoto.getOriginalFilename() : "없음");
+            log.info("storeSignPhoto: {}", storeSignPhoto != null ? storeSignPhoto.getOriginalFilename() : "없음");
+            log.info("storeFrontPhoto: {}", storeFrontPhoto != null ? storeFrontPhoto.getOriginalFilename() : "없음");
+            
+            Map<String, Object> result = storeRegisterService.registerStore(storeData, storeBusinessLicensePhoto, storeSignPhoto, storeFrontPhoto);
+            
+            log.info("가맹점 신청 등록 완료: {}", result);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
-            log.error("가맹점 신청 등록 실패: {}", e.getMessage());
+            log.error("=== 가맹점 신청 등록 실패 ===");
+            log.error("에러 메시지: {}", e.getMessage());
+            log.error("에러 상세: ", e);
             return ResponseEntity.badRequest().body(
                 Map.of(
                     "success", false,

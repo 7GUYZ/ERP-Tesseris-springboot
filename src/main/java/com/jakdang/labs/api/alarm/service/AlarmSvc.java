@@ -1,8 +1,10 @@
 package com.jakdang.labs.api.alarm.service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -28,6 +30,66 @@ public class AlarmSvc {
     private final UserTesserisLjeRepo userRepo;
     private final AuthorityLjeRepo authorityRepo;
     private final AlarmServiceClient alarmServiceClient;
+
+    /**
+     * 사용자의 특정 알림 타입 설정 조회
+     */
+    public Map<String, Object> getUserAlarmSetting(Integer userIndex, Integer alarmTypesId) {
+        log.info("🔍 사용자 알림 설정 조회 - userIndex: {}, alarmTypesId: {}", userIndex, alarmTypesId);
+        
+        try {
+            log.info("🔍 alarmServiceClient 호출 시작");
+            
+            // alarm-service에서 사용자의 알림 설정 조회
+            List<UserAlarmsDTO> userAlarms = alarmServiceClient.getUserAlarmsByUserIndex(userIndex);
+            
+            log.info("✅ alarm-service 응답 받음 - 조회된 알림 설정 개수: {}", userAlarms != null ? userAlarms.size() : "null");
+            
+            if (userAlarms == null) {
+                log.warn("⚠️ alarm-service에서 null 응답 받음");
+                userAlarms = new java.util.ArrayList<>();
+            }
+            
+            // 특정 알림 타입의 설정 찾기
+            Optional<UserAlarmsDTO> targetAlarm = userAlarms.stream()
+                    .filter(alarm -> alarm != null && alarmTypesId.equals(alarm.getAlarmTypesId()))
+                    .findFirst();
+            
+            Map<String, Object> response = new HashMap<>();
+            
+            if (targetAlarm.isPresent()) {
+                // 설정이 있는 경우: isActive 값 반환
+                UserAlarmsDTO alarm = targetAlarm.get();
+                Integer isActive = alarm.getIsActive();
+                response.put("hasSetting", true);
+                response.put("isActive", isActive);
+                response.put("message", isActive == 1 ? "알림 활성화" : "알림 비활성화");
+                
+                log.info("✅ 알림 설정 조회 완료 - userIndex: {}, alarmTypesId: {}, isActive: {}", 
+                    userIndex, alarmTypesId, isActive);
+            } else {
+                // 설정이 없는 경우: 기본값 반환
+                response.put("hasSetting", false);
+                response.put("isActive", null);
+                response.put("message", "알림 설정 없음 (기본값: 활성화)");
+                
+                log.info("✅ 알림 설정 없음 - userIndex: {}, alarmTypesId: {}", userIndex, alarmTypesId);
+            }
+            
+            return response;
+            
+        } catch (Exception e) {
+            log.error("❌ 사용자 알림 설정 조회 실패 - userIndex: {}, alarmTypesId: {}", userIndex, alarmTypesId, e);
+            log.error("❌ 예외 상세 정보:", e);
+            
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "알림 설정 조회에 실패했습니다.");
+            errorResponse.put("message", e.getMessage());
+            errorResponse.put("details", e.toString());
+            
+            return errorResponse;
+        }
+    }
 
     /**
      * 특정 프로그램 권한을 가진 관리자들의 user_index 목록 조회 (범용 메서드)
@@ -161,7 +223,7 @@ public class AlarmSvc {
         List<String> filteredUserIndexes = userIndexes.stream()
                 .filter(userIndex -> !userIndex.equals(String.valueOf(senderIndex)))
                 .collect(Collectors.toList());
-        
+
         List<String> filteredAdminIndexes = adminIndexes.stream()
                 .filter(adminIndex -> !adminIndex.equals(String.valueOf(senderIndex)))
                 .collect(Collectors.toList());
@@ -312,9 +374,9 @@ public class AlarmSvc {
             // 3. 기존 메시지 생성 메서드 활용 + "(몇CM)" 추가
             String value = String.valueOf(giftAmount) + "CM";
             sendAlarmWithValue(giftAlarmTypeId, receiveUserIndexes, new ArrayList<>(), value, sendUserIndex);
-            
+
             log.info("선물 알림 전송 완료: 받는 사람={}, 금액={}CM", receiveUserIndex, giftAmount);
-                    
+
         } catch (Exception e) {
             log.error("선물 알림 전송 중 오류: {}", e.getMessage());
         }
@@ -333,11 +395,77 @@ public class AlarmSvc {
 
             // 4. 기존의 sendAlarmWithValue 메서드 사용
             sendAlarmWithValue(couponAlarmTypeId, userIndexes, new ArrayList<>(), couponName, senderIndex);
-            
+
             log.info("쿠폰 선물 알림 전송 완료 - 쿠폰명: {}, 발신자: {}", couponName, storeUserIndex);
-                    
+
         } catch (Exception e) {
             log.error("쿠폰 선물 알림 전송 중 오류: {}", e.getMessage());
         }
     }
+
+    /**
+     * 5. 중계수수료 변경 알림 전송 (비동기 처리)
+     */
+    public void sendCommissionChangedAlarm() {
+        CompletableFuture.runAsync(() -> {
+            try {
+                // 1. 중계수수료 관리 권한을 가진 관리자 목록 조회
+                List<String> adminUserIndexes = findAdminsWithAuthority(9); // 중계수수료 관리 프로그램
+
+                // 2. 중계수수료 변경 알림 타입 ID
+                Integer commissionAlarmTypeId = 4; // 중계수수료 변경 알림 타입 ID
+
+                // 3. 알림 전송 (관리자에게만 전송, 발신자는 null)
+                // sendAlarmWithValue에서 자동으로 alarmTypes.description 사용
+                sendAlarmWithValue(commissionAlarmTypeId, new ArrayList<>(), adminUserIndexes, "", null);
+
+                log.info("중계수수료 변경 알림 전송 완료 - 대상 관리자: {}명", adminUserIndexes.size());
+
+            } catch (Exception e) {
+                log.error("중계수수료 변경 알림 전송 중 오류: {}", e.getMessage());
+            }
+        });
+    }
+
+    /**
+     * 6. 권한 변경 알림 전송 (비동기 처리)
+     */
+    public void sendAuthorityChangedAlarm(String adminTypeName, String programName, String changeType) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                // 1. 권한 관리 권한을 가진 관리자 목록 조회
+                List<String> adminUserIndexes = findAdminsWithAuthority(8); // 권한 관리 프로그램
+
+                // 2. 권한 변경 알림 타입 ID
+                Integer authorityAlarmTypeId = 1; // 권한 변경 알림 타입 ID
+
+                // 3. 알림 메시지 생성 (변경 유형에 따라 분기)
+                String alarmMessage;
+                switch (changeType) {
+                    case "수정":
+                        alarmMessage = String.format("%s 등급의 %s 권한이 수정되었습니다.", adminTypeName, programName);
+                        break;
+                    case "추가":
+                        alarmMessage = String.format("%s 등급의 %s 권한이 추가되었습니다.", adminTypeName, programName);
+                        break;
+                    case "삭제":
+                        alarmMessage = String.format("%s 등급의 %s 권한이 삭제되었습니다.", adminTypeName, programName);
+                        break;
+                    default:
+                        alarmMessage = String.format("%s 등급의 %s 권한이 변경되었습니다.", adminTypeName, programName);
+                        break;
+                }
+
+                // 4. 알림 전송 (관리자에게만 전송, 발신자는 null)
+                sendAlarmWithValue(authorityAlarmTypeId, new ArrayList<>(), adminUserIndexes, alarmMessage, null);
+
+                log.info("권한 {} 알림 전송 완료 - 등급: {}, 프로그램: {}, 대상 관리자: {}명", 
+                    changeType, adminTypeName, programName, adminUserIndexes.size());
+
+            } catch (Exception e) {
+                log.error("권한 변경 알림 전송 중 오류: {}", e.getMessage());
+            }
+        });
+    }
+    
 }
