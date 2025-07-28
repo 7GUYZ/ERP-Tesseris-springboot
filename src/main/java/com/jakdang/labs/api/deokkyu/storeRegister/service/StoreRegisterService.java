@@ -7,16 +7,19 @@ import java.util.Map;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jakdang.labs.api.deokkyu.storeRegister.dto.StoreRegisterRequestDto;
 import com.jakdang.labs.entity.Store;
 import com.jakdang.labs.entity.TemporaryStoreMaster;
+import com.jakdang.labs.entity.TemporaryStoreDetail;
 import com.jakdang.labs.api.auth.entity.UserEntity;
 import com.jakdang.labs.entity.UserTesseris;
 import com.jakdang.labs.api.deokkyu.store.repository.StorehdkRepo;
 import com.jakdang.labs.api.deokkyu.businessman.repository.TemporaryStoreMasterhdkRepo;
+import com.jakdang.labs.api.deokkyu.businessman.repository.TemporaryStoreDetailhdkRepo;
 import com.jakdang.labs.api.deokkyu.store.repository.UserhdkRepo;
 import com.jakdang.labs.api.deokkyu.store.repository.UserTesserishdkRepo;
 
@@ -31,6 +34,7 @@ public class StoreRegisterService {
     private final ObjectMapper objectMapper;
     private final StorehdkRepo storeRepository;
     private final TemporaryStoreMasterhdkRepo temporaryStoreMasterRepository;
+    private final TemporaryStoreDetailhdkRepo temporaryStoreDetailRepository;
     private final UserhdkRepo userRepository;
     private final UserTesserishdkRepo userTesserisRepository;
     
@@ -73,9 +77,14 @@ public class StoreRegisterService {
             TemporaryStoreMaster savedTemporaryStoreMaster = temporaryStoreMasterRepository.save(temporaryStoreMaster);
             log.info("TemporaryStoreMaster 테이블 저장 완료: {}", savedTemporaryStoreMaster.getTemporaryStoreMasterIndex());
             
-            // 3. UserTesseris 테이블의 user_role_index 변경 (1 -> 3)
-            updateUserRole(storeRegisterDto.getUserId());
-            log.info("UserTesseris user_role_index 변경 완료");
+            // 3. TemporaryStoreDetail 테이블에 저장
+            TemporaryStoreDetail temporaryStoreDetail = createTemporaryStoreDetailEntity(savedStore, savedTemporaryStoreMaster);
+            TemporaryStoreDetail savedTemporaryStoreDetail = temporaryStoreDetailRepository.save(temporaryStoreDetail);
+            log.info("TemporaryStoreDetail 테이블 저장 완료: {}", savedTemporaryStoreDetail.getTemporaryStoreDetailIndex());
+            
+            // 4. UserTesseris 테이블의 user_role_index 변경 (1 -> 3)
+            // updateUserRole(storeRegisterDto.getUserId());
+            // log.info("UserTesseris user_role_index 변경 완료");
             
             // 파일 처리 로그
             if (storeBusinessLicensePhoto != null && !storeBusinessLicensePhoto.isEmpty()) {
@@ -100,9 +109,10 @@ public class StoreRegisterService {
             return response;
             
         } catch (Exception e) {
-            log.error("가맹점 신청 등록 실패: {}", e.getMessage());
+            log.error("가맹점 신청 등록 실패", e); // ← 이걸로 바꾸면 콘솔에 정확한 원인 출력됨
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             response.put("success", false);
-            response.put("message", e.getMessage());
+            response.put("message", "가맹점 신청 등록에 실패했습니다: " + e.getMessage());
             return response;
         }
     }
@@ -112,12 +122,31 @@ public class StoreRegisterService {
      */
     private Store createStoreEntity(StoreRegisterRequestDto dto, MultipartFile storeBusinessLicensePhoto, 
                                    MultipartFile storeSignPhoto, MultipartFile storeFrontPhoto) {
-        // user_index 조회 (로컬스토리지의 user-info에서 가져온 user_index 사용)
-        Integer userIndex = dto.getUserIndex(); // 이미 Integer 타입
+        // user_index 조회
+        UserTesseris userTesseris = null;
         
-        // UserTesseris 조회
-        UserTesseris userTesseris = userTesserisRepository.findById(userIndex)
-            .orElseThrow(() -> new RuntimeException("UserTesseris를 찾을 수 없습니다: " + userIndex));
+        // 1. userIndex가 있는 경우 직접 조회
+        if (dto.getUserIndex() != null) {
+            userTesseris = userTesserisRepository.findById(dto.getUserIndex())
+                .orElseThrow(() -> new RuntimeException("UserTesseris를 찾을 수 없습니다: " + dto.getUserIndex()));
+        } 
+        // 2. userIndex가 없는 경우 userInfo.name으로 조회
+        else if (dto.getUserInfo() != null && dto.getUserInfo().getName() != null) {
+            String userName = dto.getUserInfo().getName();
+            
+            // userName으로 UserEntity 조회
+            UserEntity userEntity = userRepository.findByName(userName)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다: " + userName));
+            
+            // UserEntity로 UserTesseris 조회
+            List<UserTesseris> tesserisList = userTesserisRepository.findByUsersId(userEntity);
+            if (tesserisList.isEmpty()) {
+                throw new RuntimeException("UserTesseris를 찾을 수 없습니다: " + userName);
+            }
+            userTesseris = tesserisList.get(0);
+        } else {
+            throw new RuntimeException("사용자 정보가 부족합니다. userIndex 또는 userInfo.name이 필요합니다.");
+        }
         
         Store store = new Store();
         
@@ -222,6 +251,23 @@ public class StoreRegisterService {
             .temporaryStoreCmValue(500000)
             .temporaryStoreCashValue(500000)
             .temporaryStoreMasterDistributionStatus("y")
+            .build();
+    }
+
+    /**
+     * TemporaryStoreDetail 엔티티 생성
+     */
+    private TemporaryStoreDetail createTemporaryStoreDetailEntity(Store store, TemporaryStoreMaster temporaryStoreMaster) {
+        // Store에서 UserTesseris 가져오기
+        UserTesseris userTesseris = store.getUserIndex();
+        
+        return TemporaryStoreDetail.builder()
+            .userIndex(userTesseris)
+            .temporaryStoreMasterIndex(temporaryStoreMaster)
+            .businessGradeName("일반") // 기본값
+            .businessAreaName("전국") // 기본값
+            .temporaryStoreCmValue(500000.0)
+            .temporaryStoreCashValue(500000.0)
             .build();
     }
     

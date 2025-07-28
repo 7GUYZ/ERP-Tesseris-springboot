@@ -272,7 +272,7 @@ public class ModalService {
         if (tesserisList.isEmpty()) {
             return List.of();
         }
-        
+    
         // 첫 번째 UserTesseris 사용 (무조건 하나)
         UserTesseris userTesseris = tesserisList.get(0);
 
