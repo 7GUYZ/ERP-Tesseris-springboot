@@ -22,9 +22,10 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class PaymentService {
     
-    // TODO: application.properties에서 설정값으로 관리하는 것이 좋습니다
-    private final String TOSS_SECRET_KEY = "test_sk_Gv6LjeKD8aEWZO419N7k8wYxAdXy";
-    private final String TOSS_API_URL = "https://api.tosspayments.com/v1/payments";
+    // 토스페이먼츠 설정 (하드코딩)
+    private final String TOSS_SECRET_KEY = "test_sk_Z61JOxRQVENyokBAqGmRrW0X9bAq";
+    private final String TOSS_CLIENT_KEY = "test_ck_KNbdOvk5rkmna9Q6ZzJ23n07xlzm";
+    private final String TOSS_BASE_URL = "https://api.tosspayments.com";
 
     /**
      * 결제 요청 생성
@@ -43,6 +44,7 @@ public class PaymentService {
             response.put("orderId", paymentData.getOrderId());
             response.put("amount", paymentData.getAmount());
             response.put("orderName", paymentData.getOrderName());
+            response.put("clientKey", TOSS_CLIENT_KEY); // 클라이언트 키 반환
             
             return response;
             
@@ -65,23 +67,33 @@ public class PaymentService {
         
         try {
             log.info("결제 승인 처리 - 데이터: {}", confirmData);
+            log.info("토스페이먼츠 시크릿 키: {}", TOSS_SECRET_KEY);
+            log.info("토스페이먼츠 클라이언트 키: {}", TOSS_CLIENT_KEY);
+            log.info("토스페이먼츠 API URL: {}", TOSS_BASE_URL + "/v1/payments/confirm");
+            
+            // Basic 인증 헤더 생성 (시크릿 키만 사용)
+            String authHeader = "Basic " + Base64.getEncoder().encodeToString((TOSS_SECRET_KEY + ":").getBytes());
+            log.info("인증 헤더: {}", authHeader);
+            
+            // 요청 본문 생성
+            String requestBody = String.format("{\"paymentKey\":\"%s\",\"orderId\":\"%s\",\"amount\":%s}",
+                    confirmData.getPaymentKey(),
+                    confirmData.getOrderId(),
+                    confirmData.getAmount());
+            log.info("요청 본문: {}", requestBody);
             
             // 토스페이먼츠 API 호출
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(TOSS_API_URL + "/confirm"))
-                    .header("Authorization",
-                            "Basic " + Base64.getEncoder().encodeToString((TOSS_SECRET_KEY + ":").getBytes()))
+                    .uri(URI.create(TOSS_BASE_URL + "/v1/payments/confirm"))
+                    .header("Authorization", authHeader)
                     .header("Content-Type", "application/json")
-                    .method("POST", HttpRequest.BodyPublishers.ofString(
-                            String.format("{\"paymentKey\":\"%s\",\"orderId\":\"%s\",\"amount\":%s}",
-                                    confirmData.getPaymentKey(),
-                                    confirmData.getOrderId(),
-                                    confirmData.getAmount())))
+                    .method("POST", HttpRequest.BodyPublishers.ofString(requestBody))
                     .build();
             
             HttpResponse<String> result = HttpClient.newHttpClient().send(request,
                     HttpResponse.BodyHandlers.ofString());
             
+            log.info("토스페이먼츠 응답 상태코드: {}", result.statusCode());
             log.info("토스페이먼츠 응답: {}", result.body());
             
             if (result.statusCode() == 200) {
@@ -90,8 +102,9 @@ public class PaymentService {
                 response.put("result", result.body());
             } else {
                 response.put("success", false);
-                response.put("message", "결제 승인에 실패했습니다");
+                response.put("message", "결제 승인에 실패했습니다. 상태코드: " + result.statusCode());
                 response.put("error", result.body());
+                log.error("토스페이먼츠 API 오류 - 상태코드: {}, 응답: {}", result.statusCode(), result.body());
             }
             
             return response;
