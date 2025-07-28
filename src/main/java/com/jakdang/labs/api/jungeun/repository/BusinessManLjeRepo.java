@@ -34,4 +34,37 @@ public interface BusinessManLjeRepo extends JpaRepository<BusinessMan, Integer> 
             "WHERE bm.business_grade_index = :business_grade_index " +
             "GROUP BY u.email, u.name, bg.business_grade_name, boss_u.email", nativeQuery = true)
     List<Object[]> findBusinessListWithBossEmail(@Param("business_grade_index") Integer business_grade_index);
+
+
+
+    @Query(value = """
+    SELECT
+        (SELECT IFNULL(SUM(td1.temporary_store_cm_value), 0)
+         FROM temporary_store_detail td1
+         INNER JOIN temporary_store_master td2 ON td1.temporary_store_master_index = td2.temporary_store_master_index
+         WHERE td1.user_index = t1.user_index AND td2.temporary_store_master_distribution_status <> 'c'
+        ) AS cm_value_total_sum,
+
+        (SELECT IFNULL(SUM(td1.temporary_store_cm_value), 0)
+         FROM temporary_store_detail td1
+         INNER JOIN temporary_store_master td2 ON td1.temporary_store_master_index = td2.temporary_store_master_index
+         WHERE td1.user_index = t1.user_index AND td2.temporary_store_master_distribution_status = 'n'
+        ) AS cm_value_charge_sum,
+
+        (SELECT IFNULL(SUM(td1.temporary_store_cm_value), 0)
+         FROM temporary_store_detail td1
+         INNER JOIN temporary_store_master td2 ON td1.temporary_store_master_index = td2.temporary_store_master_index
+         WHERE td1.user_index = t1.user_index AND td2.temporary_store_master_distribution_status = 'w'
+        ) AS cm_value_wait_sum,
+
+        (SELECT IFNULL(SUM(td1.temporary_store_cm_value), 0)
+         FROM temporary_store_detail td1
+         INNER JOIN temporary_store_master td2 ON td1.temporary_store_master_index = td2.temporary_store_master_index
+         WHERE td1.user_index = t1.user_index AND td2.temporary_store_master_distribution_status = 'y'
+        ) AS cm_value_yes_sum
+
+    FROM business_man t1
+    WHERE t1.user_index = :userIndex
+    """, nativeQuery = true)
+    Object[] getBrokerageFee(@Param("userIndex") Integer userIndex);
 }

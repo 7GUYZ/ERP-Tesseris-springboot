@@ -50,8 +50,8 @@ public class AlarmController {
      */
     @GetMapping("/user-alarm-setting")
     public ResponseEntity<Map<String, Object>> getUserAlarmSetting(
-            @RequestParam Integer userIndex,
-            @RequestParam Integer alarmTypesId) {
+            @RequestParam(name = "userIndex") Integer userIndex,
+            @RequestParam(name = "alarmTypesId") Integer alarmTypesId) {
         
         Map<String, Object> result = alarmService.getUserAlarmSetting(userIndex, alarmTypesId);
         
@@ -68,9 +68,9 @@ public class AlarmController {
      */
     @PostMapping("/update-user-alarm-setting")
     public ResponseEntity<Map<String, Object>> updateUserAlarmSetting(
-            @RequestParam Integer userIndex,
-            @RequestParam Integer alarmTypesId,
-            @RequestParam Integer isActive) {
+            @RequestParam(name = "userIndex") Integer userIndex,
+            @RequestParam(name = "alarmTypesId") Integer alarmTypesId,
+            @RequestParam(name = "isActive") Integer isActive) {
         
         log.info("🔧 사용자 알림 설정 업데이트 요청 - userIndex: {}, alarmTypesId: {}, isActive: {}", 
             userIndex, alarmTypesId, isActive);
