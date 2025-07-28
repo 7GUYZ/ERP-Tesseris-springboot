@@ -1,12 +1,15 @@
 package com.jakdang.labs.api.taekjun.signin.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.jakdang.labs.api.auth.entity.UserEntity;
 import com.jakdang.labs.entity.UserTesseris;
+
+import java.time.Instant;
 
 @Repository
 public interface SignupRepository extends JpaRepository<UserEntity, String> {
@@ -22,4 +25,14 @@ public interface SignupRepository extends JpaRepository<UserEntity, String> {
     // 전화번호 중복 체크
     @Query("SELECT COUNT(u) > 0 FROM UserEntity u WHERE u.phone = :phone")
     boolean existsByPhone(@Param("phone") String phone);
+    
+    // UserEntity의 created_at, updated_at 값 설정
+    @Modifying
+    @Query(value = "UPDATE users SET created_at = :createdAt, updated_at = :updatedAt WHERE id = :id", nativeQuery = true)
+    void updateUserTimestamps(@Param("id") String id, @Param("createdAt") Instant createdAt, @Param("updatedAt") Instant updatedAt);
+    
+    // UserEntity의 updated_at 값만 설정
+    @Modifying
+    @Query(value = "UPDATE users SET updated_at = :updatedAt WHERE id = :id", nativeQuery = true)
+    void updateUserTimestamp(@Param("id") String id, @Param("updatedAt") Instant updatedAt);
 } 

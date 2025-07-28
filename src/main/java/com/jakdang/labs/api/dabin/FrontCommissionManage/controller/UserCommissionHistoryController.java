@@ -32,9 +32,11 @@ public class UserCommissionHistoryController {
         
         // JWT에서 사용자 정보 추출
         String userId = userDetails.getUserId();
-        // userIndex는 별도로 조회해야 함 (JWT에는 userIndex가 없을 수 있음)
-        Integer userIndex = 119; // 임시로 하드코딩, 나중에 UserTesseris 조회 로직 추가
+        
         try {
+            // userId로 userIndex 조회 (UserTesseris 테이블에서)
+            Integer userIndex = userCommissionHistoryService.getUserIndexByUserId(userId);
+            
             List<UserCommissionHistoryResponse> history = userCommissionHistoryService.getUserCommissionHistory(userIndex, page, limit);
             Long totalCount = userCommissionHistoryService.getTotalCount(userIndex);
             Long totalPages = (long) Math.ceil((double) totalCount / limit);

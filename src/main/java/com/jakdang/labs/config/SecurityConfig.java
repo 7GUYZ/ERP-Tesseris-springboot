@@ -59,7 +59,7 @@ public class SecurityConfig {
         "/api/channel/all",
         "/api/channel/active",
         "/api/signin/**",
-        "/api/address/**"
+        "/api/address/**",
     };
 //    .requestMatchers("/ws/**").permitAll()
     public static final String[] SWAGGER_URLS = {
@@ -154,7 +154,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, GET_PUBLIC_URLS).permitAll()
                         .requestMatchers(HttpMethod.POST, POST_PUBLIC_URLS).permitAll()
                         .requestMatchers("/api/master/**").hasAnyRole("ADMIN", "TEACHER")
-                        .requestMatchers("/ws/**", "/ws/chat/**", "/ws/chat/info").permitAll()
+                        .requestMatchers("/ws/**", "/ws/chat/**", "/ws/notifications/**", "/ws/chat/info").permitAll()
                         .anyRequest().authenticated());
 
         // 필터 설정

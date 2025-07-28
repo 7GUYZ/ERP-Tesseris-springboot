@@ -58,12 +58,13 @@ public class EventListController {
      * 쿠폰 다운로드 (사용자용)
      */
     @PostMapping("/coupon/download")
-    public ResponseEntity<?> downloadCoupon(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<?> downloadCoupon(@RequestBody Map<String, Object> request,
+                                          @RequestHeader("Authorization") String authHeader) {
         try {
             Integer eventMasterIndex = (Integer) request.get("eventMasterIndex");
             Integer couponIndex = (Integer) request.get("couponIndex");
             
-            var result = eventListService.downloadCoupon(eventMasterIndex, couponIndex);
+            var result = eventListService.downloadCoupon(eventMasterIndex, couponIndex, authHeader);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of("error", "쿠폰 다운로드 중 오류가 발생했습니다: " + e.getMessage()));

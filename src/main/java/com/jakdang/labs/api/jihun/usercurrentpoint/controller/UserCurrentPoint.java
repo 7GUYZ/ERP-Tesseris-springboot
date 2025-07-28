@@ -18,7 +18,7 @@ public class UserCurrentPoint {
     private final UserCurrentPointService userCurrentPointService;
 
     @GetMapping("/{userid}")
-    public ResponseEntity<String> GetCurrnetPoint(@PathVariable String userid) {
+    public ResponseEntity<String> GetCurrnetPoint(@PathVariable("userid") String userid) {
         return ResponseEntity.ok(userCurrentPointService.GetCurrentPoint(userid));
     }
 

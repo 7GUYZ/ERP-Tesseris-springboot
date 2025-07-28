@@ -65,3 +65,38 @@ spec:
                   key: JWT_SECRET
             - name: APP_DEV_MODE
               value: "true"
+            - name: KAKAORESTAPIKEY
+              valueFrom:
+                secretKeyRef:
+                  name: erp-tesseris-secret
+                  key: KAKAORESTAPIKEY
+            - name: NAVER_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: erp-tesseris-secret
+                  key: NAVER_EMAIL
+            - name: NAVER_EMAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: erp-tesseris-secret
+                  key: NAVER_EMAIL_PASSWORD
+            - name: AWS_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: erp-tesseris-secret
+                  key: AWS_ACCESS_KEY
+            - name: AWS_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: erp-tesseris-secret
+                  key: AWS_SECRET_KEY
+            - name: AWS_S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: erp-tesseris-secret
+                  key: AWS_S3_BUCKET
+            - name: TOSS_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: erp-tesseris-secret
+                  key: TOSS_SECRET_KEY
