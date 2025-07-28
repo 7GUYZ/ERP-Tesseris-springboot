@@ -90,13 +90,18 @@ public class EventRegistrationService {
                 return (ResponseDTO<String>) ResponseDTO.createErrorResponse(400, "쿠폰을 선택해주세요.");
             }
             
-
+            // 중복된 이벤트 이름 체크 (트랜잭션 시작 전에 미리 체크)
+            String eventName = request.getEventName().trim();
+            boolean exists = eventMasterRepository.existsByEventMasterName(eventName);
+            if (exists) {
+                return (ResponseDTO<String>) ResponseDTO.createErrorResponse(400, "이미 존재하는 이벤트 이름입니다. 다른 이름을 사용해주세요.");
+            }
             
             // 1. 이벤트 마스터 생성
             Integer nextEventNum = eventMasterRepository.getNextEventMasterNum();
             
             EventMaster eventMaster = new EventMaster();
-            eventMaster.setEventMasterName(request.getEventName().trim());
+            eventMaster.setEventMasterName(eventName);
             eventMaster.setEventMasterCondition(request.getEventCondition());
             eventMaster.setEventMasterLimit(request.getEventDownLimit());
             eventMaster.setEventMasterCount(request.getCouponIssuanceIndexList().size());
@@ -121,7 +126,7 @@ public class EventRegistrationService {
             return ResponseDTO.<String>createSuccessResponse("이벤트 등록 완료", "이벤트가 성공적으로 등록되었습니다.");
             
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
-            // 데이터베이스 제약 조건 위반 (중복 키 등)
+            // 데이터베이스 제약 조건 위반 (중복 키 등) - 백업 처리
             log.error("이벤트 등록 실패 (제약 조건 위반): {}", e.getMessage(), e);
             if (e.getMessage().contains("Duplicate entry") || e.getMessage().contains("evnet_master_name")) {
                 return (ResponseDTO<String>) ResponseDTO.createErrorResponse(400, "이미 존재하는 이벤트 이름입니다. 다른 이름을 사용해주세요.");

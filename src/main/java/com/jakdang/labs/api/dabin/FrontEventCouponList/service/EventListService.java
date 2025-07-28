@@ -115,7 +115,18 @@ public class EventListService {
                 return (ResponseDTO<EventDetailResponse>) ResponseDTO.createErrorResponse(404, "쿠폰 정보를 찾을 수 없습니다.");
             }
             
-            Object[] couponRow = couponResults.get(0);
+            // 모든 쿠폰 정보를 CouponInfo 리스트로 변환
+            List<EventDetailResponse.CouponInfo> coupons = couponResults.stream()
+                .map(couponRow -> EventDetailResponse.CouponInfo.builder()
+                    .couponIndex(((Number) couponRow[0]).longValue())
+                    .couponName((String) couponRow[1])
+                    .couponPrice(((Number) couponRow[2]).intValue())
+                    .couponIssuanceStatus((String) couponRow[3])
+                    .couponIssuanceTime(couponRow[4] != null ? (LocalDateTime) couponRow[4] : null)
+                    .couponLimit(((Number) couponRow[5]).intValue())
+                    .couponLimitTime(couponRow[6] != null ? (LocalDateTime) couponRow[6] : null)
+                    .build())
+                .collect(Collectors.toList());
             
             EventDetailResponse response = EventDetailResponse.builder()
                 .storeIndex(((Number) storeRow[0]).intValue())
@@ -127,13 +138,7 @@ public class EventListService {
                 .storeImage((String) storeRow[7])
                 .storeBusinessState(storeRow[8] != null ? storeRow[8].toString() : null)
                 .storeTransactionStatus(storeRow[9] != null ? storeRow[9].toString() : null)
-                .couponIndex(((Number) couponRow[0]).longValue())
-                .couponName((String) couponRow[1])
-                .couponPrice(((Number) couponRow[2]).intValue())
-                .couponIssuanceStatus((String) couponRow[3])
-                .couponIssuanceTime((LocalDateTime) couponRow[4])
-                .couponLimit(((Number) couponRow[5]).intValue())
-                .couponLimitTime((LocalDateTime) couponRow[6])
+                .coupons(coupons)
                 .build();
             
             return ResponseDTO.<EventDetailResponse>createSuccessResponse("이벤트 상세 정보 조회 성공", response);
