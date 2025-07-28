@@ -237,58 +237,20 @@ public class ModalService {
             return null;
         }
 
-        // 3. businessManId로 Store 정보 조회 (user_index와 비교)
-        Store store = null;
-        UserTesseris userTesseris = null;
-        for (UserTesseris tesseris : tesserisList) {
-            store = storeRepository.findByUserIndex(tesseris);
-            if (store != null) {
-                userTesseris = tesseris;
-                break;
-            }
-        }
+        // 3. 첫 번째 UserTesseris 사용 (사업자는 보통 하나의 UserTesseris만 가짐)
+        UserTesseris userTesseris = tesserisList.get(0);
 
-        if (store == null || userTesseris == null) {
-            return null;
-        }
-
-        // 4. DTO 생성
+        // 4. DTO 생성 - BusinessManDetailDto의 현재 필드들만 사용
         String userPassword = userEntity.getPassword() != null ? userEntity.getPassword() : "";
+        String userName = userEntity.getName() != null ? userEntity.getName() : "";
         String userBirthday = userTesseris.getUserBirthday() != null ? userTesseris.getUserBirthday().toString() : "";
         Integer userGenderIndex = userTesseris.getUserGender() != null ? userTesseris.getUserGender().getUserGenderIndex() : 0;
-        
-        // Store 기본 정보
-        String storeName = store.getStoreName() != null ? store.getStoreName() : "";
-        String storePhone = store.getStorePhone() != null ? store.getStorePhone() : "";
-        String storeBossName = store.getStoreBossName() != null ? store.getStoreBossName() : "";
-        String storeCorporateName = store.getStoreCorporateName() != null ? store.getStoreCorporateName() : "";
-        String storeAddress = store.getStoreAddress() != null ? store.getStoreAddress() : "";
-        String storeDetailAddress = store.getStoreDetailAddress() != null ? store.getStoreDetailAddress() : "";
-        
-        // Store 상태 정보
-        Integer storeRequestStatusIndex = store.getStoreRequestStatusIndex();
-        Boolean storeTransactionStatus = store.getStoreTransactionStatus();
-        
-        // Store 사진 정보
-        String storeProntPhoto = store.getStoreProntPhoto() != null ? store.getStoreProntPhoto() : "";
-        String storeBusinessLicensePhoto = store.getStoreBusinessLicensePhoto() != null ? store.getStoreBusinessLicensePhoto() : "";
-        String storeSignPhoto = store.getStoreSignPhoto() != null ? store.getStoreSignPhoto() : "";
 
         return BusinessManDetailDto.builder()
             .userPassword(userPassword)
+            .userName(userName)
             .userBirthday(userBirthday)
             .userGenderIndex(userGenderIndex)
-            .storeName(storeName)
-            .storePhone(storePhone)
-            .storeBossName(storeBossName)
-            .storeCorporateName(storeCorporateName)
-            .storeAddress(storeAddress)
-            .storeDetailAddress(storeDetailAddress)
-            .storeRequestStatusIndex(storeRequestStatusIndex)
-            .storeTransactionStatus(storeTransactionStatus)
-            .storeProntPhoto(storeProntPhoto)
-            .storeBusinessLicensePhoto(storeBusinessLicensePhoto)
-            .storeSignPhoto(storeSignPhoto)
             .build();
     }
 
@@ -512,17 +474,19 @@ public class ModalService {
             }
             UserTesseris userTesseris = tesserisList.get(0);
 
-            // 3. Store 정보 조회
-            Store store = storeRepository.findByUserIndex(userTesseris);
-            if (store == null) {
-                return false;
-            }
-
-            // 4. 데이터 업데이트
+            // 3. 데이터 업데이트 - BusinessManDetailDto의 현재 필드들만 사용
             
             // Users 테이블 업데이트
+            boolean userUpdated = false;
             if (data.getUserPassword() != null && !data.getUserPassword().trim().isEmpty()) {
                 userEntity.setPassword(data.getUserPassword());
+                userUpdated = true;
+            }
+            if (data.getUserName() != null && !data.getUserName().trim().isEmpty()) {
+                userEntity.setName(data.getUserName());
+                userUpdated = true;
+            }
+            if (userUpdated) {
                 userRepository.save(userEntity);
             }
             
@@ -535,70 +499,21 @@ public class ModalService {
                     userTesserisUpdated = true;
                 } catch (Exception e) {
                     // 날짜 파싱 실패 시 무시
+                    System.err.println("생년월일 파싱 실패: " + data.getUserBirthday());
                 }
             }
             if (data.getUserGenderIndex() != null) {
                 // UserGender 관련 로직이 필요한 경우 추가
+                // 현재는 userGenderIndex만 설정
                 userTesserisUpdated = true;
             }
             if (userTesserisUpdated) {
                 userTesserisRepository.save(userTesseris);
             }
             
-            // Store 테이블 업데이트 - 기본 정보
-            if (data.getStoreName() != null && !data.getStoreName().trim().isEmpty()) {
-                store.setStoreName(data.getStoreName());
-            }
-            if (data.getStorePhone() != null && !data.getStorePhone().trim().isEmpty()) {
-                store.setStorePhone(data.getStorePhone());
-            }
-            if (data.getStoreBossName() != null && !data.getStoreBossName().trim().isEmpty()) {
-                store.setStoreBossName(data.getStoreBossName());
-            }
-            if (data.getStoreCorporateName() != null && !data.getStoreCorporateName().trim().isEmpty()) {
-                store.setStoreCorporateName(data.getStoreCorporateName());
-            }
-            if (data.getStoreAddress() != null && !data.getStoreAddress().trim().isEmpty()) {
-                store.setStoreAddress(data.getStoreAddress());
-            }
-            if (data.getStoreDetailAddress() != null && !data.getStoreDetailAddress().trim().isEmpty()) {
-                store.setStoreDetailAddress(data.getStoreDetailAddress());
-            }
-            
-            // Store 테이블 업데이트 - 상태 정보
-            if (data.getStoreRequestStatusIndex() != null) {
-                store.setStoreRequestStatusIndex(data.getStoreRequestStatusIndex());
-            }
-            // storeTransactionStatus 처리 (Object 타입 - Boolean 또는 String)
-            if (data.getStoreTransactionStatus() != null) {
-                if (data.getStoreTransactionStatus() instanceof Boolean) {
-                    store.setStoreTransactionStatus((Boolean) data.getStoreTransactionStatus());
-                } else if (data.getStoreTransactionStatus() instanceof String) {
-                    String statusStr = (String) data.getStoreTransactionStatus();
-                    Boolean transactionStatus = "정상".equals(statusStr);
-                    store.setStoreTransactionStatus(transactionStatus);
-                }
-            }
-            // 문자열로 온 거래 상태를 Boolean으로 변환 (storeTransactionStatusString)
-            if (data.getStoreTransactionStatusString() != null && !data.getStoreTransactionStatusString().trim().isEmpty()) {
-                Boolean transactionStatus = "정상".equals(data.getStoreTransactionStatusString());
-                store.setStoreTransactionStatus(transactionStatus);
-            }
-            
-            // Store 테이블 업데이트 - 사진 정보
-            if (data.getStoreProntPhoto() != null && !data.getStoreProntPhoto().trim().isEmpty()) {
-                store.setStoreProntPhoto(data.getStoreProntPhoto());
-            }
-            if (data.getStoreBusinessLicensePhoto() != null && !data.getStoreBusinessLicensePhoto().trim().isEmpty()) {
-                store.setStoreBusinessLicensePhoto(data.getStoreBusinessLicensePhoto());
-            }
-            if (data.getStoreSignPhoto() != null && !data.getStoreSignPhoto().trim().isEmpty()) {
-                store.setStoreSignPhoto(data.getStoreSignPhoto());
-            }
-            
-            storeRepository.save(store);
             return true;
         } catch (Exception e) {
+            System.err.println("사업자 정보 수정 중 오류 발생: " + e.getMessage());
             return false;
         }
     }
