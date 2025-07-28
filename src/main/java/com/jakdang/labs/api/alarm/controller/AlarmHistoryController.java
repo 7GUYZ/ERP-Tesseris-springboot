@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -43,6 +44,26 @@ public class AlarmHistoryController {
             log.error("❌ 알림 내역 조회 실패 - userIndex: {}, error: {}", userIndex, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ResponseDTO.createErrorResponse(500, "알림 내역 조회 실패"));
+        }
+    }
+
+    @PostMapping("/alarms/{alarmId}/read")
+    @Operation(summary = "알림 읽음 처리", description = "특정 알림을 읽음 처리합니다.")
+    public ResponseEntity<ResponseDTO<?>> markAsRead(
+            @Parameter(description = "알림 ID", example = "1000") 
+            @PathVariable("alarmId") Integer alarmId) {
+        
+        log.info("🔍 알림 읽음 처리 시작 - alarmId: {}", alarmId);
+        
+        try {
+            String result = alarmHistoryServiceClient.markAsRead(alarmId);
+            log.info("✅ 알림 읽음 처리 성공 - alarmId: {}", alarmId);
+            return ResponseEntity.ok().body(ResponseDTO.createSuccessResponse("읽음 처리 완료", result));
+            
+        } catch (Exception e) {
+            log.error("❌ 알림 읽음 처리 실패 - alarmId: {}, error: {}", alarmId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseDTO.createErrorResponse(500, "읽음 처리 실패"));
         }
     }
 } 

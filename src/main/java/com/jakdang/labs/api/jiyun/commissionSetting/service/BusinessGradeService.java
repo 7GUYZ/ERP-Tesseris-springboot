@@ -9,6 +9,7 @@ import com.jakdang.labs.api.jungeun.repository.UserTesserisLjeRepo;
 import com.jakdang.labs.entity.UserTesseris;
 import com.jakdang.labs.entity.BusinessGrade;
 import com.jakdang.labs.api.auth.repository.AuthRepository;
+import com.jakdang.labs.api.alarm.service.AlarmSvc;
 import com.jakdang.labs.api.auth.entity.UserEntity;
 import com.jakdang.labs.security.jwt.utils.JwtUtil;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
@@ -17,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 import java.util.Map;
@@ -27,6 +29,7 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j // 로그 출력을 위해 추가(정은)
 public class BusinessGradeService {
   @Autowired
   @Qualifier("businessGradekjyJtjRepo")
@@ -36,6 +39,7 @@ public class BusinessGradeService {
   private final Argon2PasswordEncoder passwordEncoder;
   private final UpdateUserLogkjyRepository updateUserLogRepository;
   private final UserTesserisLjeRepo userTesserisRepository;
+  private final AlarmSvc alarmSvc; // 알림 송신 위해 추가(정은)
 
   // 비즈니스 등급 전체 조회
   public List<BusinessGrade> getAllBusinessGrades() {
@@ -67,6 +71,15 @@ public class BusinessGradeService {
     
     // 변경 이력 로그 기록
     saveUpdateLog(authHeader, beforeData, afterData);
+
+    // 알림 전송(정은)
+    try {
+      alarmSvc.sendCommissionChangedAlarm();
+      log.info("중계수수료 변경 알림 전송 완료");
+    } catch (Exception e) {
+      log.error("중계수수료 변경 알림 전송 실패: {}", e.getMessage());
+      // 알림 전송 실패해도 DB 저장은 성공으로 처리
+    }
     
     return savedGrades;
   }
