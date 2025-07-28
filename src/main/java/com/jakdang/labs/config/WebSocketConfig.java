@@ -27,9 +27,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws/chat", "springboot/ws/notifications") // 0726 정은 추가 - 알림WebSocket
+        registry.addEndpoint("/ws/chat", "/springboot/ws/notifications", "/ws/notifications")
                 .setAllowedOriginPatterns("*")
-                .withSockJS();
+                .withSockJS()
+                .setHeartbeatTime(15000)
+                .setDisconnectDelay(0);
     }
 
     @Override
