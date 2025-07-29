@@ -3,6 +3,7 @@ package com.jakdang.labs.api.sichan.qna.admin.controller;
 import com.jakdang.labs.api.sichan.qna.dto.QnaRequestDto;
 import com.jakdang.labs.api.sichan.qna.dto.QnaResponseDto;
 import com.jakdang.labs.api.sichan.qna.service.AdminQnaService;
+import com.jakdang.labs.api.auth.dto.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -41,8 +42,11 @@ public class AdminQnaController {
             @RequestBody QnaRequestDto requestDto,
             Authentication authentication) {
 
-        String adminUserIndex = authentication.getName();
-        QnaResponseDto response = adminQnaService.registerAnswer(qnaIndex, requestDto, adminUserIndex);
+        // CustomUserDetails에서 userId 추출
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        String userId = userDetails.getUserId();
+
+        QnaResponseDto response = adminQnaService.registerAnswer(qnaIndex, requestDto, userId);
         return ResponseEntity.ok(response);
     }
 

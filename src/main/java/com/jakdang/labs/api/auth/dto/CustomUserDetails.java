@@ -58,13 +58,13 @@ public class CustomUserDetails implements UserDetails {
     }
 
     /**
-     * 사용자명 반환 (userId 사용)
+     * 사용자명 반환
      * 
-     * @return 사용자 ID
+     * @return 사용자 이름이 들어가야함 getId 말고고
      */
     @Override
     public String getUsername() {
-        return userEntity.getId();
+        return userEntity.getName();
     }
 
     /**

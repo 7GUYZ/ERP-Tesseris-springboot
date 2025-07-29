@@ -59,12 +59,13 @@ public class AdminQnaService {
 
     // QnA 답변 등록
     @Transactional
-    public QnaResponseDto registerAnswer(Integer qnaIndex, QnaRequestDto requestDto, String adminUserIndex) {
+    public QnaResponseDto registerAnswer(Integer qnaIndex, QnaRequestDto requestDto, String userId) {
         Qna qna = qnaRepository.findById(qnaIndex)
                 .orElseThrow(() -> new RuntimeException("QnA를 찾을 수 없습니다."));
 
-        UserTesseris adminUser = userTesserisRepository.findByUserIndex(Integer.parseInt(adminUserIndex))
-                .orElseThrow(() -> new RuntimeException("관리자를 찾을 수 없습니다."));
+        // userId로 UserTesseris 찾기
+        UserTesseris adminUser = userTesserisRepository.findByUsersId_Id(userId)
+                .orElseThrow(() -> new RuntimeException("관리자를 찾을 수 없습니다: " + userId));
 
         qna.setAnswerUser(adminUser);
         qna.setAnswerTitle(requestDto.getQuestionTitle());

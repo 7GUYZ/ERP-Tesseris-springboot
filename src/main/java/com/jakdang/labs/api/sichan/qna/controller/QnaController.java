@@ -5,6 +5,7 @@ import com.jakdang.labs.api.sichan.qna.dto.QnaResponseDto;
 import com.jakdang.labs.api.sichan.qna.service.QnaService;
 import com.jakdang.labs.api.taekjun.Permissionsettings.repository.UserTesserisRepository;
 import com.jakdang.labs.entity.UserTesseris;
+import com.jakdang.labs.api.auth.dto.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -36,7 +37,8 @@ public class QnaController {
                 return ResponseEntity.status(401).build();
             }
 
-            String userId = authentication.getName();
+            // CustomUserDetails에서 사용자 ID 추출
+            String userId = extractUserId(authentication);
             if (userId == null || userId.isEmpty()) {
                 return ResponseEntity.status(401).build();
             }
@@ -72,8 +74,8 @@ public class QnaController {
                 return ResponseEntity.status(401).build();
             }
 
-            // JWT 토큰에서 userId 추출
-            String userId = authentication.getName();
+            // CustomUserDetails에서 사용자 ID 추출
+            String userId = extractUserId(authentication);
             log.info("인증된 사용자 ID (userId): {}", userId);
 
             if (userId == null || userId.isEmpty()) {
@@ -160,7 +162,8 @@ public class QnaController {
                 return ResponseEntity.status(401).build();
             }
 
-            String userId = authentication.getName();
+            // CustomUserDetails에서 사용자 ID 추출
+            String userId = extractUserId(authentication);
             if (userId == null || userId.isEmpty()) {
                 return ResponseEntity.status(401).build();
             }
@@ -180,6 +183,17 @@ public class QnaController {
         } catch (Exception e) {
             log.error("QnA 상세 조회 중 오류 발생 - qnaIndex: {}", qnaIndex, e);
             return ResponseEntity.status(500).build();
+        }
+    }
+
+    // CustomUserDetails에서 사용자 ID 추출하는 헬퍼 메서드
+    private String extractUserId(Authentication authentication) {
+        if (authentication.getPrincipal() instanceof CustomUserDetails) {
+            CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+            return userDetails.getUserId();
+        } else {
+            // fallback: 기존 방식 사용
+            return authentication.getName();
         }
     }
 
@@ -237,7 +251,8 @@ public class QnaController {
                 return ResponseEntity.ok(response);
             }
 
-            String userId = authentication.getName();
+            // CustomUserDetails에서 사용자 ID 추출
+            String userId = extractUserId(authentication);
             response.put("jwt_userId", userId);
 
             // UserTesseris 조회 시도
