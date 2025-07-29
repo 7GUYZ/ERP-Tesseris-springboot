@@ -230,17 +230,17 @@ springdoc:
   default-produces-media-type: application/json
 
 file-service:
-  url: http://localhost:8080/api/file
+  url: ${FILE_SERVICE_URL:http://localhost:8080/api/file}
 
 post-service:
-  url: http://localhost:9000/api/posts
+  url: ${POST_SERVICE_URL:http://localhost:9000/api/posts}
 
 # 정은 추가 (알림 서비스)
 alarm-service:
-  url: http://localhost:19093/api/alarms
+  url: ${ALARM_SERVICE_URL:http://localhost:19093/api/alarms}
 # 지훈 추가 (채팅)
 chat-service:
-  url: http://localhost:19092/api/adminchat
+  url: ${CHAT_SERVICE_URL:http://localhost:19092/api/adminchat}
   
 feign:
   httpclient:

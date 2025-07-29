@@ -48,10 +48,29 @@ public class ReferralService {
     private final UserCmLogValueTypeRepository userCmLogValueTypeRepository;
     
     /**
-     * 추천인 코드로 사용자 찾기
+     * 추천인 코드로 사용자 찾기 (referralCode, 이메일, 닉네임 모두 검색)
      */
     public Optional<UserEntity> findUserByReferralCode(String referralCode) {
-        return userRepository.findByReferralCode(referralCode);
+        // 1. 먼저 referralCode로 검색
+        Optional<UserEntity> userOpt = userRepository.findByReferralCode(referralCode);
+        if (userOpt.isPresent()) {
+            return userOpt;
+        }
+        
+        // 2. 이메일로 검색
+        userOpt = userRepository.findByEmail(referralCode);
+        if (userOpt.isPresent()) {
+            return userOpt;
+        }
+        
+        // 3. 닉네임으로 검색
+        userOpt = userRepository.findByNickname(referralCode);
+        if (userOpt.isPresent()) {
+            return userOpt;
+        }
+        
+        // 4. 이메일 또는 닉네임으로 검색
+        return userRepository.findByEmailOrNickname(referralCode);
     }
     
     /**
@@ -131,37 +150,47 @@ public class ReferralService {
     @Transactional
     public ReferralResponseDTO createReferralRelation(ReferralRequestDTO requestDTO) {
         try {
+            log.info("추천인 관계 생성 시작: referralCode={}, userIndex={}", requestDTO.getReferralCode(), requestDTO.getUserIndex());
+            
             // 1. 추천인 코드로 추천인 찾기
             Optional<UserEntity> referrerOpt = findUserByReferralCode(requestDTO.getReferralCode());
             if (referrerOpt.isEmpty()) {
+                log.warn("유효하지 않은 추천인 코드: {}", requestDTO.getReferralCode());
                 return new ReferralResponseDTO("유효하지 않은 추천인 코드입니다.", false, null, 0, null, null);
             }
             
             UserEntity referrer = referrerOpt.get();
+            log.info("추천인 찾기 성공: referrerId={}, referrerName={}", referrer.getId(), referrer.getName());
             
             // 2. 추천받는 사용자 찾기
             Optional<UserTesseris> userOpt = userTesserisRepository.findById(requestDTO.getUserIndex());
             if (userOpt.isEmpty()) {
+                log.warn("사용자를 찾을 수 없음: userIndex={}", requestDTO.getUserIndex());
                 return new ReferralResponseDTO("사용자를 찾을 수 없습니다.", false, null, 0, null, null);
             }
             
             UserTesseris user = userOpt.get();
+            log.info("추천받는 사용자 찾기 성공: userIndex={}, userName={}", user.getUserIndex(), user.getUsersId().getName());
             
             // 3. 자기 자신을 추천인으로 등록하려는 경우 방지
             if (user.getUsersId().getId().equals(referrer.getId())) {
+                log.warn("자기 자신을 추천인으로 등록 시도: userId={}", user.getUsersId().getId());
                 return new ReferralResponseDTO("자기 자신을 추천인으로 등록할 수 없습니다.", false, null, 0, null, null);
             }
             
             // 4. 추천인 UserTesseris 찾기
             Optional<UserTesseris> referrerUserOpt = userTesserisRepository.findByUsersId(referrer);
             if (referrerUserOpt.isEmpty()) {
+                log.warn("추천인 UserTesseris 정보를 찾을 수 없음: referrerId={}", referrer.getId());
                 return new ReferralResponseDTO("추천인 정보를 찾을 수 없습니다.", false, null, 0, null, null);
             }
             
             UserTesseris referrerUser = referrerUserOpt.get();
+            log.info("추천인 UserTesseris 찾기 성공: referrerUserIndex={}", referrerUser.getUserIndex());
             
             // 5. 추천받는 사람이 이미 추천인을 가지고 있는지 확인 (회원가입 시에만 생성 가능)
             if (suggestionUserRepository.existsBySuggestionUserIndex(user.getUserIndex())) {
+                log.warn("이미 추천인이 존재함: userIndex={}", user.getUserIndex());
                 return new ReferralResponseDTO("이미 추천인이 존재합니다. 추천인은 회원가입 시에만 설정 가능합니다.", false, null, 0, null, null);
             }
             
@@ -179,10 +208,12 @@ public class ReferralService {
             }
             
             // 7. 추천인에게 포인트 지급 (PHP 코드와 동일한 로직)
-            giveReferralReward(referrerUser.getUserIndex());
+            log.info("포인트 지급 시작: 추천인={}, 새사용자={}", referrerUser.getUserIndex(), user.getUserIndex());
+            giveReferralReward(referrerUser.getUserIndex(), user.getUserIndex());
             
             // 8. 추천인 수 조회
             long referralCount = suggestionUserRepository.countByRecommendationUserIndex(referrerUser.getUserIndex());
+            log.info("추천인 수 조회: count={}", referralCount);
             
             return new ReferralResponseDTO(
                 "추천인 관계가 성공적으로 생성되었습니다.",
@@ -256,26 +287,39 @@ public class ReferralService {
      * 추천인에게 포인트 지급 (PHP 코드와 동일한 로직)
      */
     @Transactional
-    public void giveReferralReward(Integer referrerUserIndex) {
+    public void giveReferralReward(Integer referrerUserIndex, Integer newUserIndex) {
         try {
-            // 1. 추천인 UserCm 정보 조회
-            Optional<UserCm> userCmOpt = userCmRepository.findById(referrerUserIndex);
-            if (userCmOpt.isEmpty()) {
+            int rewardAmount = 10000; // 10,000cm로 변경
+            
+            // 1. 추천인에게 포인트 지급
+            Optional<UserCm> referrerUserCmOpt = userCmRepository.findById(referrerUserIndex);
+            if (referrerUserCmOpt.isPresent()) {
+                UserCm referrerUserCm = referrerUserCmOpt.get();
+                referrerUserCm.setUserCmDeposit(referrerUserCm.getUserCmDeposit() + rewardAmount);
+                userCmRepository.save(referrerUserCm);
+                
+                // 추천인 포인트 지급 로그 생성
+                createReferralRewardLog(referrerUserIndex, rewardAmount, "추천인 보상 지급");
+                
+                log.info("추천인 포인트 지급 완료: 사용자={}, 지급금액={}", referrerUserIndex, rewardAmount);
+            } else {
                 log.warn("추천인 UserCm 정보를 찾을 수 없습니다: {}", referrerUserIndex);
-                return;
             }
             
-            UserCm userCm = userCmOpt.get();
-            
-            // 2. 포인트 지급 (PHP 코드와 동일: 1000 포인트)
-            int rewardAmount = 1000;
-            userCm.setUserCmDeposit(userCm.getUserCmDeposit() + rewardAmount);
-            userCmRepository.save(userCm);
-            
-            // 3. 포인트 지급 로그 생성
-            createReferralRewardLog(referrerUserIndex, rewardAmount);
-            
-            log.info("추천인 포인트 지급 완료: 사용자={}, 지급금액={}", referrerUserIndex, rewardAmount);
+            // 2. 새로 가입한 사용자에게 포인트 지급
+            Optional<UserCm> newUserCmOpt = userCmRepository.findById(newUserIndex);
+            if (newUserCmOpt.isPresent()) {
+                UserCm newUserCm = newUserCmOpt.get();
+                newUserCm.setUserCmDeposit(newUserCm.getUserCmDeposit() + rewardAmount);
+                userCmRepository.save(newUserCm);
+                
+                // 새 사용자 포인트 지급 로그 생성
+                createReferralRewardLog(newUserIndex, rewardAmount, "추천인 가입 보상 지급");
+                
+                log.info("새 사용자 포인트 지급 완료: 사용자={}, 지급금액={}", newUserIndex, rewardAmount);
+            } else {
+                log.warn("새 사용자 UserCm 정보를 찾을 수 없습니다: {}", newUserIndex);
+            }
             
         } catch (Exception e) {
             log.error("추천인 포인트 지급 중 오류 발생: ", e);
@@ -286,7 +330,7 @@ public class ReferralService {
     /**
      * 추천인 포인트 지급 로그 생성
      */
-    private void createReferralRewardLog(Integer userIndex, int amount) {
+    private void createReferralRewardLog(Integer userIndex, int amount, String reason) {
         try {
             // 1. 로그 타입 조회
             Optional<UserCmLogTransactionType> transactionTypeOpt = userCmLogTransactionTypeRepository.findByTransactionTypeName("REFERRAL_REWARD");
@@ -315,7 +359,7 @@ public class ReferralService {
             log.setUserCmLogPaymentIndex(paymentOpt.get().getUserCmLogPaymentIndex());
             log.setUserCmLogValue(amount);
             log.setUserCmLogCreateTime(LocalDateTime.now());
-            log.setUserCmLogReason("추천인 보상 지급");
+            log.setUserCmLogReason(reason);
             
             userCmLogRepository.save(log);
             
