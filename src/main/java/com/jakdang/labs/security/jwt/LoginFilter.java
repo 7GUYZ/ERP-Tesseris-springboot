@@ -193,7 +193,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
         // WebSocket 연결 정보를 응답에 포함(0726 정은 추가 - 알림WebSocket)
         Map<String, Object> websocketInfo = Map.of(
-                "websocketUrl", "/ws/chat",
+                "websocketUrl", "/ws/notifications",
                 "subscribeTopics", List.of(
                         // "/topic/chat/" + userId, // 개인 채팅
                         "/topic/notifications/" + user_index //알림

@@ -12,8 +12,13 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jakdang.labs.api.chat.dto.InvitationRequestDTO;
+import com.jakdang.labs.api.chat.dto.MessageRequestDTO;
 import com.jakdang.labs.api.chat.dto.RoomRequestDTO;
 import com.jakdang.labs.api.chat.dto.UserListDTO;
 import com.jakdang.labs.api.chat.model.ChatServiceClient;
@@ -63,22 +68,6 @@ public class ChatController {
     }
 
     /**
-     * new create room
-     */
-    @PostMapping("/roomcreate")
-    public ResponseEntity<String> RoomCreate(@RequestBody RoomRequestDTO roomRequestDTO) {
-        try {
-            log.info("들어온 RoomCreate: {}", roomRequestDTO);
-            roomRequestDTO.setCreated_at(LocalDateTime.parse(roomRequestDTO.getCreated_at(), formatter).format(formatter).replace(" ", " "));
-            String result = chatServiceClient.RoomCreate(roomRequestDTO);
-            log.info("New room: {}", result);
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            log.error("Error: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-    /**
      * search room
      */
     @GetMapping("/{userid}")
@@ -95,4 +84,44 @@ public class ChatController {
             return ResponseEntity.ok(new ResponseDTO<List<RoomRequestDTO>>(404, e.getMessage(), null));
         }
     }
+
+    /**
+     * send message
+     */
+    @PostMapping("/sendmessage")
+    public ResponseEntity<String> SendMessage(@RequestPart("message") String messageRequestDTO,
+            @RequestPart(value = "files", required = false) List<MultipartFile> files) {
+        try {
+            log.info("SendMessage: {}", messageRequestDTO);
+            log.info("SendMessage: {}", files);
+            return ResponseEntity.ok(chatServiceClient.SendMessage(messageRequestDTO, files));
+        } catch (Exception e) {
+            log.error("Error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * 특정 채팅방에 특정 사용자 초대하기
+     * 
+     * @param entity
+     * @return
+     */
+    @PostMapping("/{room}/invitation")
+    public ResponseEntity<?> Invitation(@PathVariable("room") String room,
+            @RequestBody InvitationRequestDTO invitationRequestDTO) {
+        try {
+            log.info("Invitation: {}", room);
+            log.info("Invitation: {}", invitationRequestDTO.getUserid());
+            log.info("Invitation: {}", invitationRequestDTO.getInviter());
+            return ResponseEntity.ok(chatServiceClient.Invitation(room, invitationRequestDTO));
+        } catch (FeignException e) {
+            log.error("Feign Error: {}", e.getMessage());
+            return ResponseEntity.ok(new ResponseDTO<List<RoomRequestDTO>>(e.status(), e.getMessage(), null));
+        } catch (Exception e) {
+            log.error("Error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
 }

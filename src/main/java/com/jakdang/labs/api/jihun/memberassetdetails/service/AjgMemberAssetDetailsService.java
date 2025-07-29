@@ -276,7 +276,7 @@ public class AjgMemberAssetDetailsService {
             if (userCmOpt.isPresent()) {
                 userCm = userCmOpt.get();
                 int currentWithdrawal = userCm.getUserCmWithdrawal() == null ? 0 : userCm.getUserCmWithdrawal();
-                userCm.setUserCmWithdrawal(currentWithdrawal + amount);
+                userCm.setUserCmWithdrawal(currentWithdrawal - amount); // 음수로 차감
             } else {
                 userCm = UserCm.builder()
                         .userCmIndex(member.getUserIndex())

@@ -20,10 +20,9 @@ public interface BusinessmanListJtjRepo extends JpaRepository<BusinessMan, Integ
         LEFT JOIN FETCH bm.businessGrade bg
         LEFT JOIN FETCH bm.businessArea ba
         WHERE u.userRoleIndex = 2
-          AND (ue IS NULL OR ue.activated = true OR ue.activated IS NULL)
           AND (ue.activated = true OR ue.activated IS NULL)
           AND (:email IS NULL OR ue.email LIKE %:email%)
-          AND (:userName IS NULL OR ue.name LIKE %:userName%)
+          AND (:userName IS NULL OR ue.name LIKE %:userName% OR (SELECT bu.usersId.name FROM UserTesseris bu WHERE bu.userIndex = bm.bossUserIndex) LIKE %:userName%)
           AND (:userPhone IS NULL OR ue.phone LIKE %:userPhone%)
           AND (:businessGradeName IS NULL OR bg.businessGradeName LIKE %:businessGradeName%)
           AND (:bossEmail IS NULL OR (SELECT bu.usersId.email FROM UserTesseris bu WHERE bu.userIndex = bm.bossUserIndex) LIKE %:bossEmail%)
@@ -47,10 +46,11 @@ public interface BusinessmanListJtjRepo extends JpaRepository<BusinessMan, Integ
         SELECT bm
         FROM BusinessMan bm
         JOIN FETCH bm.userIndex u
-        LEFT JOIN FETCH u.usersId ue
+        JOIN FETCH u.usersId ue
         LEFT JOIN FETCH bm.businessGrade bg
         LEFT JOIN FETCH bm.businessArea ba
-        WHERE (ue.activated = true OR ue.activated IS NULL)
+        WHERE u.userRoleIndex = 2
+          AND (ue.activated = true OR ue.activated IS NULL)
         ORDER BY bm.businessManIndex DESC
     """)
     List<BusinessMan> findAllActiveBusinessmen();
@@ -62,7 +62,8 @@ public interface BusinessmanListJtjRepo extends JpaRepository<BusinessMan, Integ
         JOIN FETCH u.usersId ue
         LEFT JOIN FETCH bm.businessGrade bg
         LEFT JOIN FETCH bm.businessArea ba
-        WHERE (ue.activated = true OR ue.activated IS NULL)
+        WHERE u.userRoleIndex = 2
+          AND (ue.activated = true OR ue.activated IS NULL)
         ORDER BY bm.businessManIndex DESC
     """)
     List<BusinessMan> findAllBusinessmen();
@@ -85,4 +86,6 @@ public interface BusinessmanListJtjRepo extends JpaRepository<BusinessMan, Integ
     
     @Query("SELECT bm FROM BusinessMan bm WHERE bm.userIndex.userIndex = :userIndex")
     java.util.Optional<BusinessMan> findByUserIndex(@Param("userIndex") Integer userIndex);
+    
+
 } 
