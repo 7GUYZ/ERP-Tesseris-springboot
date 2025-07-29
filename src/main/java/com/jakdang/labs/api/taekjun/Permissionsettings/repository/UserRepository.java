@@ -2,12 +2,14 @@ package com.jakdang.labs.api.taekjun.Permissionsettings.repository;
 
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.jakdang.labs.api.auth.entity.UserEntity;
 
+import java.time.Instant;
 import java.util.Optional;
 
 @Repository("permissionsettingsUserRepository")
@@ -32,4 +34,14 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
     // 이메일 또는 닉네임으로 사용자 검색
     @Query("SELECT u FROM UserEntity u WHERE u.email = :searchValue OR u.nickname = :searchValue")
     Optional<UserEntity> findByEmailOrNickname(@Param("searchValue") String searchValue);
+    
+    // created_at, updated_at 컬럼 업데이트
+    @Modifying
+    @Query("UPDATE UserEntity u SET u.createdAt = :createdAt, u.updatedAt = :updatedAt WHERE u.id = :id")
+    void updateUserTimestamps(@Param("id") String id, @Param("createdAt") Instant createdAt, @Param("updatedAt") Instant updatedAt);
+    
+    // created_at, updated_at 컬럼 업데이트 (네이티브 쿼리)
+    @Modifying
+    @Query(value = "UPDATE users SET created_at = :createdAt, updated_at = :updatedAt WHERE id = :id", nativeQuery = true)
+    void updateUserTimestampsNative(@Param("id") String id, @Param("createdAt") Instant createdAt, @Param("updatedAt") Instant updatedAt);
 } 
