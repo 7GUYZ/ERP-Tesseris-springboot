@@ -8,8 +8,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class RoomParticipantsRequestDTO {
+    private String roomparticipants_index;
+    private String joined_at;
+    private String left_at;
+    private String notifications_enabled;
+    private String user_id;
     private String room_index;
-    private String room_name;
-    private String created_at;
-    private String created_by;
 }
