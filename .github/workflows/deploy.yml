@@ -21,6 +21,10 @@ jobs:
       NAVER_EMAIL: ${{ secrets.NAVER_EMAIL }}
       NAVER_EMAIL_PASSWORD: ${{ secrets.NAVER_EMAIL_PASSWORD }}
       TOSS_SECRET_KEY: ${{ secrets.TOSS_SECRET_KEY }}
+      FILE_SERVICE_URL: ${{ secrets.FILE_SERVICE_URL }}
+      POST_SERVICE_URL: ${{ secrets.POST_SERVICE_URL }}
+      ALARM_SERVICE_URL: ${{ secrets.ALARM_SERVICE_URL }}
+      CHAT_SERVICE_URL: ${{ secrets.CHAT_SERVICE_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -73,6 +77,10 @@ jobs:
             --from-literal=NAVER_EMAIL="${{ secrets.NAVER_EMAIL }}" \
             --from-literal=NAVER_EMAIL_PASSWORD="${{ secrets.NAVER_EMAIL_PASSWORD }}" \
             --from-literal=TOSS_SECRET_KEY="${{ secrets.TOSS_SECRET_KEY }}" \
+            --from-literal=FILE_SERVICE_URL="${{ secrets.FILE_SERVICE_URL }}" \
+            --from-literal=POST_SERVICE_URL="${{ secrets.POST_SERVICE_URL }}" \
+            --from-literal=ALARM_SERVICE_URL="${{ secrets.ALARM_SERVICE_URL }}" \
+            --from-literal=CHAT_SERVICE_URL="${{ secrets.CHAT_SERVICE_URL }}" \
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Replace image tag and apply deployment

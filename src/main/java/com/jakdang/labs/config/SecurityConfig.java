@@ -154,10 +154,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, GET_PUBLIC_URLS).permitAll()
                         .requestMatchers(HttpMethod.POST, POST_PUBLIC_URLS).permitAll()
                         .requestMatchers("/api/master/**").hasAnyRole("ADMIN", "TEACHER")
-                        .requestMatchers("/ws/**", "/ws/chat/**", "/springboot/ws/notifications/**", "/ws/notifications/**", 
-                                        "/springboot/ws/notifications/info", "/ws/notifications/info",
-                                        "/springboot/ws/notifications/*/*", "/ws/notifications/*/*",
-                                        "/springboot/ws/notifications/*/*/*", "/ws/notifications/*/*/*").permitAll()
+                        .requestMatchers("/ws/**", "/ws/chat/**", "/api/ws/notifications/**", "/ws/notifications/**", 
+                        "/springboot/api/ws/notifications/**", "/api/springboot/ws/notifications/**").permitAll()
                         .anyRequest().authenticated());
 
         // 필터 설정
