@@ -15,7 +15,8 @@ public class EventGiftResult {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-
+    @Column(name = "id")
+    private Long id;
 
     @Column(name = "gift_user_index")
     private Integer giftUserIndex;
@@ -28,4 +29,4 @@ public class EventGiftResult {
 
     @Column(name = "event_gift_value")
     private Integer eventGiftValue;
-} 
+}
