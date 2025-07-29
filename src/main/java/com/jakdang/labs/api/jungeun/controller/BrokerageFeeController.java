@@ -18,8 +18,8 @@ import lombok.extern.slf4j.Slf4j;
 public class BrokerageFeeController {
     private final BrokerageFeeSvc brokerageFeeSvc;
 
-    // @GetMapping
-    // private ResponseDTO<?> getBrokerageFee(@RequestParam("user_index") Integer user_index){
-    //     return brokerageFeeSvc.getBrokerageFee(user_index);
-    // }
+    @GetMapping
+    private ResponseDTO<?> getBrokerageFee(@RequestParam("user_index") Integer user_index){
+        return brokerageFeeSvc.getBrokerageFee(user_index);
+    }
 }

@@ -10,8 +10,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class BrokerageFeeDTO {
-    private Integer storeCashValueTotalSum;
-    private Integer storeCashValueChargeSum;
-    private Integer storeCashValueWaitSum;
-    private Integer storeCashValueYesSum;
+    private Integer cmValueTotalSum;      // 전체 CM 수수료
+    private Integer cmValueChargeSum;     // 충전 중 CM 수수료
+    private Integer cmValueWaitSum;       // 대기 중 CM 수수료
+    private Integer cmValueYesSum;        // 완료된 CM 수수료
 }
