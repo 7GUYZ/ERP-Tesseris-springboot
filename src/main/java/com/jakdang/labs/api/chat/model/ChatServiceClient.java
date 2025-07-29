@@ -7,9 +7,11 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.jakdang.labs.api.chat.dto.AlarmCheckRequestDTO;
 import com.jakdang.labs.api.chat.dto.InvitationRequestDTO;
 import com.jakdang.labs.api.chat.dto.MessageRequestDTO;
 import com.jakdang.labs.api.chat.dto.RoomRequestDTO;
@@ -39,4 +41,10 @@ public interface ChatServiceClient {
      */
     @PostMapping("/{room}/invitation")
     public String Invitation(@PathVariable("room") String room, @RequestBody InvitationRequestDTO invitationRequestDTO);
+
+    /**
+     * check alarm
+     */
+    @PutMapping("/alarm")
+    public String CheckAlram(@RequestBody AlarmCheckRequestDTO alarmCheck);
 }
