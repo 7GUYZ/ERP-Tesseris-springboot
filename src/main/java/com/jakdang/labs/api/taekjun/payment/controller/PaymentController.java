@@ -113,6 +113,39 @@ public class PaymentController {
     }
     
     /**
+     * 특정 가맹점의 쿠폰 목록 조회
+     */
+    @GetMapping("/store-coupons")
+    public ResponseEntity<ResponseDTO<List<CouponDTO>>> getStoreCoupons(
+            @RequestParam Integer userIndex,
+            @RequestParam Integer storeUserIndex,
+            @RequestParam(required = false) String couponName) {
+        log.info("가맹점 쿠폰 목록 조회 요청 - userIndex: {}, storeUserIndex: {}, couponName: {}", userIndex, storeUserIndex, couponName);
+        
+        try {
+            List<CouponDTO> couponList = paymentService.getStoreCouponsForUser(userIndex, storeUserIndex, couponName);
+            
+            ResponseDTO<List<CouponDTO>> response = ResponseDTO.<List<CouponDTO>>builder()
+                .resultCode(200)
+                .resultMessage("가맹점 쿠폰 목록을 성공적으로 조회했습니다.")
+                .data(couponList)
+                .build();
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("가맹점 쿠폰 목록 조회 중 오류 발생", e);
+            
+            ResponseDTO<List<CouponDTO>> response = ResponseDTO.<List<CouponDTO>>builder()
+                .resultCode(500)
+                .resultMessage("가맹점 쿠폰 목록 조회 중 오류가 발생했습니다.")
+                .build();
+            
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+    
+    /**
      * 결제 실행
      */
     @PostMapping("/process")
