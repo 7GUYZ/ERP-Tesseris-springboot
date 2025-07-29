@@ -47,9 +47,25 @@ spec:
                   name: erp-tesseris-secret
                   key: JASYPT_PASSWORD
             - name: FILE_SERVICE_URL
-              value: "http://localhost:8080/api/file"
+              valueFrom:
+                secretKeyRef:
+                  name: erp-tesseris-secret
+                  key: FILE_SERVICE_URL
             - name: POST_SERVICE_URL
-              value: "http://localhost:9000/api/posts"
+              valueFrom:
+                secretKeyRef:
+                  name: erp-tesseris-secret
+                  key: POST_SERVICE_URL
+            - name: ALARM_SERVICE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: erp-tesseris-secret
+                  key: ALARM_SERVICE_URL
+            - name: CHAT_SERVICE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: erp-tesseris-secret
+                  key: CHAT_SERVICE_URL
             - name: FRONTEND_URL
               value: "http://localhost:4173"
             - name: FRONTEND_ADMIN_URL
