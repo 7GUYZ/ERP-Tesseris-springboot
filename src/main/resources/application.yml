@@ -214,6 +214,7 @@ logging:
       security: DEBUG
     # Feign 로깅 활성화
     com.jakdang.labs.api.alarm.model.AlarmServiceClient: DEBUG
+    com.jakdang.labs.api.chat.model.ChatServiceClient: DEBUG
     feign: DEBUG
 
 springdoc:
