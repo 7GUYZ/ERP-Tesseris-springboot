@@ -56,7 +56,7 @@ public class Store {
     @Column(name = "store_zone_code", length = 30)
     private String storeZoneCode;
 
-    @Column(name = "storeAddress", length = 90)
+    @Column(name = "store_address", length = 90)
     private String storeAddress;
 
     @Column(name = "store_detail_address", length = 90)
