@@ -467,5 +467,44 @@ public class AlarmSvc {
             }
         });
     }
+
+    /**
+     * 7. 가맹점 신청 처리(승인/반려)
+     */
+    public void sendStoreRegisterAlarm(Integer userIndex, Integer storeRequestStatusIndex) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                // 1. 가맹점 신청 처리 관리 권한을 가진 관리자 목록 조회
+                List<String> adminUserIndexes = findAdminsWithAuthority(33); // 가맹점 신청 처리 프로그램
+
+                // 2. 가맹점 신청 처리 알림 타입 ID
+                Integer storeRegisterAlarmTypeId = 9; // 가맹점 신청 처리 알림 타입 ID
+
+                // 3. 알림 메시지 생성 (변경 유형에 따라 분기)
+                String alarmMessage;
+                switch (storeRequestStatusIndex) {
+                    case 2:
+                        alarmMessage = String.format("가맹점 신청이 승인되었습니다.");
+                        break;
+                    case 3:
+                        alarmMessage = String.format("가맹점 신청이 승인되었습니다.");
+                        break;
+                    default:
+                        alarmMessage = String.format("가맹점 신청이 처리되었습니다.");
+                        break;
+                }
+
+                // 4. 알림 전송 (해당 사용자 1명에게만 전송, 발신자는 null)
+                List<String> userIndexes = new ArrayList<>();
+                userIndexes.add(String.valueOf(userIndex));
+                sendAlarmWithValue(storeRegisterAlarmTypeId, userIndexes, new ArrayList<>(), alarmMessage, null);
+
+                log.info("가맹점 신청 처리 알림 전송 완료 - 가맹점 신청 user_index: {}", userIndex);
+
+            } catch (Exception e) {
+                log.error("가맹점 신청 처리 알림 전송 중 오류: {}", e.getMessage());
+            }
+        });
+    }
     
 }

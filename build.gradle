@@ -69,7 +69,8 @@ dependencies {
 
     // 채팅 웹소켓
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
-
+    // // socket.io
+    // implementation 'io.socket:socket.io-server:4.8.1'
     // argon2
     implementation 'org.bouncycastle:bcprov-jdk18on:1.80'
 
