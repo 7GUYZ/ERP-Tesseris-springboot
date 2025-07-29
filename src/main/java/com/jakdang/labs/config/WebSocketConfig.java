@@ -27,7 +27,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws/chat", "/springboot/ws/notifications")
+        registry.addEndpoint("/ws/chat", "/ws/notifications", "api/springboot/ws/notifications")
                 .setAllowedOriginPatterns("*")
                 .withSockJS()
                 .setClientLibraryUrl("https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js");
