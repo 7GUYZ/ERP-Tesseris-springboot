@@ -42,9 +42,7 @@ public class ChatController {
     private final ChatService chatService;
     // 채팅 db
     private final ChatServiceClient chatServiceClient;
-
-    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-
+    
     @GetMapping("/adminlist")
     public ResponseEntity<List<UserListDTO>> Adminlist() {
         try {

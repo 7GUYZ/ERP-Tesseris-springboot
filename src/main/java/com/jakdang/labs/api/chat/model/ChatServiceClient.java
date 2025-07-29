@@ -8,17 +8,14 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
-
 import com.jakdang.labs.api.chat.dto.AlarmCheckRequestDTO;
 import com.jakdang.labs.api.chat.dto.InvitationRequestDTO;
-import com.jakdang.labs.api.chat.dto.MessageRequestDTO;
 import com.jakdang.labs.api.chat.dto.RoomRequestDTO;
 import com.jakdang.labs.api.common.ResponseDTO;
 import com.jakdang.labs.config.FeignConfig;
-
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @FeignClient(name = "chat-service", url = "${chat-service.url}", configuration = FeignConfig.FeignErrorDecoder.class)
