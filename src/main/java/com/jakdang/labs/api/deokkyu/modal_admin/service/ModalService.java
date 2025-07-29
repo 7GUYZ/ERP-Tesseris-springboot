@@ -167,7 +167,7 @@ public class ModalService {
         Store store = null;
         UserTesseris userTesseris = null;
         for (UserTesseris tesseris : tesserisList) {
-            store = storeRepository.findByUserIndex(tesseris);
+            store = storeRepository.findFirstByUserIndex(tesseris);
             if (store != null) {
                 userTesseris = tesseris;
                 break;
@@ -361,7 +361,7 @@ public class ModalService {
             UserTesseris userTesseris = tesserisList.get(0);
 
             // 3. Store 정보 조회
-            Store store = storeRepository.findByUserIndex(userTesseris);
+            Store store = storeRepository.findFirstByUserIndex(userTesseris);
             if (store == null) {
                 return false;
             }

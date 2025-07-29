@@ -25,9 +25,15 @@ import com.jakdang.labs.api.deokkyu.store.repository.UserTesserishdkRepo;
 import com.jakdang.labs.api.deokkyu.store.repository.BusinessManhdkRepo;
 import com.jakdang.labs.api.deokkyu.store.repository.BusinessGradehdkRepo;
 import com.jakdang.labs.api.deokkyu.store.repository.BusinessAreahdkRepo;
+import com.jakdang.labs.api.deokkyu.store.repository.StoreSubscriptionFeehdkRepo;
+import com.jakdang.labs.api.deokkyu.modal_admin.repository.UserCmLoghdkRepo;
+import com.jakdang.labs.api.deokkyu.store.repository.UserCmhdkRepo;
 import com.jakdang.labs.entity.BusinessMan;
 import com.jakdang.labs.entity.BusinessGrade;
 import com.jakdang.labs.entity.BusinessArea;
+import com.jakdang.labs.entity.StoreSubscriptionFee;
+import com.jakdang.labs.entity.UserCmLog;
+import com.jakdang.labs.entity.UserCm;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +52,9 @@ public class StoreRegisterService {
     private final BusinessManhdkRepo businessManRepository;
     private final BusinessGradehdkRepo businessGradeRepository;
     private final BusinessAreahdkRepo businessAreaRepository;
+    private final StoreSubscriptionFeehdkRepo storeSubscriptionFeeRepository;
+    private final UserCmLoghdkRepo userCmLogRepository;
+    private final UserCmhdkRepo userCmRepository;
     private final GeocodingService geocodingService;
     private final S3FileUploadService s3FileUploadService;
     
@@ -88,6 +97,10 @@ public class StoreRegisterService {
             TemporaryStoreMaster savedTemporaryStoreMaster = temporaryStoreMasterRepository.save(temporaryStoreMaster);
             log.info("TemporaryStoreMaster 테이블 저장 완료: {}", savedTemporaryStoreMaster.getTemporaryStoreMasterIndex());
             
+            // 2-1. StoreSubscriptionFee 테이블에 저장
+            createStoreSubscriptionFeeEntity(savedStore);
+            log.info("StoreSubscriptionFee 테이블 저장 완료");
+            
             // 3. TemporaryStoreDetail 테이블에 저장 (복잡한 로직)
             createTemporaryStoreDetailEntities(savedStore, savedTemporaryStoreMaster);
             log.info("TemporaryStoreDetail 테이블 저장 완료");
@@ -99,27 +112,63 @@ public class StoreRegisterService {
             
             // 파일 S3 업로드 처리 (DB에는 파일명만 저장, S3에는 실제 파일 저장)
             String storeId = savedStore.getStoreIndex().toString();
+            log.info("📁 S3 파일 업로드 처리 시작 - storeId: {}", storeId);
             
+            // 사업자등록증 사진 S3 업로드
             if (storeBusinessLicensePhoto != null && !storeBusinessLicensePhoto.isEmpty()) {
-                log.info("사업자등록증 사진 S3 업로드 시작: {}, 크기: {} bytes", storeBusinessLicensePhoto.getOriginalFilename(), storeBusinessLicensePhoto.getSize());
-                String businessLicenseUrl = s3FileUploadService.uploadStoreFile(storeBusinessLicensePhoto, "business_license", storeId);
-                if (businessLicenseUrl != null) {
-                    log.info("사업자등록증 사진 S3 업로드 성공: {} (DB에는 파일명 저장: {})", businessLicenseUrl, savedStore.getStoreBusinessLicensePhoto());
+                try {
+                    log.info("📄 사업자등록증 사진 S3 업로드 시작: {}, 크기: {} bytes", 
+                            storeBusinessLicensePhoto.getOriginalFilename(), storeBusinessLicensePhoto.getSize());
+                    String businessLicenseUrl = s3FileUploadService.uploadStoreFile(storeBusinessLicensePhoto, "business_license", storeId);
+                    if (businessLicenseUrl != null) {
+                        log.info("✅ 사업자등록증 사진 S3 업로드 성공: {} (DB 파일명: {})", 
+                                businessLicenseUrl, savedStore.getStoreBusinessLicensePhoto());
+                    } else {
+                        log.error("❌ 사업자등록증 사진 S3 업로드 실패 - URL이 null");
+                    }
+                } catch (Exception e) {
+                    log.error("❌ 사업자등록증 사진 S3 업로드 중 오류 발생", e);
                 }
+            } else {
+                log.info("📄 사업자등록증 사진 파일이 없음 - S3 업로드 생략");
             }
+            
+            // 간판 사진 S3 업로드  
             if (storeSignPhoto != null && !storeSignPhoto.isEmpty()) {
-                log.info("간판 사진 S3 업로드 시작: {}, 크기: {} bytes", storeSignPhoto.getOriginalFilename(), storeSignPhoto.getSize());
-                String signPhotoUrl = s3FileUploadService.uploadStoreFile(storeSignPhoto, "sign_photo", storeId);
-                if (signPhotoUrl != null) {
-                    log.info("간판 사진 S3 업로드 성공: {} (DB에는 파일명 저장: {})", signPhotoUrl, savedStore.getStoreSignPhoto());
+                try {
+                    log.info("🪧 간판 사진 S3 업로드 시작: {}, 크기: {} bytes", 
+                            storeSignPhoto.getOriginalFilename(), storeSignPhoto.getSize());
+                    String signPhotoUrl = s3FileUploadService.uploadStoreFile(storeSignPhoto, "sign_photo", storeId);
+                    if (signPhotoUrl != null) {
+                        log.info("✅ 간판 사진 S3 업로드 성공: {} (DB 파일명: {})", 
+                                signPhotoUrl, savedStore.getStoreSignPhoto());
+                    } else {
+                        log.error("❌ 간판 사진 S3 업로드 실패 - URL이 null");
+                    }
+                } catch (Exception e) {
+                    log.error("❌ 간판 사진 S3 업로드 중 오류 발생", e);
                 }
+            } else {
+                log.info("🪧 간판 사진 파일이 없음 - S3 업로드 생략");
             }
+            
+            // 외관 사진 S3 업로드
             if (storeFrontPhoto != null && !storeFrontPhoto.isEmpty()) {
-                log.info("외관 사진 S3 업로드 시작: {}, 크기: {} bytes", storeFrontPhoto.getOriginalFilename(), storeFrontPhoto.getSize());
-                String frontPhotoUrl = s3FileUploadService.uploadStoreFile(storeFrontPhoto, "front_photo", storeId);
-                if (frontPhotoUrl != null) {
-                    log.info("외관 사진 S3 업로드 성공: {} (DB에는 파일명 저장: {})", frontPhotoUrl, savedStore.getStoreProntPhoto());
+                try {
+                    log.info("🏪 외관 사진 S3 업로드 시작: {}, 크기: {} bytes", 
+                            storeFrontPhoto.getOriginalFilename(), storeFrontPhoto.getSize());
+                    String frontPhotoUrl = s3FileUploadService.uploadStoreFile(storeFrontPhoto, "front_photo", storeId);
+                    if (frontPhotoUrl != null) {
+                        log.info("✅ 외관 사진 S3 업로드 성공: {} (DB 파일명: {})", 
+                                frontPhotoUrl, savedStore.getStoreProntPhoto());
+                    } else {
+                        log.error("❌ 외관 사진 S3 업로드 실패 - URL이 null");
+                    }
+                } catch (Exception e) {
+                    log.error("❌ 외관 사진 S3 업로드 중 오류 발생", e);
                 }
+            } else {
+                log.info("🏪 외관 사진 파일이 없음 - S3 업로드 생략");
             }
             
             response.put("success", true);
@@ -199,12 +248,22 @@ public class StoreRegisterService {
         
         // 사업자등록증 파일명 저장
         if (storeBusinessLicensePhoto != null && !storeBusinessLicensePhoto.isEmpty()) {
-            store.setStoreBusinessLicensePhoto(storeBusinessLicensePhoto.getOriginalFilename());
+            String originalFilename = storeBusinessLicensePhoto.getOriginalFilename();
+            store.setStoreBusinessLicensePhoto(originalFilename);
+            log.info("사업자등록증 파일명 설정: {}", originalFilename);
         } else {
-            // Object 타입 처리
+            // Object 타입 처리 (빈 객체 {} 처리 포함)
             Object businessLicensePhotoObj = dto.getBusinessInfo() != null ? dto.getBusinessInfo().getStoreBusinessLicensePhoto() : dto.getStoreBusinessLicensePhoto();
-            String businessLicensePhotoStr = businessLicensePhotoObj != null ? businessLicensePhotoObj.toString() : "";
+            String businessLicensePhotoStr = "";
+            if (businessLicensePhotoObj != null) {
+                String objStr = businessLicensePhotoObj.toString();
+                // 빈 객체 "{}" 나 "null"이 아닌 경우만 저장
+                if (!objStr.equals("{}") && !objStr.equals("null") && !objStr.trim().isEmpty()) {
+                    businessLicensePhotoStr = objStr;
+                }
+            }
             store.setStoreBusinessLicensePhoto(businessLicensePhotoStr);
+            log.info("사업자등록증 파일명 설정 (DTO에서): {}", businessLicensePhotoStr);
         }
         
         // 가맹점 등록 정보
@@ -215,60 +274,108 @@ public class StoreRegisterService {
         store.setStoreDetailAddress(storeDetailAddress);
         store.setStoreSite(storeSite);
         
-        // 1. 주소로 위도/경도 구하기
+        // 1. 주소로 위도/경도 구하기 (지오코딩 실패시에도 계속 진행)
+        log.info("=== 📍 지오코딩 처리 시작 ===");
+        log.info("입력 주소: '{}'", storeAddress);
+        log.info("입력 상세주소: '{}'", storeDetailAddress);
+        
         if (storeAddress != null && !storeAddress.trim().isEmpty()) {
             String fullAddress = storeAddress;
             if (storeDetailAddress != null && !storeDetailAddress.trim().isEmpty()) {
                 fullAddress = storeAddress + " " + storeDetailAddress;
             }
             
+            log.info("🌐 카카오 지오코딩 API 요청 - 전체주소: '{}'", fullAddress);
+            
             try {
                 String[] latLng = geocodingService.getLatLngAsString(fullAddress);
-                if (latLng != null && !latLng[0].isEmpty() && !latLng[1].isEmpty()) {
+                log.info("🌐 카카오 지오코딩 API 응답: {}", latLng != null ? java.util.Arrays.toString(latLng) : "null");
+                
+                if (latLng != null && latLng.length >= 2 && !latLng[0].isEmpty() && !latLng[1].isEmpty()) {
                     store.setStorePos1(latLng[0]); // 위도
                     store.setStorePos2(latLng[1]); // 경도
-                    log.info("주소 '{}' 의 좌표 설정 성공: 위도={}, 경도={}", fullAddress, latLng[0], latLng[1]);
+                    log.info("✅ 지오코딩 성공 - 주소: '{}' → 위도: {}, 경도: {}", fullAddress, latLng[0], latLng[1]);
+                    log.info("✅ Store 엔티티에 좌표 저장 완료: storePos1={}, storePos2={}", store.getStorePos1(), store.getStorePos2());
                 } else {
                     store.setStorePos1(""); // 빈 값 설정
                     store.setStorePos2(""); // 빈 값 설정
-                    log.warn("주소 '{}' 의 지오코딩 실패 - 빈 값으로 설정", fullAddress);
+                    log.warn("⚠️ 지오코딩 실패 - 주소: '{}', 응답 데이터가 유효하지 않음", fullAddress);
+                    log.warn("⚠️ 좌표를 빈 값으로 설정: storePos1='', storePos2=''");
                 }
             } catch (Exception e) {
                 store.setStorePos1(""); // 빈 값 설정
                 store.setStorePos2(""); // 빈 값 설정
-                log.warn("주소 '{}' 의 지오코딩 처리 중 오류 발생 - 빈 값으로 설정: {}", fullAddress, e.getMessage());
+                log.error("❌ 지오코딩 API 호출 중 오류 발생 - 주소: '{}'", fullAddress);
+                log.error("❌ 오류 내용: {}", e.getMessage());
+                log.error("❌ 좌표를 빈 값으로 설정: storePos1='', storePos2=''");
             }
         } else {
             store.setStorePos1(""); // 주소가 없으면 빈 값
             store.setStorePos2(""); // 주소가 없으면 빈 값
+            log.warn("⚠️ 주소 정보가 없음 - 좌표를 빈 값으로 설정");
         }
+        
+        log.info("=== 📍 지오코딩 처리 완료 ===");
         
         // 간판 사진 파일명 저장
         if (storeSignPhoto != null && !storeSignPhoto.isEmpty()) {
-            store.setStoreSignPhoto(storeSignPhoto.getOriginalFilename());
+            String originalFilename = storeSignPhoto.getOriginalFilename();
+            store.setStoreSignPhoto(originalFilename);
+            log.info("간판 사진 파일명 설정: {}", originalFilename);
         } else {
-            // Object 타입 처리
+            // Object 타입 처리 (빈 객체 {} 처리 포함)
             Object signPhotoObj = dto.getStoreInfo() != null ? dto.getStoreInfo().getStoreSignPhoto() : dto.getStoreSignPhoto();
-            String signPhotoStr = signPhotoObj != null ? signPhotoObj.toString() : "";
+            String signPhotoStr = "";
+            if (signPhotoObj != null) {
+                String objStr = signPhotoObj.toString();
+                // 빈 객체 "{}" 나 "null"이 아닌 경우만 저장
+                if (!objStr.equals("{}") && !objStr.equals("null") && !objStr.trim().isEmpty()) {
+                    signPhotoStr = objStr;
+                }
+            }
             store.setStoreSignPhoto(signPhotoStr);
+            log.info("간판 사진 파일명 설정 (DTO에서): {}", signPhotoStr);
         }
         
         // 외관 사진 파일명 저장
         if (storeFrontPhoto != null && !storeFrontPhoto.isEmpty()) {
-            store.setStoreProntPhoto(storeFrontPhoto.getOriginalFilename()); // storeFrontPhoto -> storeProntPhoto
+            String originalFilename = storeFrontPhoto.getOriginalFilename();
+            store.setStoreProntPhoto(originalFilename); // storeFrontPhoto -> storeProntPhoto
+            log.info("외관 사진 파일명 설정: {}", originalFilename);
         } else {
-            // Object 타입 처리
+            // Object 타입 처리 (빈 객체 {} 처리 포함)
             Object frontPhotoObj = dto.getStoreInfo() != null ? dto.getStoreInfo().getStoreFrontPhoto() : dto.getStoreFrontPhoto();
-            String frontPhotoStr = frontPhotoObj != null ? frontPhotoObj.toString() : "";
+            String frontPhotoStr = "";
+            if (frontPhotoObj != null) {
+                String objStr = frontPhotoObj.toString();
+                // 빈 객체 "{}" 나 "null"이 아닌 경우만 저장
+                if (!objStr.equals("{}") && !objStr.equals("null") && !objStr.trim().isEmpty()) {
+                    frontPhotoStr = objStr;
+                }
+            }
             store.setStoreProntPhoto(frontPhotoStr);
+            log.info("외관 사진 파일명 설정 (DTO에서): {}", frontPhotoStr);
         }
         
         // 매니저 정보 처리
+        log.info("=== 👥 매니저 정보 처리 시작 ===");
+        log.info("hasManager: {}, managerId(email): {}", hasManager, managerId);
+        
         if (hasManager != null && hasManager && managerId != null) {
-            // managerId로 user_tesseris 테이블에서 user_index 찾기
+            // managerEmail로 user_tesseris 테이블에서 user_index 찾기
+            log.info("🔍 매니저 정보 조회 시작: email={}", managerId);
             Integer managerUserIndex = findManagerUserIndex(managerId);
             store.setBusinessManUserIndex(managerUserIndex);
+            log.info("✅ 매니저 정보 설정 완료: businessManUserIndex={}", managerUserIndex);
+            
+            // 중요: Store에 설정된 값 재확인
+            log.info("🔍 Store에 설정된 businessManUserIndex 재확인: {}", store.getBusinessManUserIndex());
+        } else {
+            log.info("ℹ️ 매니저 정보 없음 - businessManUserIndex는 null로 설정");
+            store.setBusinessManUserIndex(null);
         }
+        
+        log.info("=== 👥 매니저 정보 처리 완료 ===");
         
         // 약관 동의 정보 (새로운 구조에서 추출)
         Boolean agreementOptional1 = dto.getAgreements() != null ? dto.getAgreements().getOptional1() : dto.getAgreementOptional1();
@@ -299,10 +406,78 @@ public class StoreRegisterService {
             .temporaryStoreMasterTransactionName("가맹신청비")
             .temporaryStoreMasterChargeTime(now)
             .temporaryStoreMasterDistributionTime(now)
-            .temporaryStoreCmValue(500000)
-            .temporaryStoreCashValue(500000)
+            .temporaryStoreCmValue(200000)
+            .temporaryStoreCashValue(1)
             .temporaryStoreMasterDistributionStatus("y")
             .build();
+    }
+    
+    /**
+     * StoreSubscriptionFee 엔티티 생성 및 저장
+     */
+    private void createStoreSubscriptionFeeEntity(Store store) {
+        LocalDateTime now = LocalDateTime.now();
+        
+        log.info("=== 💰 StoreSubscriptionFee 저장 시작 ===");
+        
+        // Store의 business_man_user_index 확인
+        Integer businessManUserIndex = store.getBusinessManUserIndex();
+        log.info("🔍 Store에서 가져온 business_man_user_index: {}", businessManUserIndex);
+        
+        if (businessManUserIndex == null) {
+            log.warn("⚠️ Store의 business_man_user_index가 null입니다. StoreSubscriptionFee 저장을 건너뜁니다.");
+            return;
+        }
+        
+        try {
+            // UserTesseris로 BusinessMan 조회 (올바른 방식)
+            log.info("🔍 UserTesseris 조회 시작: user_index={}", businessManUserIndex);
+            UserTesseris userTesseris = userTesserisRepository.findById(businessManUserIndex)
+                .orElseThrow(() -> new RuntimeException("UserTesseris를 찾을 수 없습니다: " + businessManUserIndex));
+            log.info("✅ UserTesseris 조회 성공: user_index={}", userTesseris.getUserIndex());
+            
+            log.info("🔍 BusinessMan 조회 시작: UserTesseris.user_index={}", userTesseris.getUserIndex());
+            BusinessMan businessMan = businessManRepository.findByUserIndex(userTesseris)
+                .orElseThrow(() -> new RuntimeException("BusinessMan을 찾을 수 없습니다. user_index: " + businessManUserIndex));
+            log.info("✅ BusinessMan 조회 성공: user_index={}, business_man_index={}", 
+                    businessManUserIndex, businessMan.getBusinessManIndex());
+            
+            // StoreSubscriptionFee 엔티티 생성
+            log.info("🔨 StoreSubscriptionFee 엔티티 생성 시작");
+            StoreSubscriptionFee storeSubscriptionFee = new StoreSubscriptionFee();
+            storeSubscriptionFee.setStoreSubscriptionFeeTransactionName("가맹비 납부");
+            storeSubscriptionFee.setBusinessManUserIndex(businessMan); // BusinessMan 엔티티 설정
+            storeSubscriptionFee.setStoreSubscriptionFeeTime(now);
+            storeSubscriptionFee.setStoreUserIndex(store); // Store 엔티티 설정
+            storeSubscriptionFee.setStoreSubscriptionFeePaymentMethod("카드");
+            storeSubscriptionFee.setStoreSubscriptionFeeCommissionCheck("y");
+            storeSubscriptionFee.setStoreSubscriptionFeeValue(200000);
+            
+            // 엔티티 설정 후 필드 검증
+            log.info("🔍 StoreSubscriptionFee 필드 검증:");
+            log.info("   - businessManUserIndex(엔티티): {}", storeSubscriptionFee.getBusinessManUserIndex() != null ? storeSubscriptionFee.getBusinessManUserIndex().getBusinessManIndex() : "null");
+            log.info("   - storeUserIndex(엔티티): {}", storeSubscriptionFee.getStoreUserIndex() != null ? storeSubscriptionFee.getStoreUserIndex().getStoreIndex() : "null");
+            log.info("   - transactionName: {}", storeSubscriptionFee.getStoreSubscriptionFeeTransactionName());
+            
+            // DB 저장 시도
+            log.info("💾 StoreSubscriptionFee DB 저장 시도");
+            StoreSubscriptionFee saved = storeSubscriptionFeeRepository.save(storeSubscriptionFee);
+            log.info("✅ StoreSubscriptionFee 저장 성공!");
+            log.info("   - store_subscription_fee_index: {}", saved.getStoreSubscriptionFeeIndex());
+            log.info("   - business_man_user_index: {}", businessMan.getBusinessManIndex());
+            log.info("   - store_user_index: {}", store.getStoreIndex());
+            log.info("   - transaction_name: {}", saved.getStoreSubscriptionFeeTransactionName());
+            log.info("   - value: {}", saved.getStoreSubscriptionFeeValue());
+            
+        } catch (Exception e) {
+            log.error("❌ StoreSubscriptionFee 처리 중 오류 발생");
+            log.error("❌ 오류 타입: {}", e.getClass().getSimpleName());
+            log.error("❌ 오류 메시지: {}", e.getMessage());
+            log.error("❌ 오류 상세: ", e);
+            throw e;
+        }
+        
+        log.info("=== 💰 StoreSubscriptionFee 저장 완료 ===");
     }
 
     /**
@@ -371,6 +546,12 @@ public class StoreRegisterService {
             log.info("TemporaryStoreDetail 저장: user_index={}, business_grade={}, temporary_store_value={}, detail_index={}", 
                     currentBusinessManUserIndex, businessGrade.getBusinessGradeName(), temporaryStoreValue, saved.getTemporaryStoreDetailIndex());
             
+            // user_cm_log 테이블에 INSERT (1:1 대응)
+            createUserCmLogEntity(temporaryStoreMaster, saved, temporaryStoreValue.intValue());
+            
+            // user_cm 테이블 UPDATE (user_cm_deposit += user_cm_log_value)
+            updateUserCmDeposit(currentUserTesseris.getUserIndex(), temporaryStoreValue.intValue());
+            
             // 다음 상위 business_man 찾기 (boss_user_index)
             currentBusinessManUserIndex = businessMan.getBossUserIndex();
         }
@@ -393,6 +574,72 @@ public class StoreRegisterService {
         
         TemporaryStoreDetail saved = temporaryStoreDetailRepository.save(temporaryStoreDetail);
         log.info("기본 TemporaryStoreDetail 저장: detail_index={}", saved.getTemporaryStoreDetailIndex());
+        
+        // user_cm_log 테이블에 INSERT (1:1 대응)
+        createUserCmLogEntity(temporaryStoreMaster, saved, 500000);
+        
+        // user_cm 테이블 UPDATE (user_cm_deposit += user_cm_log_value)
+        updateUserCmDeposit(userTesseris.getUserIndex(), 500000);
+    }
+    
+    /**
+     * UserCmLog 엔티티 생성 및 저장
+     */
+    private void createUserCmLogEntity(TemporaryStoreMaster temporaryStoreMaster, TemporaryStoreDetail temporaryStoreDetail, int logValue) {
+        LocalDateTime now = LocalDateTime.now();
+        
+        UserCmLog userCmLog = UserCmLog.builder()
+            .userCmLogPaymentIndex(1) // 입금
+            .userCmpLogPaymentIndex(null) // null
+            .userCmLogTransactionTypeIndex(1) // 중개수수료
+            .userCmLogValueTypeIndex(2) // CM
+            .userIndexEventTrigger(temporaryStoreMaster.getStoreUserIndex().getUserIndex()) // temporaryStoreMaster의 store_user_index
+            .userIndexEventParty(temporaryStoreDetail.getUserIndex()) // temporaryStoreDetail의 user_index
+            .userCmLogValue(logValue) // temporaryStoreValue
+            .userCmLogReason(null) // null
+            .userCmLogCreateTime(now) // 현재 시간
+            .userCmLogTransactionCancel(null) // null (판매 취소용)
+            .userCouponValue(0) // 0
+            .build();
+            
+        UserCmLog saved = userCmLogRepository.save(userCmLog);
+        log.info("UserCmLog 저장: log_index={}, trigger={}, party={}, value={}", 
+                saved.getUserCmLogIndex(), 
+                temporaryStoreMaster.getStoreUserIndex().getUserIndex().getUserIndex(),
+                temporaryStoreDetail.getUserIndex().getUserIndex(),
+                logValue);
+    }
+    
+    /**
+     * UserCm 테이블의 user_cm_deposit 업데이트
+     */
+    private void updateUserCmDeposit(Integer userIndex, int addValue) {
+        // UserCm 조회 (user_cm_index = userIndex)
+        UserCm userCm = userCmRepository.findById(userIndex).orElse(null);
+        
+        if (userCm == null) {
+            // UserCm이 존재하지 않으면 새로 생성
+            userCm = UserCm.builder()
+                .userCmIndex(userIndex)
+                .userCmDeposit(addValue)
+                .userCmWithdrawal(0)
+                .userCashDeposit(0)
+                .userCashWithdrawal(0)
+                .userCmpDeposit(0)
+                .userCmpWithdrawal(0)
+                .userCmpInit(0)
+                .userCmPincode(null)
+                .build();
+            log.info("새 UserCm 생성: user_index={}, deposit={}", userIndex, addValue);
+        } else {
+            // 기존 UserCm의 user_cm_deposit 업데이트
+            Integer currentDeposit = userCm.getUserCmDeposit() != null ? userCm.getUserCmDeposit() : 0;
+            userCm.setUserCmDeposit(currentDeposit + addValue);
+            log.info("UserCm 업데이트: user_index={}, 기존deposit={}, 추가값={}, 새deposit={}", 
+                    userIndex, currentDeposit, addValue, currentDeposit + addValue);
+        }
+        
+        userCmRepository.save(userCm);
     }
     
     /**
@@ -454,36 +701,63 @@ public class StoreRegisterService {
     }
 
     /**
-     * managerId로 user_tesseris 테이블에서 user_index 찾기 (business_man 테이블에 존재하는지 검증)
+     * managerEmail로 user_tesseris 테이블에서 user_index 찾기 (business_man 테이블에 존재하는지 검증)
      */
-    private Integer findManagerUserIndex(String managerId) {
+    private Integer findManagerUserIndex(String managerEmail) {
         try {
-            // managerId로 UserEntity 조회
+            log.info("=== 🔍 매니저 조회 프로세스 시작 ===");
+            log.info("🔍 1단계: 매니저 이메일로 UserEntity 조회 - email: {}", managerEmail);
+            
+            // 1. managerEmail로 UserEntity 조회
+            UserEntity managerUserByEmail = userRepository.findByEmail(managerEmail)
+                .orElseThrow(() -> new RuntimeException("매니저 UserEntity를 이메일로 찾을 수 없습니다: " + managerEmail));
+            log.info("✅ 1단계 성공: 이메일로 UserEntity 조회 완료");
+            
+            // 2. UserEntity의 ID 얻기
+            String managerId = managerUserByEmail.getId();
+            log.info("🔍 2단계: UserEntity ID 추출 - userId: {}", managerId);
+            
+            // 3. 기존 로직대로 ID로 UserEntity 조회 (기존 방식 유지)
+            log.info("🔍 3단계: ID로 UserEntity 재조회");
             UserEntity managerUser = userRepository.findById(managerId)
-                .orElseThrow(() -> new RuntimeException("매니저 UserEntity를 찾을 수 없습니다: " + managerId));
+                .orElseThrow(() -> new RuntimeException("매니저 UserEntity를 ID로 찾을 수 없습니다: " + managerId));
+            log.info("✅ 3단계 성공: ID로 UserEntity 재조회 완료");
             
             // UserEntity로 UserTesseris 조회
+            log.info("🔍 4단계: UserEntity로 UserTesseris 조회");
             List<UserTesseris> managerTesserisList = userTesserisRepository.findByUsersId(managerUser);
             if (managerTesserisList.isEmpty()) {
-                throw new RuntimeException("매니저 UserTesseris를 찾을 수 없습니다: " + managerId);
+                throw new RuntimeException("매니저 UserTesseris를 찾을 수 없습니다: " + managerEmail);
             }
+            log.info("✅ 4단계 성공: UserTesseris 조회 완료 - 목록 크기: {}", managerTesserisList.size());
             
             UserTesseris managerUserTesseris = managerTesserisList.get(0);
             Integer userIndex = managerUserTesseris.getUserIndex();
+            log.info("🔍 5단계: UserTesseris에서 user_index 추출 - user_index: {}", userIndex);
             
             // 해당 user_index가 business_man 테이블에 존재하는지 검증
+            log.info("🔍 6단계: BusinessMan 테이블에서 존재 여부 검증");
             BusinessMan businessMan = businessManRepository.findByUserIndex(managerUserTesseris).orElse(null);
             
             if (businessMan == null) {
-                log.warn("매니저 {}(user_index={})는 business_man 테이블에 존재하지 않습니다. business_man_user_index를 null로 설정합니다.", managerId, userIndex);
+                log.warn("⚠️ 6단계 실패: 매니저 {}(user_index={})는 business_man 테이블에 존재하지 않습니다.", managerEmail, userIndex);
+                log.warn("⚠️ business_man_user_index를 null로 설정합니다.");
                 return null; // business_man 테이블에 없으면 null 반환
             }
             
-            log.info("매니저 user_index 조회 성공: managerId={}, user_index={}", managerId, userIndex);
+            log.info("✅ 6단계 성공: BusinessMan 조회 완료 - business_man_index: {}", businessMan.getBusinessManIndex());
+            log.info("🎯 최종 결과: 매니저 user_index={} 반환", userIndex);
+            log.info("=== 🔍 매니저 조회 프로세스 완료 ===");
+            
             return userIndex; // UserTesseris의 user_index 반환
             
         } catch (Exception e) {
-            log.error("매니저 user_index 조회 실패: managerId={}", managerId, e);
+            log.error("❌ 매니저 조회 프로세스 실패");
+            log.error("❌ 매니저 이메일: {}", managerEmail);
+            log.error("❌ 오류 타입: {}", e.getClass().getSimpleName());
+            log.error("❌ 오류 메시지: {}", e.getMessage());
+            log.error("❌ 오류 상세: ", e);
+            log.warn("⚠️ null 반환하여 외래키 제약조건 회피");
             return null; // 에러 발생시 null 반환하여 외래키 제약조건 회피
         }
     }

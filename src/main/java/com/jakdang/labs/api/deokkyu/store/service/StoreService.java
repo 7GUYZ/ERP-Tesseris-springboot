@@ -381,8 +381,8 @@ public class StoreService {
             if (filter.getUserPhone() != null && !filter.getUserPhone().isBlank()) {
                 if (user == null || user.getPhone() == null || !user.getPhone().contains(filter.getUserPhone())) continue;
             }
-            // 연결된 Store 찾기 (userIndex로)
-            Store store = storeRepository.findByUserIndex(userTesseris);
+            // 연결된 Store 찾기 (userIndex로) - 첫 번째 Store만 
+            Store store = storeRepository.findFirstByUserIndex(userTesseris);
             if (store == null) continue;
             if (filter.getStoreBossName() != null && !filter.getStoreBossName().isBlank()) {
                 if (store.getStoreBossName() == null || !store.getStoreBossName().contains(filter.getStoreBossName())) continue;

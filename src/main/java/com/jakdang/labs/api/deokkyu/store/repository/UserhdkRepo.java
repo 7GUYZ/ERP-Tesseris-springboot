@@ -13,5 +13,10 @@ public interface UserhdkRepo extends JpaRepository<UserEntity, String> {
      * 사용자 이름으로 UserEntity 조회
      */
     Optional<UserEntity> findByName(String name);
+    
+    /**
+     * 사용자 이메일로 UserEntity 조회
+     */
+    Optional<UserEntity> findByEmail(String email);
 }
 
