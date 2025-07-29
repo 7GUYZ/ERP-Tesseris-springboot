@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jakdang.labs.api.chat.dto.InvitationRequestDTO;
 import com.jakdang.labs.api.chat.dto.MessageRequestDTO;
 import com.jakdang.labs.api.chat.dto.RoomRequestDTO;
 import com.jakdang.labs.api.chat.dto.UserListDTO;
@@ -83,11 +84,13 @@ public class ChatController {
             return ResponseEntity.ok(new ResponseDTO<List<RoomRequestDTO>>(404, e.getMessage(), null));
         }
     }
+
     /**
      * send message
      */
     @PostMapping("/sendmessage")
-    public ResponseEntity<String> SendMessage(@RequestPart("message") String messageRequestDTO, @RequestPart(value = "files", required = false) MultipartFile[] files) {
+    public ResponseEntity<String> SendMessage(@RequestPart("message") String messageRequestDTO,
+            @RequestPart(value = "files", required = false) List<MultipartFile> files) {
         try {
             log.info("SendMessage: {}", messageRequestDTO);
             log.info("SendMessage: {}", files);
@@ -97,4 +100,28 @@ public class ChatController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
+    /**
+     * 특정 채팅방에 특정 사용자 초대하기
+     * 
+     * @param entity
+     * @return
+     */
+    @PostMapping("/{room}/invitation")
+    public ResponseEntity<?> Invitation(@PathVariable("room") String room,
+            @RequestBody InvitationRequestDTO invitationRequestDTO) {
+        try {
+            log.info("Invitation: {}", room);
+            log.info("Invitation: {}", invitationRequestDTO.getUserid());
+            log.info("Invitation: {}", invitationRequestDTO.getInviter());
+            return ResponseEntity.ok(chatServiceClient.Invitation(room, invitationRequestDTO));
+        } catch (FeignException e) {
+            log.error("Feign Error: {}", e.getMessage());
+            return ResponseEntity.ok(new ResponseDTO<List<RoomRequestDTO>>(e.status(), e.getMessage(), null));
+        } catch (Exception e) {
+            log.error("Error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
 }
