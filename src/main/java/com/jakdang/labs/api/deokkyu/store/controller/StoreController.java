@@ -3,15 +3,18 @@ package com.jakdang.labs.api.deokkyu.store.controller;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.jakdang.labs.api.deokkyu.modal_admin.dto.StoreTransactionHistoryDto;
 import com.jakdang.labs.api.deokkyu.store.dto.CusStoreListDto;
 import com.jakdang.labs.api.deokkyu.store.dto.StoreListDto;
 import com.jakdang.labs.api.deokkyu.store.dto.StoreListSearchDto;
 import com.jakdang.labs.api.deokkyu.store.dto.StoreRegisterdListDto;
 import com.jakdang.labs.api.deokkyu.store.dto.CustomerDto;
-import com.jakdang.labs.api.deokkyu.store.dto.StoreTransactionHistoryDto;
 import com.jakdang.labs.api.deokkyu.store.service.StoreService;
 
 import java.util.List;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
 
 @RestController
 @RequestMapping("/api/store")
@@ -47,10 +50,8 @@ public class StoreController {
         return ResponseEntity.ok(stores);
     }
 
-    @GetMapping("/transaction-history/{userId}") // 가맹점 거래내역 조회
-    public ResponseEntity<List<StoreTransactionHistoryDto>> getStoreTransactionHistory(@PathVariable String userId) {
-        List<StoreTransactionHistoryDto> transactionHistory = storeService.getStoreTransactionHistory(userId);
-        return ResponseEntity.ok(transactionHistory);
-    }
+
+
+    
 
 }

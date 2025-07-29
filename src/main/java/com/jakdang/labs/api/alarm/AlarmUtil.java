@@ -10,6 +10,4 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AlarmUtil {
     private final UserService userService;
-
-    
 }
