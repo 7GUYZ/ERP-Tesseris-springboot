@@ -1,5 +1,6 @@
 package com.jakdang.labs.api.sichan.qna.service;
 
+import com.jakdang.labs.api.alarm.service.AlarmSvc;
 import com.jakdang.labs.api.sichan.qna.dto.QnaRequestDto;
 import com.jakdang.labs.api.sichan.qna.dto.QnaResponseDto;
 import com.jakdang.labs.api.sichan.qna.repository.QnaRepository;
@@ -22,6 +23,7 @@ public class QnaService {
 
     private final QnaRepository qnaRepository;
     private final UserTesserisRepository userTesserisRepository;
+    private final AlarmSvc alarmSvc;
 
     // QnA 등록
     @Transactional
@@ -36,6 +38,15 @@ public class QnaService {
         qna.setQnaCreateTime(LocalDateTime.now());
 
         Qna savedQna = qnaRepository.save(qna);
+
+        // 신규 Q&A 등록 알림 서비스
+        try {
+            alarmSvc.sendQnaRegisterAlarm(Integer.parseInt(userIndex));
+            log.info("신규 Q&A 등록 알림 전송 완료");
+        } catch (Exception e) {
+            log.error("신규 Q&A 등록 알림 전송 실패: {}", e.getMessage());
+            // 알림 전송 실패해도 Q&A DB 저장은 성공으로 처리
+        }
         return convertToResponseDto(savedQna);
     }
 

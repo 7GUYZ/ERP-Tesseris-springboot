@@ -506,5 +506,50 @@ public class AlarmSvc {
             }
         });
     }
-    
+
+    /**
+     * 8. 신규 관리자 등록 알림 전송
+     */
+    public void sendAdminRegisterAlarm() {
+        CompletableFuture.runAsync(() -> {
+            try {
+                // 1. 관리자 등록 관리 권한을 가진 관리자 목록 조회
+                List<String> adminUserIndexes = findAdminsWithAuthority(10); // CMS 관리자 명단 프로그램
+
+                // 2. 신규 관리자 등록 알림 타입 ID
+                Integer adminRegisterAlarmTypeId = 2; // 신규 관리자 등록 알림 타입 ID
+
+                // 3. 알림 전송 (관리자에게만 전송, 발신자는 null)
+                // sendAlarmWithValue에서 자동으로 alarmTypes.description 사용
+                sendAlarmWithValue(adminRegisterAlarmTypeId, new ArrayList<>(), adminUserIndexes, "", null);
+
+                log.info("신규 관리자 등록 알림 전송 완료 - 대상 관리자: {}명", adminUserIndexes.size());
+
+            } catch (Exception e) {
+                log.error("신규 관리자 등록 알림 전송 중 오류: {}", e.getMessage());
+            }
+        });
+    }
+
+    /**
+     * 9. 신규 Q&A 등록 알림 전송
+     */
+    public void sendQnaRegisterAlarm(Integer userIndex) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                // 1. Q&A 관리 권한을 가진 관리자 목록 조회
+                List<String> adminUserIndexes = findAdminsWithAuthority(26); // Q&A 관리 프로그램
+
+                // 2. 신규 관리자 등록 알림 타입 ID
+                Integer qnaRegisterAlarmTypeId = 6; // 신규 Q&A 등록 알림 타입 ID
+
+                // 3. 알림 전송 (관리자에게만 전송, 발신자는 userIndex)
+                // sendAlarmWithValue에서 자동으로 alarmTypes.description 사용
+                sendAlarmWithValue(qnaRegisterAlarmTypeId, new ArrayList<>(), adminUserIndexes, null, userIndex);                
+
+            } catch (Exception e) {
+                log.error("신규 Q&A 등록 알림 전송 중 오류: {}", e.getMessage());
+            }
+        });
+    }
 }
