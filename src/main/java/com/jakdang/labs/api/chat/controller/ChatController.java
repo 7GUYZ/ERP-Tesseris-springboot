@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -42,7 +44,7 @@ public class ChatController {
     private final ChatService chatService;
     // 채팅 db
     private final ChatServiceClient chatServiceClient;
-    
+
     @GetMapping("/adminlist")
     public ResponseEntity<List<UserListDTO>> Adminlist() {
         try {
@@ -131,6 +133,61 @@ public class ChatController {
             log.info("CheckAlram: {}", alarmCheck.getUser_id());
             log.info("CheckAlram: {}", alarmCheck.getAlarm_index());
             return ResponseEntity.ok(chatServiceClient.CheckAlram(alarmCheck));
+        } catch (Exception e) {
+            log.error("Error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * 채팅방 채팅 내용 조회
+     * 입장한사람 읽음처리
+     * 
+     * @param room
+     * @return
+     */
+    @GetMapping("/{room}/chatlist/{userid}")
+    public ResponseEntity<?> ChatList(@PathVariable("room") String room,
+            @PathVariable("userid") String userid,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "25") int size) {
+        try {
+            log.info("ChatList: {}", room);
+            log.info("ChatList: {}", userid);
+            log.info("ChatList: {}", page);
+            log.info("ChatList: {}", size);
+            return ResponseEntity.ok(chatServiceClient.ChatList(room, userid, page, size));
+        } catch (Exception e) {
+            log.error("Error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    // 읽음 처리
+    @PostMapping("/{room}/read/{messageid}/{userid}")
+    public String MessageRead(@PathVariable("room") String room, @PathVariable("messageid") String messageid,
+            @PathVariable("userid") String userid) {
+        try {
+            log.info("MessageRead: {}", room);
+            log.info("MessageRead: {}", messageid);
+            log.info("MessageRead: {}", userid);
+            return chatServiceClient.MessageRead(room, messageid, userid);
+        } catch (Exception e) {
+            log.error("Error: {}", e.getMessage());
+            return "ERROR: " + e.getMessage();
+        }
+    }
+
+    /**
+     * 방 퇴장시 나간 사람 읽음처리 구분을 위한 나간 시간체크
+     * 
+     */
+    @GetMapping("/{room}/leave/{userid}")
+    public ResponseEntity<?> Leave(@PathVariable("room") String room, @PathVariable("userid") String userid) {
+        try {
+            log.info("Leave: {}", room);
+            log.info("Leave: {}", userid);
+            return ResponseEntity.ok(chatServiceClient.Leave(room, userid));
         } catch (Exception e) {
             log.error("Error: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
