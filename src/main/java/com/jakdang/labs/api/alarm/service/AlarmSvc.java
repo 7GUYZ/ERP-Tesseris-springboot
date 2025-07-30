@@ -387,13 +387,13 @@ public class AlarmSvc {
      */
     public void sendCouponAlarm(List<String> userIndexes, String storeUserIndex, String couponName) {
         try {
-            // 2. 쿠폰 알림 타입 ID (실제 DB의 alarmTypes 테이블에서 확인 필요)
+            // 1. 쿠폰 알림 타입 ID (실제 DB의 alarmTypes 테이블에서 확인 필요)
             Integer couponAlarmTypeId = 11; // 쿠폰 선물 알림 타입 ID
 
-            // 3. storeUserIndex를 senderIndex로 변환
+            // 2. storeUserIndex를 senderIndex로 변환
             Integer senderIndex = Integer.valueOf(storeUserIndex);
 
-            // 4. 기존의 sendAlarmWithValue 메서드 사용
+            // 3. 기존의 sendAlarmWithValue 메서드 사용
             sendAlarmWithValue(couponAlarmTypeId, userIndexes, new ArrayList<>(), couponName, senderIndex);
 
             log.info("쿠폰 선물 알림 전송 완료 - 쿠폰명: {}, 발신자: {}", couponName, storeUserIndex);
@@ -549,6 +549,27 @@ public class AlarmSvc {
 
             } catch (Exception e) {
                 log.error("신규 Q&A 등록 알림 전송 중 오류: {}", e.getMessage());
+            }
+        });
+    }
+
+    /**
+     * 10. 신규 Q&A 답변 알림 전송
+     */
+    public void sendQnaAnswerAlarm(Integer userIndex,Integer adminIndex) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                // 1. Q&A 답변 알림 타입 ID 
+                Integer qnaAnswerAlarmTypeId = 7; 
+
+                // 2. 알림 받는 사용자 목록(1명임) - 관리자들은 알림 받을 필요없음.
+                List<String> userIndexes = new ArrayList<>();
+                userIndexes.add(String.valueOf(userIndex));
+
+                // 3. 기존의 sendAlarmWithValue 메서드 사용
+                sendAlarmWithValue(qnaAnswerAlarmTypeId, userIndexes, new ArrayList<>(), null, adminIndex);
+            } catch (Exception e) {
+                log.error("Q&A 답변 완료 알림 전송 중 오류: {}", e.getMessage());
             }
         });
     }
