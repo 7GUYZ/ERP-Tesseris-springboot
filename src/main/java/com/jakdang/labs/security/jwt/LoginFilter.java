@@ -80,6 +80,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     /**
      * 인증 시도 처리
      * 요청에서 로그인 정보를 추출하고 인증을 시도
+     * 재시도 메커니즘 포함
      * 
      * @param request  HTTP 요청
      * @param response HTTP 응답
@@ -90,24 +91,49 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response)
             throws AuthenticationException {
 
-        try {
-            UserLoginRequest loginRequest = objectMapper.readValue(
-                    request.getInputStream(),
-                    UserLoginRequest.class);
+        int maxRetries = 3;
+        int retryCount = 0;
+        AuthenticationException lastException = null;
 
-            log.info("로그인 시도: {} {}", loginRequest.getUsername(), loginRequest.getPassword());
+        while (retryCount < maxRetries) {
+            try {
+                UserLoginRequest loginRequest = objectMapper.readValue(
+                        request.getInputStream(),
+                        UserLoginRequest.class);
 
-            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                    loginRequest.getUsername(),
-                    loginRequest.getPassword(),
-                    null);
+                log.info("로그인 시도 {}: {} {}", retryCount + 1, loginRequest.getUsername(), loginRequest.getPassword());
 
-            return authenticationManager.authenticate(authToken);
-        } catch (IOException e) {
-            log.error("로그인 요청 처리 중 오류 발생", e);
-            // TODO 커스텀 익스셉션 적용 체크
-            throw new RuntimeException("로그인 처리 중 오류가 발생했습니다", e);
+                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                        loginRequest.getUsername(),
+                        loginRequest.getPassword(),
+                        null);
+
+                return authenticationManager.authenticate(authToken);
+
+            } catch (IOException e) {
+                log.error("로그인 요청 파싱 실패: {}", e.getMessage());
+                throw new AuthenticationException("로그인 요청을 처리할 수 없습니다.") {};
+            } catch (AuthenticationException e) {
+                lastException = e;
+                retryCount++;
+                
+                if (retryCount < maxRetries) {
+                    log.warn("로그인 시도 {} 실패, 재시도 중... ({}/{})", retryCount, retryCount, maxRetries);
+                    try {
+                        Thread.sleep(1000 * retryCount); // 점진적 대기 시간
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw new AuthenticationException("로그인 처리 중 중단되었습니다.") {};
+                    }
+                } else {
+                    log.error("로그인 시도 {}회 모두 실패", maxRetries);
+                    throw lastException;
+                }
+            }
         }
+
+        throw lastException != null ? lastException : 
+            new AuthenticationException("로그인 처리 중 오류가 발생했습니다.") {};
     }
 
     /**
