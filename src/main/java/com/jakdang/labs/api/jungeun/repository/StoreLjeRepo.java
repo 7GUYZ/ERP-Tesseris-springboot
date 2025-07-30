@@ -51,7 +51,7 @@ public interface StoreLjeRepo extends JpaRepository<Store, Integer> {
             LEFT JOIN store_business_hours t4
                 ON t1.user_index = t4.store_user_index
             LEFT JOIN store_image t5
-                ON t1.user_index = t5.store_user_index
+                ON t1.store_index = t5.store_user_index
                 AND t5.store_main_image_status = 'T'
             INNER JOIN business_man bm
                 ON t1.business_man_user_index = bm.business_man_index
@@ -113,7 +113,7 @@ public interface StoreLjeRepo extends JpaRepository<Store, Integer> {
                 INNER JOIN store_category c ON s.store_category_index = c.store_category_index
                 INNER JOIN user_cm u ON s.user_index = u.user_cm_index
                 LEFT JOIN store_business_hours h ON s.user_index = h.store_user_index
-                LEFT JOIN store_image i ON s.user_index = i.store_user_index
+                LEFT JOIN store_image i ON s.store_index = i.store_user_index
                 WHERE s.store_index = :store_index
                 GROUP BY s.store_index, s.store_name, s.store_phone, s.store_address, 
                          s.store_detail_address, s.store_site, s.store_memo, c.store_category_name,

@@ -26,6 +26,39 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Slf4j
 public class AlarmSvc {
+    
+    // 알림 타입 상수 정의
+    private static final class AlarmTypeIds {
+        public static final Integer AUTHORITY_CHANGED = 1;
+        public static final Integer ADMIN_REGISTER = 2;
+        public static final Integer MONTHLY_CM_LIMIT = 3;
+        public static final Integer COMMISSION_CHANGED = 4;
+        public static final Integer NOTICE = 5;
+        public static final Integer QNA_REGISTER = 6;
+        public static final Integer QNA_ANSWER = 7;
+        public static final Integer STORE_REGISTER = 9;
+        public static final Integer GIFT = 10;
+        public static final Integer COUPON = 11;
+    }
+    
+    // 프로그램 인덱스 상수 정의
+    private static final class ProgramIndexes {
+        public static final Integer AUTHORITY_MANAGEMENT = 8;
+        public static final Integer COMMISSION_MANAGEMENT = 9;
+        public static final Integer ADMIN_MANAGEMENT = 10;
+        public static final Integer CM_LIMIT_MANAGEMENT = 8;
+        public static final Integer NOTICE_MANAGEMENT = 25;
+        public static final Integer QNA_MANAGEMENT = 26;
+        public static final Integer STORE_REGISTER_MANAGEMENT = 33;
+    }
+    
+    // 사용자 역할 상수 정의
+    private static final class UserRoles {
+        public static final Integer REGULAR_MEMBER = 1;
+        public static final Integer BUSINESSMAN = 2;
+        public static final Integer FRANCHISE = 3;
+    }
+    
     private final WebSocketController webSocketController;
     private final UserTesserisLjeRepo userRepo;
     private final AuthorityLjeRepo authorityRepo;
@@ -47,7 +80,7 @@ public class AlarmSvc {
             
             if (userAlarms == null) {
                 log.warn("⚠️ alarm-service에서 null 응답 받음");
-                userAlarms = new java.util.ArrayList<>();
+                userAlarms = new ArrayList<>();
             }
             
             // 특정 알림 타입의 설정 찾기
@@ -93,9 +126,6 @@ public class AlarmSvc {
 
     /**
      * 특정 프로그램 권한을 가진 관리자들의 user_index 목록 조회 (범용 메서드)
-     * 
-     * @param programIndex 권한을 확인할 프로그램 인덱스
-     * @return 해당 권한을 가진 관리자들의 user_index 목록
      */
     private List<String> findAdminsWithAuthority(Integer programIndex) {
         try {
@@ -121,8 +151,6 @@ public class AlarmSvc {
 
     /**
      * 알림 설정에 따른 사용자 필터링
-     * - userAlarms에 행이 없는 사용자: 알림 전송
-     * - userAlarms에 행이 있는 사용자: is_active=1이면 제외, is_active=0이면 전송
      */
     private List<String> filterActiveAlarmUsers(List<String> userIndexes, Integer alarmTypeId) {
         List<String> activeUsers = new ArrayList<>();
@@ -196,7 +224,7 @@ public class AlarmSvc {
             AlarmHistoryRequest request = AlarmHistoryRequest.builder()
                     .alarmTypesId(alarmTypeId)
                     .alarmMessage(message)
-                    .senderIndex(finalSenderIndex) // senderIndex가 있으면 그 값을, 없으면 0 사용
+                    .senderIndex(finalSenderIndex)
                     .receiverIndexes(receiverIndexes)
                     .alarmType("MONTHLY_CM_LIMIT_UPDATED")
                     .title("월 CM 한도 변경 알림")
@@ -232,11 +260,19 @@ public class AlarmSvc {
         List<String> activeUserIndexes = filterActiveAlarmUsers(filteredUserIndexes, alarmTypeId);
         List<String> activeAdminIndexes = filterActiveAlarmUsers(filteredAdminIndexes, alarmTypeId);
 
-        // 4. WebSocket으로 알림 전송 (즉시)
+        // 4. WebSocket으로 알림 전송 (비동기)
         Map<String, Object> notification = createNotification(alarmTypeId, alarmMessage);
 
-        webSocketController.sendToManyUsers(activeUserIndexes, notification);
-        webSocketController.sendToManyUsers(activeAdminIndexes, notification);
+        CompletableFuture.runAsync(() -> {
+            try {
+                webSocketController.sendToManyUsers(activeUserIndexes, notification);
+                webSocketController.sendToManyUsers(activeAdminIndexes, notification);
+                log.info("WebSocket 알림 전송 완료 (비동기) - 활성 사용자: {}명, 활성 관리자: {}명",
+                        activeUserIndexes.size(), activeAdminIndexes.size());
+            } catch (Exception e) {
+                log.error("WebSocket 알림 전송 실패 (비동기): {}", e.getMessage());
+            }
+        });
 
         // 5. 알림 내역을 alarm-service에 비동기로 저장
         CompletableFuture.runAsync(() -> {
@@ -249,7 +285,7 @@ public class AlarmSvc {
             }
         });
 
-        log.info("알림 전송 완료 - 활성 사용자: {}명, 활성 관리자: {}명, 발신자: {}",
+        log.info("알림 전송 요청 완료 - 활성 사용자: {}명, 활성 관리자: {}명, 발신자: {} (백그라운드에서 처리됨)",
                 activeUserIndexes.size(), activeAdminIndexes.size(), senderIndex);
     }
 
@@ -307,7 +343,7 @@ public class AlarmSvc {
                     "title", alarmTypeLabel,
                     "message", message,
                     "timestamp", System.currentTimeMillis(),
-                    "action", alarmTypeCode, // alarmTypesCode 활용
+                    "action", alarmTypeCode,
                     "alarmTypeId", alarmTypeId);
 
         } catch (Exception e) {
@@ -317,46 +353,66 @@ public class AlarmSvc {
                     "title", "알림 오류",
                     "message", message,
                     "timestamp", System.currentTimeMillis(),
-                    "action", "ERROR_NOTIFICATION" // 기본값도 일관성 있게
+                    "action", "ERROR_NOTIFICATION"
             );
         }
     }
 
-    // -----------------------------------------------------------기능 알림
-    // 서비스-----------------------------------------------------------------------
+    /**
+     * 모든 사용자 목록 조회 (공통 메서드)
+     */
+    private List<String> getAllUserIndexes() {
+        List<String> allUserIndexes = new ArrayList<>();
+        allUserIndexes.addAll(userRepo.findUserIndexesByRole(UserRoles.REGULAR_MEMBER));
+        allUserIndexes.addAll(userRepo.findUserIndexesByRole(UserRoles.BUSINESSMAN));
+        allUserIndexes.addAll(userRepo.findUserIndexesByRole(UserRoles.FRANCHISE));
+        return allUserIndexes;
+    }
 
     /**
-     * 1. 월 CM 한도 변경 알림 (기존 메서드 - 호환성 유지)
+     * 단일 사용자 목록 생성 (공통 메서드)
+     */
+    private List<String> createSingleUserList(Integer userIndex) {
+        List<String> userIndexes = new ArrayList<>();
+        userIndexes.add(String.valueOf(userIndex));
+        return userIndexes;
+    }
+
+    /**
+     * 비동기 알림 전송 (공통 메서드)
+     */
+    private void sendAsyncAlarm(Runnable alarmTask, String alarmName) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                alarmTask.run();
+                log.info("{} 알림 전송 완료", alarmName);
+            } catch (Exception e) {
+                log.error("{} 알림 전송 중 오류: {}", alarmName, e.getMessage());
+            }
+        });
+    }
+
+    // ==========================================
+    // 기능별 알림 전송 메서드들
+    // ==========================================
+
+    /**
+     * 1. 월 CM 한도 변경 알림
      */
     public void sendMonthlyCmLimitChangedAlarm(Integer cmLimit) {
-        // 1. 모든 사용자 목록 조회
-        List<String> allUserIndexes = new ArrayList<>();
-        allUserIndexes.addAll(userRepo.findUserIndexesByRole(1)); // 일반(정회원)
-        allUserIndexes.addAll(userRepo.findUserIndexesByRole(2)); // 사업자
-        allUserIndexes.addAll(userRepo.findUserIndexesByRole(3)); // 가맹점
-
-        // 2. CM 한도 관리 권한을 가진 관리자 목록 조회
-        List<String> adminUserIndexes = findAdminsWithAuthority(8); // CM 한도 관리 프로그램
-
-        // 3. 공통 알림 전송 메서드 호출
-        sendAlarmWithValue(3, allUserIndexes, adminUserIndexes, String.valueOf(cmLimit) + "CM", null);
+        List<String> allUserIndexes = getAllUserIndexes();
+        List<String> adminUserIndexes = findAdminsWithAuthority(ProgramIndexes.CM_LIMIT_MANAGEMENT);
+        String value = String.valueOf(cmLimit) + "CM";
+        sendAlarmWithValue(AlarmTypeIds.MONTHLY_CM_LIMIT, allUserIndexes, adminUserIndexes, value, null);
     }
 
     /**
      * 2. 공지사항 알림 전송
      */
     public void sendNoticeAlarm(String noticeTitle) {
-        // 1. 모든 사용자 목록 조회
-        List<String> allUserIndexes = new ArrayList<>();
-        allUserIndexes.addAll(userRepo.findUserIndexesByRole(1)); // 일반(정회원)
-        allUserIndexes.addAll(userRepo.findUserIndexesByRole(2)); // 사업자
-        allUserIndexes.addAll(userRepo.findUserIndexesByRole(3)); // 가맹점
-
-        // 2. 공지사항 관리 권한을 가진 관리자 목록 조회
-        List<String> adminUserIndexes = findAdminsWithAuthority(25); // 공지사항 관리 프로그램
-
-        // 3. 공통 알림 전송 메서드 호출
-        sendAlarmWithValue(5, allUserIndexes, adminUserIndexes, noticeTitle, null);
+        List<String> allUserIndexes = getAllUserIndexes();
+        List<String> adminUserIndexes = findAdminsWithAuthority(ProgramIndexes.NOTICE_MANAGEMENT);
+        sendAlarmWithValue(AlarmTypeIds.NOTICE, allUserIndexes, adminUserIndexes, noticeTitle, null);
     }
 
     /**
@@ -364,19 +420,10 @@ public class AlarmSvc {
      */
     public void sendGiftAlarm(Integer receiveUserIndex, Integer giftAmount, Integer sendUserIndex) {
         try {
-            // 1. 받는 사람 1명만 알림 대상으로 설정
-            List<String> receiveUserIndexes = new ArrayList<>();
-            receiveUserIndexes.add(String.valueOf(receiveUserIndex));
-
-            // 2. 선물 알림 타입 ID (실제 DB의 alarmTypes 테이블에서 확인 필요)
-            Integer giftAlarmTypeId = 10; // 실제 알림 타입 ID
-
-            // 3. 기존 메시지 생성 메서드 활용 + "(몇CM)" 추가
+            List<String> receiveUserIndexes = createSingleUserList(receiveUserIndex);
             String value = String.valueOf(giftAmount) + "CM";
-            sendAlarmWithValue(giftAlarmTypeId, receiveUserIndexes, new ArrayList<>(), value, sendUserIndex);
-
+            sendAlarmWithValue(AlarmTypeIds.GIFT, receiveUserIndexes, new ArrayList<>(), value, sendUserIndex);
             log.info("선물 알림 전송 완료: 받는 사람={}, 금액={}CM", receiveUserIndex, giftAmount);
-
         } catch (Exception e) {
             log.error("선물 알림 전송 중 오류: {}", e.getMessage());
         }
@@ -387,17 +434,9 @@ public class AlarmSvc {
      */
     public void sendCouponAlarm(List<String> userIndexes, String storeUserIndex, String couponName) {
         try {
-            // 2. 쿠폰 알림 타입 ID (실제 DB의 alarmTypes 테이블에서 확인 필요)
-            Integer couponAlarmTypeId = 11; // 쿠폰 선물 알림 타입 ID
-
-            // 3. storeUserIndex를 senderIndex로 변환
             Integer senderIndex = Integer.valueOf(storeUserIndex);
-
-            // 4. 기존의 sendAlarmWithValue 메서드 사용
-            sendAlarmWithValue(couponAlarmTypeId, userIndexes, new ArrayList<>(), couponName, senderIndex);
-
+            sendAlarmWithValue(AlarmTypeIds.COUPON, userIndexes, new ArrayList<>(), couponName, senderIndex);
             log.info("쿠폰 선물 알림 전송 완료 - 쿠폰명: {}, 발신자: {}", couponName, storeUserIndex);
-
         } catch (Exception e) {
             log.error("쿠폰 선물 알림 전송 중 오류: {}", e.getMessage());
         }
@@ -407,104 +446,96 @@ public class AlarmSvc {
      * 5. 중계수수료 변경 알림 전송 (비동기 처리)
      */
     public void sendCommissionChangedAlarm() {
-        CompletableFuture.runAsync(() -> {
-            try {
-                // 1. 중계수수료 관리 권한을 가진 관리자 목록 조회
-                List<String> adminUserIndexes = findAdminsWithAuthority(9); // 중계수수료 관리 프로그램
-
-                // 2. 중계수수료 변경 알림 타입 ID
-                Integer commissionAlarmTypeId = 4; // 중계수수료 변경 알림 타입 ID
-
-                // 3. 알림 전송 (관리자에게만 전송, 발신자는 null)
-                // sendAlarmWithValue에서 자동으로 alarmTypes.description 사용
-                sendAlarmWithValue(commissionAlarmTypeId, new ArrayList<>(), adminUserIndexes, "", null);
-
-                log.info("중계수수료 변경 알림 전송 완료 - 대상 관리자: {}명", adminUserIndexes.size());
-
-            } catch (Exception e) {
-                log.error("중계수수료 변경 알림 전송 중 오류: {}", e.getMessage());
-            }
-        });
+        sendAsyncAlarm(() -> {
+            List<String> adminUserIndexes = findAdminsWithAuthority(ProgramIndexes.COMMISSION_MANAGEMENT);
+            sendAlarmWithValue(AlarmTypeIds.COMMISSION_CHANGED, new ArrayList<>(), adminUserIndexes, "", null);
+            log.info("중계수수료 변경 알림 전송 완료 - 대상 관리자: {}명", adminUserIndexes.size());
+        }, "중계수수료 변경");
     }
 
     /**
      * 6. 권한 변경 알림 전송 (비동기 처리)
      */
     public void sendAuthorityChangedAlarm(String adminTypeName, String programName, String changeType) {
-        CompletableFuture.runAsync(() -> {
-            try {
-                // 1. 권한 관리 권한을 가진 관리자 목록 조회
-                List<String> adminUserIndexes = findAdminsWithAuthority(8); // 권한 관리 프로그램
+        sendAsyncAlarm(() -> {
+            List<String> adminUserIndexes = findAdminsWithAuthority(ProgramIndexes.AUTHORITY_MANAGEMENT);
+            String alarmMessage = createAuthorityChangeMessage(adminTypeName, programName, changeType);
+            sendAlarmWithValue(AlarmTypeIds.AUTHORITY_CHANGED, new ArrayList<>(), adminUserIndexes, alarmMessage, null);
+            log.info("권한 {} 알림 전송 완료 - 등급: {}, 프로그램: {}, 대상 관리자: {}명", 
+                changeType, adminTypeName, programName, adminUserIndexes.size());
+        }, "권한 변경");
+    }
 
-                // 2. 권한 변경 알림 타입 ID
-                Integer authorityAlarmTypeId = 1; // 권한 변경 알림 타입 ID
-
-                // 3. 알림 메시지 생성 (변경 유형에 따라 분기)
-                String alarmMessage;
-                switch (changeType) {
-                    case "수정":
-                        alarmMessage = String.format("%s 등급의 %s 권한이 수정되었습니다.", adminTypeName, programName);
-                        break;
-                    case "추가":
-                        alarmMessage = String.format("%s 등급의 %s 권한이 추가되었습니다.", adminTypeName, programName);
-                        break;
-                    case "삭제":
-                        alarmMessage = String.format("%s 등급의 %s 권한이 삭제되었습니다.", adminTypeName, programName);
-                        break;
-                    default:
-                        alarmMessage = String.format("%s 등급의 %s 권한이 변경되었습니다.", adminTypeName, programName);
-                        break;
-                }
-
-                // 4. 알림 전송 (관리자에게만 전송, 발신자는 null)
-                sendAlarmWithValue(authorityAlarmTypeId, new ArrayList<>(), adminUserIndexes, alarmMessage, null);
-
-                log.info("권한 {} 알림 전송 완료 - 등급: {}, 프로그램: {}, 대상 관리자: {}명", 
-                    changeType, adminTypeName, programName, adminUserIndexes.size());
-
-            } catch (Exception e) {
-                log.error("권한 변경 알림 전송 중 오류: {}", e.getMessage());
-            }
-        });
+    /**
+     * 권한 변경 메시지 생성 (공통 메서드)
+     */
+    private String createAuthorityChangeMessage(String adminTypeName, String programName, String changeType) {
+        switch (changeType) {
+            case "수정":
+                return String.format("%s 등급의 %s 권한이 수정되었습니다.", adminTypeName, programName);
+            case "추가":
+                return String.format("%s 등급의 %s 권한이 추가되었습니다.", adminTypeName, programName);
+            case "삭제":
+                return String.format("%s 등급의 %s 권한이 삭제되었습니다.", adminTypeName, programName);
+            default:
+                return String.format("%s 등급의 %s 권한이 변경되었습니다.", adminTypeName, programName);
+        }
     }
 
     /**
      * 7. 가맹점 신청 처리(승인/반려)
      */
     public void sendStoreRegisterAlarm(Integer userIndex, Integer storeRequestStatusIndex) {
-        CompletableFuture.runAsync(() -> {
-            try {
-                // 1. 가맹점 신청 처리 관리 권한을 가진 관리자 목록 조회
-                List<String> adminUserIndexes = findAdminsWithAuthority(33); // 가맹점 신청 처리 프로그램
-
-                // 2. 가맹점 신청 처리 알림 타입 ID
-                Integer storeRegisterAlarmTypeId = 9; // 가맹점 신청 처리 알림 타입 ID
-
-                // 3. 알림 메시지 생성 (변경 유형에 따라 분기)
-                String alarmMessage;
-                switch (storeRequestStatusIndex) {
-                    case 2:
-                        alarmMessage = String.format("가맹점 신청이 승인되었습니다.");
-                        break;
-                    case 3:
-                        alarmMessage = String.format("가맹점 신청이 승인되었습니다.");
-                        break;
-                    default:
-                        alarmMessage = String.format("가맹점 신청이 처리되었습니다.");
-                        break;
-                }
-
-                // 4. 알림 전송 (해당 사용자 1명에게만 전송, 발신자는 null)
-                List<String> userIndexes = new ArrayList<>();
-                userIndexes.add(String.valueOf(userIndex));
-                sendAlarmWithValue(storeRegisterAlarmTypeId, userIndexes, new ArrayList<>(), alarmMessage, null);
-
-                log.info("가맹점 신청 처리 알림 전송 완료 - 가맹점 신청 user_index: {}", userIndex);
-
-            } catch (Exception e) {
-                log.error("가맹점 신청 처리 알림 전송 중 오류: {}", e.getMessage());
-            }
-        });
+        sendAsyncAlarm(() -> {
+            List<String> adminUserIndexes = findAdminsWithAuthority(ProgramIndexes.STORE_REGISTER_MANAGEMENT);
+            String alarmMessage = createStoreRegisterMessage(storeRequestStatusIndex);
+            List<String> userIndexes = createSingleUserList(userIndex);
+            sendAlarmWithValue(AlarmTypeIds.STORE_REGISTER, userIndexes, new ArrayList<>(), alarmMessage, null);
+            log.info("가맹점 신청 처리 알림 전송 완료 - 가맹점 신청 user_index: {}", userIndex);
+        }, "가맹점 신청 처리");
     }
-    
+
+    /**
+     * 가맹점 신청 메시지 생성 (공통 메서드)
+     */
+    private String createStoreRegisterMessage(Integer storeRequestStatusIndex) {
+        switch (storeRequestStatusIndex) {
+            case 2:
+            case 3:
+                return "가맹점 신청이 승인되었습니다.";
+            default:
+                return "가맹점 신청이 처리되었습니다.";
+        }
+    }
+
+    /**
+     * 8. 신규 관리자 등록 알림 전송
+     */
+    public void sendAdminRegisterAlarm() {
+        sendAsyncAlarm(() -> {
+            List<String> adminUserIndexes = findAdminsWithAuthority(ProgramIndexes.ADMIN_MANAGEMENT);
+            sendAlarmWithValue(AlarmTypeIds.ADMIN_REGISTER, new ArrayList<>(), adminUserIndexes, "", null);
+            log.info("신규 관리자 등록 알림 전송 완료 - 대상 관리자: {}명", adminUserIndexes.size());
+        }, "신규 관리자 등록");
+    }
+
+    /**
+     * 9. 신규 Q&A 등록 알림 전송
+     */
+    public void sendQnaRegisterAlarm(Integer userIndex) {
+        sendAsyncAlarm(() -> {
+            List<String> adminUserIndexes = findAdminsWithAuthority(ProgramIndexes.QNA_MANAGEMENT);
+            sendAlarmWithValue(AlarmTypeIds.QNA_REGISTER, new ArrayList<>(), adminUserIndexes, null, userIndex);
+        }, "신규 Q&A 등록");
+    }
+
+    /**
+     * 10. Q&A 답변 알림 전송
+     */
+    public void sendQnaAnswerAlarm(Integer userIndex, Integer adminIndex) {
+        sendAsyncAlarm(() -> {
+            List<String> userIndexes = createSingleUserList(userIndex);
+            sendAlarmWithValue(AlarmTypeIds.QNA_ANSWER, userIndexes, new ArrayList<>(), null, adminIndex);
+        }, "Q&A 답변 완료");
+    }
 }

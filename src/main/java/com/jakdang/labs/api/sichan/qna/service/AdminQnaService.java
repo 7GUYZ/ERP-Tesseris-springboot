@@ -1,5 +1,6 @@
 package com.jakdang.labs.api.sichan.qna.service;
 
+import com.jakdang.labs.api.alarm.service.AlarmSvc;
 import com.jakdang.labs.api.sichan.qna.dto.QnaRequestDto;
 import com.jakdang.labs.api.sichan.qna.dto.QnaResponseDto;
 import com.jakdang.labs.api.sichan.qna.repository.QnaRepository;
@@ -7,6 +8,8 @@ import com.jakdang.labs.entity.Qna;
 import com.jakdang.labs.entity.UserTesseris;
 import com.jakdang.labs.api.taekjun.Permissionsettings.repository.UserTesserisRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,10 +19,12 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AdminQnaService {
 
     private final QnaRepository qnaRepository;
     private final UserTesserisRepository userTesserisRepository;
+    private final AlarmSvc alarmSvc;
 
     // QnA 목록 조회 (관리자용)
     @Transactional(readOnly = true)
@@ -73,6 +78,16 @@ public class AdminQnaService {
         qna.setAnswerCreateTime(LocalDateTime.now());
 
         Qna savedQna = qnaRepository.save(qna);
+
+        // 답변 완료 알림 서비스
+        try {
+            alarmSvc.sendQnaAnswerAlarm(qna.getQuestionUser().getUserIndex(), adminUser.getUserIndex());
+            log.info("Q&A 답변 완료 알림 전송 완료");
+        } catch (Exception e) {
+            log.error("Q&A 답변 완료 알림 전송 실패: {}", e.getMessage());
+            // 알림 전송 실패해도 Q&A DB 저장은 성공으로 처리
+        }
+
         return convertToResponseDto(savedQna);
     }
 
