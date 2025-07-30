@@ -20,7 +20,5 @@ public class MessageRequestDTO {
         // 방 생성 관련 필드
     // 방 생성 관련 필드 추가
     private String room_name;        // 방 이름 (첫 메시지 시 필요)
-    private String created_at;       // 방 생성 시간
-    private String created_by;       // 방 생성자
     private List<String> participants;     // 참여자 목록 (JSON 문자열)
 }

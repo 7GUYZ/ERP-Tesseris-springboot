@@ -34,6 +34,7 @@ import com.jakdang.labs.entity.BusinessArea;
 import com.jakdang.labs.entity.StoreSubscriptionFee;
 import com.jakdang.labs.entity.UserCmLog;
 import com.jakdang.labs.entity.UserCm;
+import com.jakdang.labs.api.deokkyu.storeRegister.service.S3FileUploadService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -72,25 +73,99 @@ public class StoreRegisterService {
         Map<String, Object> response = new HashMap<>();
         
         try {
-            log.info("가맹점 신청 등록 처리 시작");
+            log.info("=== 🚀 가맹점 신청 등록 처리 시작 ===");
+            
+            // === 1. 파라미터 확인 ===
+            log.info("📊 입력 파라미터 확인:");
+            log.info("   - storeData 길이: {}", storeData != null ? storeData.length() : "null");
+            if (storeData != null && storeData.length() > 0) {
+                log.info("   - storeData 미리보기: {}", storeData.substring(0, Math.min(200, storeData.length())) + "...");
+            }
+            
+            log.info("📁 파일 파라미터 상세 확인:");
+            log.info("   - storeBusinessLicensePhoto: {}", storeBusinessLicensePhoto != null ? 
+                    String.format("파일명=%s, 크기=%d bytes, Content-Type=%s, 비어있는가=%s", 
+                            storeBusinessLicensePhoto.getOriginalFilename(), 
+                            storeBusinessLicensePhoto.getSize(), 
+                            storeBusinessLicensePhoto.getContentType(),
+                            storeBusinessLicensePhoto.isEmpty()) : "null");
+            log.info("   - storeSignPhoto: {}", storeSignPhoto != null ? 
+                    String.format("파일명=%s, 크기=%d bytes, Content-Type=%s, 비어있는가=%s", 
+                            storeSignPhoto.getOriginalFilename(), 
+                            storeSignPhoto.getSize(), 
+                            storeSignPhoto.getContentType(),
+                            storeSignPhoto.isEmpty()) : "null");
+            log.info("   - storeFrontPhoto: {}", storeFrontPhoto != null ? 
+                    String.format("파일명=%s, 크기=%d bytes, Content-Type=%s, 비어있는가=%s", 
+                            storeFrontPhoto.getOriginalFilename(), 
+                            storeFrontPhoto.getSize(), 
+                            storeFrontPhoto.getContentType(),
+                            storeFrontPhoto.isEmpty()) : "null");
+            
+            // S3 설정 확인
+            log.info("⚙️ S3 설정 확인:");
+            log.info("   - s3FileUploadService 인스턴스: {}", s3FileUploadService != null ? "존재함" : "NULL!");
+            if (s3FileUploadService != null) {
+                log.info("   - s3FileUploadService 클래스: {}", s3FileUploadService.getClass().getName());
+            }
             
             // ObjectMapper 설정 - 알 수 없는 필드 무시
             ObjectMapper customObjectMapper = new ObjectMapper();
             customObjectMapper.configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
             
             // JSON 문자열을 DTO로 변환
+            log.info("🔄 JSON 문자열을 DTO로 변환 시작");
             StoreRegisterRequestDto storeRegisterDto = customObjectMapper.readValue(storeData, StoreRegisterRequestDto.class);
+            log.info("✅ JSON 변환 완료");
             
             // 기본 정보 설정
             storeRegisterDto.setStatus("PENDING"); // 대기 상태로 설정
             storeRegisterDto.setCreatedAt(LocalDateTime.now());
             
-            log.info("변환된 가맹점 신청 데이터: {}", storeRegisterDto);
+            log.info("📋 변환된 가맹점 신청 데이터: {}", storeRegisterDto);
             
-            // 1. Store 테이블에 저장
+            // === 2. 주소 정보 확인 ===
+            log.info("🏠 주소 정보 추출:");
+            String storeAddress = storeRegisterDto.getStoreInfo() != null ? storeRegisterDto.getStoreInfo().getStore_address() : storeRegisterDto.getStoreAddress();
+            String storeDetailAddress = storeRegisterDto.getStoreInfo() != null ? storeRegisterDto.getStoreInfo().getStore_detail_address() : storeRegisterDto.getStoreDetailAddress();
+            log.info("   - 기본주소: '{}'", storeAddress);
+            log.info("   - 상세주소: '{}'", storeDetailAddress);
+            
+            String fullAddress = storeAddress;
+            if (storeDetailAddress != null && !storeDetailAddress.trim().isEmpty()) {
+                fullAddress = storeAddress + " " + storeDetailAddress;
+            }
+            log.info("   - 전체주소: '{}'", fullAddress);
+            
+            // === 3. Store 엔티티 생성 ===
+            log.info("🏢 Store 엔티티 생성 시작");
             Store store = createStoreEntity(storeRegisterDto, storeBusinessLicensePhoto, storeSignPhoto, storeFrontPhoto);
+            log.info("✅ Store 엔티티 생성 완료");
+            
+            // === 4. Store 엔티티 정보 확인 ===
+            log.info("📋 생성된 Store 엔티티 정보:");
+            log.info("   - 사업자등록증 파일명: '{}'", store.getStoreBusinessLicensePhoto());
+            log.info("   - 간판 사진 파일명: '{}'", store.getStoreSignPhoto());
+            log.info("   - 외관 사진 파일명: '{}'", store.getStoreProntPhoto());
+            log.info("   - 주소: '{}'", store.getStoreAddress());
+            log.info("   - 상세주소: '{}'", store.getStoreDetailAddress());
+            log.info("   - 위도(storePos1): '{}'", store.getStorePos1());
+            log.info("   - 경도(storePos2): '{}'", store.getStorePos2());
+            log.info("   - business_man_user_index: {}", store.getBusinessManUserIndex());
+            
+            // === 5. Store DB 저장 ===
+            log.info("💾 Store 테이블 저장 시작");
             Store savedStore = storeRepository.save(store);
-            log.info("Store 테이블 저장 완료: {}", savedStore.getStoreIndex());
+            log.info("✅ Store 테이블 저장 완료: store_index={}", savedStore.getStoreIndex());
+            
+            // === 6. 저장된 Store 정보 재확인 ===
+            log.info("🔍 DB에 저장된 Store 정보 재확인:");
+            log.info("   - store_index: {}", savedStore.getStoreIndex());
+            log.info("   - 사업자등록증 파일명: '{}'", savedStore.getStoreBusinessLicensePhoto());
+            log.info("   - 간판 사진 파일명: '{}'", savedStore.getStoreSignPhoto());
+            log.info("   - 외관 사진 파일명: '{}'", savedStore.getStoreProntPhoto());
+            log.info("   - 위도(storePos1): '{}'", savedStore.getStorePos1());
+            log.info("   - 경도(storePos2): '{}'", savedStore.getStorePos2());
             
             // 2. TemporaryStoreMaster 테이블에 저장
             TemporaryStoreMaster temporaryStoreMaster = createTemporaryStoreMasterEntity(savedStore);
@@ -110,66 +185,130 @@ public class StoreRegisterService {
             updateUserRoleByUserTesseris(savedStore.getUserIndex());
             log.info("UserTesseris user_role_index 변경 완료");
             
-            // 파일 S3 업로드 처리 (DB에는 파일명만 저장, S3에는 실제 파일 저장)
+            // === 7. S3 파일 업로드 처리 ===
             String storeId = savedStore.getStoreIndex().toString();
-            log.info("📁 S3 파일 업로드 처리 시작 - storeId: {}", storeId);
+            log.info("=== 📁 S3 파일 업로드 처리 시작 ===");
+            log.info("📁 storeId: {}", storeId);
+            log.info("📁 s3FileUploadService 인스턴스: {}", s3FileUploadService != null ? "존재함" : "NULL!");
             
-            // 사업자등록증 사진 S3 업로드
+            // === 7-1. 사업자등록증 사진 S3 업로드 ===
+            log.info("📄 사업자등록증 사진 S3 업로드 처리");
             if (storeBusinessLicensePhoto != null && !storeBusinessLicensePhoto.isEmpty()) {
                 try {
-                    log.info("📄 사업자등록증 사진 S3 업로드 시작: {}, 크기: {} bytes", 
-                            storeBusinessLicensePhoto.getOriginalFilename(), storeBusinessLicensePhoto.getSize());
-                    String businessLicenseUrl = s3FileUploadService.uploadStoreFile(storeBusinessLicensePhoto, "business_license", storeId);
-                    if (businessLicenseUrl != null) {
-                        log.info("✅ 사업자등록증 사진 S3 업로드 성공: {} (DB 파일명: {})", 
-                                businessLicenseUrl, savedStore.getStoreBusinessLicensePhoto());
+                    log.info("📄 사업자등록증 사진 S3 업로드 시작: {}, 크기: {} bytes, 타입: {}", 
+                            storeBusinessLicensePhoto.getOriginalFilename(), 
+                            storeBusinessLicensePhoto.getSize(),
+                            storeBusinessLicensePhoto.getContentType());
+                    
+                    log.info("📄 S3 업로드 시작: business_license 타입");
+                    
+                    String s3Url = s3FileUploadService.uploadStoreFile(storeBusinessLicensePhoto, "business_license", storeId);
+                    
+                    if (s3Url != null && !s3Url.isEmpty()) {
+                        log.info("✅ 사업자등록증 사진 S3 업로드 성공!");
+                        log.info("   - S3 URL: {}", s3Url);
+                        log.info("   - DB 파일명: {}", savedStore.getStoreBusinessLicensePhoto());
+                        log.info("   - 업로드 파일명: {}", storeBusinessLicensePhoto.getOriginalFilename());
                     } else {
-                        log.error("❌ 사업자등록증 사진 S3 업로드 실패 - URL이 null");
+                        log.error("❌ 사업자등록증 사진 S3 업로드 실패 - S3 URL이 null 또는 빈값");
+                        log.error("   - 원본 파일명: {}", storeBusinessLicensePhoto.getOriginalFilename());
+                        log.error("   - 파일 크기: {} bytes", storeBusinessLicensePhoto.getSize());
+                        log.error("   - Content-Type: {}", storeBusinessLicensePhoto.getContentType());
                     }
                 } catch (Exception e) {
-                    log.error("❌ 사업자등록증 사진 S3 업로드 중 오류 발생", e);
+                    log.error("❌ 사업자등록증 사진 S3 업로드 중 오류 발생");
+                    log.error("   - 파일명: {}", storeBusinessLicensePhoto.getOriginalFilename());
+                    log.error("   - 에러 타입: {}", e.getClass().getSimpleName());
+                    log.error("   - 에러 메시지: {}", e.getMessage());
+                    log.error("   - 에러 상세: ", e);
                 }
             } else {
                 log.info("📄 사업자등록증 사진 파일이 없음 - S3 업로드 생략");
+                log.info("   - storeBusinessLicensePhoto null 여부: {}", storeBusinessLicensePhoto == null);
+                if (storeBusinessLicensePhoto != null) {
+                    log.info("   - 파일 isEmpty: {}", storeBusinessLicensePhoto.isEmpty());
+                }
             }
             
-            // 간판 사진 S3 업로드  
+            // === 7-2. 간판 사진 S3 업로드 ===
+            log.info("🪧 간판 사진 S3 업로드 처리");
             if (storeSignPhoto != null && !storeSignPhoto.isEmpty()) {
                 try {
-                    log.info("🪧 간판 사진 S3 업로드 시작: {}, 크기: {} bytes", 
-                            storeSignPhoto.getOriginalFilename(), storeSignPhoto.getSize());
-                    String signPhotoUrl = s3FileUploadService.uploadStoreFile(storeSignPhoto, "sign_photo", storeId);
-                    if (signPhotoUrl != null) {
-                        log.info("✅ 간판 사진 S3 업로드 성공: {} (DB 파일명: {})", 
-                                signPhotoUrl, savedStore.getStoreSignPhoto());
+                    log.info("🪧 간판 사진 S3 업로드 시작: {}, 크기: {} bytes, 타입: {}", 
+                            storeSignPhoto.getOriginalFilename(), 
+                            storeSignPhoto.getSize(),
+                            storeSignPhoto.getContentType());
+                    
+                    log.info("🪧 S3 업로드 시작: sign_photo 타입");
+                    
+                    String s3Url = s3FileUploadService.uploadStoreFile(storeSignPhoto, "sign_photo", storeId);
+                    
+                    if (s3Url != null && !s3Url.isEmpty()) {
+                        log.info("✅ 간판 사진 S3 업로드 성공!");
+                        log.info("   - S3 URL: {}", s3Url);
+                        log.info("   - DB 파일명: {}", savedStore.getStoreSignPhoto());
+                        log.info("   - 업로드 파일명: {}", storeSignPhoto.getOriginalFilename());
                     } else {
-                        log.error("❌ 간판 사진 S3 업로드 실패 - URL이 null");
+                        log.error("❌ 간판 사진 S3 업로드 실패 - S3 URL이 null 또는 빈값");
+                        log.error("   - 원본 파일명: {}", storeSignPhoto.getOriginalFilename());
+                        log.error("   - 파일 크기: {} bytes", storeSignPhoto.getSize());
+                        log.error("   - Content-Type: {}", storeSignPhoto.getContentType());
                     }
                 } catch (Exception e) {
-                    log.error("❌ 간판 사진 S3 업로드 중 오류 발생", e);
+                    log.error("❌ 간판 사진 S3 업로드 중 오류 발생");
+                    log.error("   - 파일명: {}", storeSignPhoto.getOriginalFilename());
+                    log.error("   - 에러 타입: {}", e.getClass().getSimpleName());
+                    log.error("   - 에러 메시지: {}", e.getMessage());
+                    log.error("   - 에러 상세: ", e);
                 }
             } else {
                 log.info("🪧 간판 사진 파일이 없음 - S3 업로드 생략");
+                log.info("   - storeSignPhoto null 여부: {}", storeSignPhoto == null);
+                if (storeSignPhoto != null) {
+                    log.info("   - 파일 isEmpty: {}", storeSignPhoto.isEmpty());
+                }
             }
             
-            // 외관 사진 S3 업로드
+            // === 7-3. 외관 사진 S3 업로드 ===
+            log.info("🏪 외관 사진 S3 업로드 처리");
             if (storeFrontPhoto != null && !storeFrontPhoto.isEmpty()) {
                 try {
-                    log.info("🏪 외관 사진 S3 업로드 시작: {}, 크기: {} bytes", 
-                            storeFrontPhoto.getOriginalFilename(), storeFrontPhoto.getSize());
-                    String frontPhotoUrl = s3FileUploadService.uploadStoreFile(storeFrontPhoto, "front_photo", storeId);
-                    if (frontPhotoUrl != null) {
-                        log.info("✅ 외관 사진 S3 업로드 성공: {} (DB 파일명: {})", 
-                                frontPhotoUrl, savedStore.getStoreProntPhoto());
+                    log.info("🏪 외관 사진 S3 업로드 시작: {}, 크기: {} bytes, 타입: {}", 
+                            storeFrontPhoto.getOriginalFilename(), 
+                            storeFrontPhoto.getSize(),
+                            storeFrontPhoto.getContentType());
+                    
+                    log.info("🏪 S3 업로드 시작: front_photo 타입");
+                    
+                    String s3Url = s3FileUploadService.uploadStoreFile(storeFrontPhoto, "front_photo", storeId);
+                    
+                    if (s3Url != null && !s3Url.isEmpty()) {
+                        log.info("✅ 외관 사진 S3 업로드 성공!");
+                        log.info("   - S3 URL: {}", s3Url);
+                        log.info("   - DB 파일명: {}", savedStore.getStoreProntPhoto());
+                        log.info("   - 업로드 파일명: {}", storeFrontPhoto.getOriginalFilename());
                     } else {
-                        log.error("❌ 외관 사진 S3 업로드 실패 - URL이 null");
+                        log.error("❌ 외관 사진 S3 업로드 실패 - S3 URL이 null 또는 빈값");
+                        log.error("   - 원본 파일명: {}", storeFrontPhoto.getOriginalFilename());
+                        log.error("   - 파일 크기: {} bytes", storeFrontPhoto.getSize());
+                        log.error("   - Content-Type: {}", storeFrontPhoto.getContentType());
                     }
                 } catch (Exception e) {
-                    log.error("❌ 외관 사진 S3 업로드 중 오류 발생", e);
+                    log.error("❌ 외관 사진 S3 업로드 중 오류 발생");
+                    log.error("   - 파일명: {}", storeFrontPhoto.getOriginalFilename());
+                    log.error("   - 에러 타입: {}", e.getClass().getSimpleName());
+                    log.error("   - 에러 메시지: {}", e.getMessage());
+                    log.error("   - 에러 상세: ", e);
                 }
             } else {
                 log.info("🏪 외관 사진 파일이 없음 - S3 업로드 생략");
+                log.info("   - storeFrontPhoto null 여부: {}", storeFrontPhoto == null);
+                if (storeFrontPhoto != null) {
+                    log.info("   - 파일 isEmpty: {}", storeFrontPhoto.isEmpty());
+                }
             }
+            
+            log.info("=== 📁 S3 파일 업로드 처리 완료 ===");
             
             response.put("success", true);
             response.put("message", "가맹점 신청이 성공적으로 등록되었습니다");
@@ -246,24 +385,38 @@ public class StoreRegisterService {
         store.setStoreBossName(storeBossName);
         store.setStoreTypeTaxation(storeTypeTaxation);
         
-        // 사업자등록증 파일명 저장
+        // === 📸 사업자등록증 파일명 저장 ===
+        log.info("📸 사업자등록증 파일 처리 시작");
+        log.info("   - MultipartFile 존재: {}", storeBusinessLicensePhoto != null);
+        if (storeBusinessLicensePhoto != null) {
+            log.info("   - MultipartFile 비어있는가: {}", storeBusinessLicensePhoto.isEmpty());
+            log.info("   - MultipartFile 원본파일명: '{}'", storeBusinessLicensePhoto.getOriginalFilename());
+            log.info("   - MultipartFile 크기: {} bytes", storeBusinessLicensePhoto.getSize());
+        }
+        
         if (storeBusinessLicensePhoto != null && !storeBusinessLicensePhoto.isEmpty()) {
             String originalFilename = storeBusinessLicensePhoto.getOriginalFilename();
             store.setStoreBusinessLicensePhoto(originalFilename);
-            log.info("사업자등록증 파일명 설정: {}", originalFilename);
+            log.info("✅ 사업자등록증 파일명 설정 (MultipartFile): '{}'", originalFilename);
         } else {
+            log.info("❌ MultipartFile이 null이거나 비어있음 - DTO에서 파일명 확인");
             // Object 타입 처리 (빈 객체 {} 처리 포함)
             Object businessLicensePhotoObj = dto.getBusinessInfo() != null ? dto.getBusinessInfo().getStoreBusinessLicensePhoto() : dto.getStoreBusinessLicensePhoto();
+            log.info("   - DTO에서 가져온 값: {}", businessLicensePhotoObj);
             String businessLicensePhotoStr = "";
             if (businessLicensePhotoObj != null) {
                 String objStr = businessLicensePhotoObj.toString();
+                log.info("   - 문자열로 변환: '{}'", objStr);
                 // 빈 객체 "{}" 나 "null"이 아닌 경우만 저장
                 if (!objStr.equals("{}") && !objStr.equals("null") && !objStr.trim().isEmpty()) {
                     businessLicensePhotoStr = objStr;
+                    log.info("   - 유효한 파일명으로 판단: '{}'", businessLicensePhotoStr);
+                } else {
+                    log.info("   - 무효한 값으로 판단 (빈 문자열 설정)");
                 }
             }
             store.setStoreBusinessLicensePhoto(businessLicensePhotoStr);
-            log.info("사업자등록증 파일명 설정 (DTO에서): {}", businessLicensePhotoStr);
+            log.info("✅ 사업자등록증 파일명 설정 (DTO): '{}'", businessLicensePhotoStr);
         }
         
         // 가맹점 등록 정보
@@ -274,10 +427,15 @@ public class StoreRegisterService {
         store.setStoreDetailAddress(storeDetailAddress);
         store.setStoreSite(storeSite);
         
-        // 1. 주소로 위도/경도 구하기 (지오코딩 실패시에도 계속 진행)
+        // === 📍 주소로 위도/경도 구하기 (지오코딩) ===
         log.info("=== 📍 지오코딩 처리 시작 ===");
-        log.info("입력 주소: '{}'", storeAddress);
-        log.info("입력 상세주소: '{}'", storeDetailAddress);
+        log.info("📍 현재 메소드: createStoreEntity()");
+        log.info("📍 geocodingService 인스턴스: {}", geocodingService != null ? "존재함" : "NULL!");
+        
+        // 주소 정보 다시 추출
+        log.info("📍 주소 정보 재추출:");
+        log.info("   - 기본주소 (storeAddress): '{}'", storeAddress);
+        log.info("   - 상세주소 (storeDetailAddress): '{}'", storeDetailAddress);
         
         if (storeAddress != null && !storeAddress.trim().isEmpty()) {
             String fullAddress = storeAddress;
@@ -285,44 +443,63 @@ public class StoreRegisterService {
                 fullAddress = storeAddress + " " + storeDetailAddress;
             }
             
-            log.info("🌐 카카오 지오코딩 API 요청 - 전체주소: '{}'", fullAddress);
+            log.info("🌐 카카오 지오코딩 API 요청 준비:");
+            log.info("   - 전체주소: '{}'", fullAddress);
+            log.info("   - 주소 길이: {} 글자", fullAddress.length());
+            log.info("   - 주소가 비어있는가: {}", fullAddress.trim().isEmpty());
             
             try {
+                log.info("🔄 geocodingService.getLatLngAsString() 호출 시작");
                 String[] latLng = geocodingService.getLatLngAsString(fullAddress);
+                log.info("🔄 geocodingService.getLatLngAsString() 호출 완료");
                 log.info("🌐 카카오 지오코딩 API 응답: {}", latLng != null ? java.util.Arrays.toString(latLng) : "null");
                 
                 if (latLng != null && latLng.length >= 2 && !latLng[0].isEmpty() && !latLng[1].isEmpty()) {
                     store.setStorePos1(latLng[0]); // 위도
                     store.setStorePos2(latLng[1]); // 경도
                     log.info("✅ 지오코딩 성공 - 주소: '{}' → 위도: {}, 경도: {}", fullAddress, latLng[0], latLng[1]);
-                    log.info("✅ Store 엔티티에 좌표 저장 완료: storePos1={}, storePos2={}", store.getStorePos1(), store.getStorePos2());
+                    log.info("✅ Store 엔티티에 좌표 저장 완료: storePos1='{}', storePos2='{}'", store.getStorePos1(), store.getStorePos2());
                 } else {
                     store.setStorePos1(""); // 빈 값 설정
                     store.setStorePos2(""); // 빈 값 설정
                     log.warn("⚠️ 지오코딩 실패 - 주소: '{}', 응답 데이터가 유효하지 않음", fullAddress);
+                    log.warn("⚠️ 응답 배열 길이: {}", latLng != null ? latLng.length : "null");
+                    if (latLng != null && latLng.length >= 2) {
+                        log.warn("⚠️ 위도 값: '{}', 경도 값: '{}'", latLng[0], latLng[1]);
+                    }
                     log.warn("⚠️ 좌표를 빈 값으로 설정: storePos1='', storePos2=''");
                 }
             } catch (Exception e) {
                 store.setStorePos1(""); // 빈 값 설정
                 store.setStorePos2(""); // 빈 값 설정
-                log.error("❌ 지오코딩 API 호출 중 오류 발생 - 주소: '{}'", fullAddress);
-                log.error("❌ 오류 내용: {}", e.getMessage());
+                log.error("❌ 지오코딩 API 호출 중 오류 발생");
+                log.error("❌ 요청 주소: '{}'", fullAddress);
+                log.error("❌ 오류 타입: {}", e.getClass().getSimpleName());
+                log.error("❌ 오류 메시지: {}", e.getMessage());
+                log.error("❌ 오류 상세: ", e);
                 log.error("❌ 좌표를 빈 값으로 설정: storePos1='', storePos2=''");
             }
         } else {
             store.setStorePos1(""); // 주소가 없으면 빈 값
             store.setStorePos2(""); // 주소가 없으면 빈 값
-            log.warn("⚠️ 주소 정보가 없음 - 좌표를 빈 값으로 설정");
+            log.warn("⚠️ 주소 정보가 없거나 비어있음:");
+            log.warn("   - storeAddress: '{}'", storeAddress);
+            log.warn("   - storeAddress가 null인가: {}", storeAddress == null);
+            log.warn("   - storeAddress가 비어있는가: {}", storeAddress != null && storeAddress.trim().isEmpty());
+            log.warn("⚠️ 좌표를 빈 값으로 설정");
         }
         
         log.info("=== 📍 지오코딩 처리 완료 ===");
+        log.info("📍 최종 설정된 좌표: storePos1='{}', storePos2='{}'", store.getStorePos1(), store.getStorePos2());
         
-        // 간판 사진 파일명 저장
+        // === 🪧 간판 사진 파일명 저장 ===
+        log.info("🪧 간판 사진 파일 처리 시작");
         if (storeSignPhoto != null && !storeSignPhoto.isEmpty()) {
             String originalFilename = storeSignPhoto.getOriginalFilename();
             store.setStoreSignPhoto(originalFilename);
-            log.info("간판 사진 파일명 설정: {}", originalFilename);
+            log.info("✅ 간판 사진 파일명 설정 (MultipartFile): '{}'", originalFilename);
         } else {
+            log.info("❌ 간판 사진 MultipartFile이 null이거나 비어있음 - DTO에서 파일명 확인");
             // Object 타입 처리 (빈 객체 {} 처리 포함)
             Object signPhotoObj = dto.getStoreInfo() != null ? dto.getStoreInfo().getStoreSignPhoto() : dto.getStoreSignPhoto();
             String signPhotoStr = "";
@@ -334,15 +511,17 @@ public class StoreRegisterService {
                 }
             }
             store.setStoreSignPhoto(signPhotoStr);
-            log.info("간판 사진 파일명 설정 (DTO에서): {}", signPhotoStr);
+            log.info("✅ 간판 사진 파일명 설정 (DTO): '{}'", signPhotoStr);
         }
         
-        // 외관 사진 파일명 저장
+        // === 🏪 외관 사진 파일명 저장 ===
+        log.info("🏪 외관 사진 파일 처리 시작");
         if (storeFrontPhoto != null && !storeFrontPhoto.isEmpty()) {
             String originalFilename = storeFrontPhoto.getOriginalFilename();
             store.setStoreProntPhoto(originalFilename); // storeFrontPhoto -> storeProntPhoto
-            log.info("외관 사진 파일명 설정: {}", originalFilename);
+            log.info("✅ 외관 사진 파일명 설정 (MultipartFile): '{}'", originalFilename);
         } else {
+            log.info("❌ 외관 사진 MultipartFile이 null이거나 비어있음 - DTO에서 파일명 확인");
             // Object 타입 처리 (빈 객체 {} 처리 포함)
             Object frontPhotoObj = dto.getStoreInfo() != null ? dto.getStoreInfo().getStoreFrontPhoto() : dto.getStoreFrontPhoto();
             String frontPhotoStr = "";
@@ -354,7 +533,7 @@ public class StoreRegisterService {
                 }
             }
             store.setStoreProntPhoto(frontPhotoStr);
-            log.info("외관 사진 파일명 설정 (DTO에서): {}", frontPhotoStr);
+            log.info("✅ 외관 사진 파일명 설정 (DTO): '{}'", frontPhotoStr);
         }
         
         // 매니저 정보 처리
@@ -596,7 +775,7 @@ public class StoreRegisterService {
             .userIndexEventTrigger(temporaryStoreMaster.getStoreUserIndex().getUserIndex()) // temporaryStoreMaster의 store_user_index
             .userIndexEventParty(temporaryStoreDetail.getUserIndex()) // temporaryStoreDetail의 user_index
             .userCmLogValue(logValue) // temporaryStoreValue
-            .userCmLogReason(null) // null
+            .userCmLogReason("가맹신청비 : 중개수수료 지급") 
             .userCmLogCreateTime(now) // 현재 시간
             .userCmLogTransactionCancel(null) // null (판매 취소용)
             .userCouponValue(0) // 0

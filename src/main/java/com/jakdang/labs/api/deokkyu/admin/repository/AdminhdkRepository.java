@@ -1,7 +1,6 @@
 package com.jakdang.labs.api.deokkyu.admin.repository;
 
 import com.jakdang.labs.api.deokkyu.admin.dto.AdminListResponseDto;
-import com.jakdang.labs.api.deokkyu.admin.dto.ChatAdminListResponseDto;
 import com.jakdang.labs.entity.Admin;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -55,22 +54,5 @@ public interface AdminhdkRepository extends JpaRepository<Admin, Integer> {
            "ORDER BY a.adminRegistrationDate DESC")
     List<AdminListResponseDto> findAllAdminList();
 
-    /**
-     * 채팅용 관리자 리스트 조회
-     * adminName: user_index -> user_tesseris -> users -> name
-     * adminUserIndex: admin.user_index
-     * adminTypeName: admin_type_index -> admin_type.admin_type_name
-     * adminRankName: admin.admin_rank_name
-     */
-    @Query("SELECT new com.jakdang.labs.api.deokkyu.admin.dto.ChatAdminListResponseDto(" +
-           "COALESCE(u.name, ''), " +
-           "ut.userIndex, " +
-           "COALESCE(at.adminTypeName, ''), " +
-           "COALESCE(a.adminRankName, '')) " +
-           "FROM Admin a " +
-           "LEFT JOIN a.userIndex ut " +
-           "LEFT JOIN ut.usersId u " +
-           "LEFT JOIN a.adminTypeIndex at " +
-           "ORDER BY a.adminRegistrationDate DESC")
-    List<ChatAdminListResponseDto> findAllChatAdminList();
+
 } 

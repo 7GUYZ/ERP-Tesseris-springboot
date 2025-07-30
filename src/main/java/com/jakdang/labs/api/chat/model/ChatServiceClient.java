@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.jakdang.labs.api.chat.dto.MessageRequestDTO;
 import com.jakdang.labs.api.chat.dto.RoomRequestDTO;
+import com.jakdang.labs.api.chat.dto.SearchResponseDTO;
 import com.jakdang.labs.api.common.ResponseDTO;
 import com.jakdang.labs.config.FeignConfig;
 
@@ -26,8 +27,8 @@ public interface ChatServiceClient {
     /**
      * search room
      */
-    @GetMapping("/{userid}")
-    public ResponseDTO<List<RoomRequestDTO>> SearchRoom(@PathVariable("userid") String userid);
+    @GetMapping("/{userid}") 
+    public ResponseDTO<List<SearchResponseDTO>> SearchRoom(@PathVariable("userid") String userid);
     /**
      * send message
      */

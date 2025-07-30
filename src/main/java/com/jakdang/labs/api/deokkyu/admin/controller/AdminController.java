@@ -8,10 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.jakdang.labs.api.deokkyu.admin.dto.AdminListRequestDto;
 import com.jakdang.labs.api.deokkyu.admin.dto.AdminListResponseDto;
-import com.jakdang.labs.api.deokkyu.admin.dto.ChatAdminListResponseDto;
 import com.jakdang.labs.api.deokkyu.admin.service.AdminService;
-import com.jakdang.labs.api.deokkyu.admin.service.AdminChatService;
-
 import java.time.LocalDate;
 import java.util.List;
 
@@ -22,7 +19,6 @@ import java.util.List;
 public class AdminController {
 
     private final AdminService adminService;
-    private final AdminChatService adminChatService;
 
     /**
      * 관리자 리스트 조회 API
@@ -78,28 +74,6 @@ public class AdminController {
             return ResponseEntity.ok(adminList);
         } catch (Exception e) {
             log.error("전체 관리자 리스트 조회 오류", e);
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    /**
-     * 채팅용 관리자 리스트 조회 API
-     * GET /api/admin/chat/friends
-     */
-    @GetMapping("/chat/friends")
-    public ResponseEntity<List<ChatAdminListResponseDto>> getChatAllAdminList() {
-        log.info("채팅용 관리자 리스트 조회 API 호출");
-        
-        try {
-            // AdminChatService를 통해 채팅용 관리자 리스트 조회
-            List<ChatAdminListResponseDto> adminList = adminChatService.getChatAllAdminList();
-            
-            log.info("채팅용 관리자 리스트 조회 완료 - 결과 개수: {}", adminList.size());
-            
-            return ResponseEntity.ok(adminList);
-            
-        } catch (Exception e) {
-            log.error("채팅용 관리자 리스트 조회 API 오류", e);
             return ResponseEntity.internalServerError().build();
         }
     }

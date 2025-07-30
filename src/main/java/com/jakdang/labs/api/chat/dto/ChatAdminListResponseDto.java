@@ -1,4 +1,4 @@
-package com.jakdang.labs.api.deokkyu.admin.dto;
+package com.jakdang.labs.api.chat.dto;
 
 import lombok.*;
 
