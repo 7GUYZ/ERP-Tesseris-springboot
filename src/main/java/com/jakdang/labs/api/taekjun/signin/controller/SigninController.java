@@ -239,19 +239,36 @@ public class SigninController {
     @PostMapping("/step3-final-signup")
     public ResponseEntity<Map<String, Object>> finalSignup(@RequestBody Step3UserInfoDTO userInfoDTO) {
         try {
+            log.info("회원가입 시작: email={}, referralId={}", userInfoDTO.getEmail(), userInfoDTO.getReferralId());
+            
             String userId = stepwiseSignupService.finalSignup(userInfoDTO);
+            log.info("회원가입 완료: userId={}", userId);
 
             // 회원가입 성공 후 추천인 관계 생성 (트랜잭션 분리)
             if (userInfoDTO.getReferralId() != null && !userInfoDTO.getReferralId().trim().isEmpty()) {
+                log.info("추천인 로직 시작: referralId={}", userInfoDTO.getReferralId());
+                
                 // 추천인 관계 생성
                 var referralRequest = new ReferralRequestDTO();
                 referralRequest.setReferralCode(userInfoDTO.getReferralId());
+                
                 // userId(UUID)로 UserTesseris 조회
                 var userTesserisOpt = userTesserisRepository.findByUsersId_Id(userId);
                 if (userTesserisOpt.isPresent()) {
                     referralRequest.setUserIndex(userTesserisOpt.get().getUserIndex());
-                    referralService.createReferralRelation(referralRequest);
+                    log.info("UserTesseris 조회 성공: userIndex={}", userTesserisOpt.get().getUserIndex());
+                    
+                    try {
+                        var result = referralService.createReferralRelation(referralRequest);
+                        log.info("추천인 관계 생성 결과: success={}, message={}", result.isSuccess(), result.getMessage());
+                    } catch (Exception e) {
+                        log.error("추천인 관계 생성 중 오류: ", e);
+                    }
+                } else {
+                    log.warn("UserTesseris를 찾을 수 없음: userId={}", userId);
                 }
+            } else {
+                log.info("추천인 ID가 없어서 추천인 로직 건너뜀");
             }
 
             return ResponseEntity.ok(Map.of(

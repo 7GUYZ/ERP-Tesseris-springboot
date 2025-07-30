@@ -99,6 +99,9 @@ public class BusinessmanListController {
         return businessmanListService.deactivateBusinessman(userIndex);
     }
     
+    // 디버깅용 엔드포인트
+
+    
     // BusinessGradeDTO 내부 클래스
     public static class BusinessGradeDTO {
         private Integer businessGradeIndex;

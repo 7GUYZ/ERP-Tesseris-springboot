@@ -12,4 +12,5 @@ public class MessageReadsRequestDTO {
     private String read_at;
     private String user_id;
     private String message_index;
+
 }

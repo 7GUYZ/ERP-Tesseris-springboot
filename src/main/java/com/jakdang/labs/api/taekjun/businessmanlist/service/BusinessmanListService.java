@@ -63,7 +63,23 @@ public class BusinessmanListService {
         System.out.println("=== BusinessmanListService.searchBusinessmanList 시작 ===");
         System.out.println("검색 조건: " + searchDTO);
         
+        // 디버깅을 위한 추가 로그
+        if (searchDTO != null && searchDTO.getUserName() != null) {
+            System.out.println("이름 검색 조건: '" + searchDTO.getUserName() + "'");
+        }
+        
         try {
+            // 디버깅을 위한 추가 로그
+            System.out.println("전달되는 검색 조건들:");
+            System.out.println("- email: " + (searchDTO != null ? searchDTO.getEmail() : "null"));
+            System.out.println("- userName: " + (searchDTO != null ? searchDTO.getUserName() : "null"));
+            System.out.println("- userPhone: " + (searchDTO != null ? searchDTO.getUserPhone() : "null"));
+            System.out.println("- businessGradeName: " + (searchDTO != null ? searchDTO.getBusinessGradeName() : "null"));
+            System.out.println("- bossEmail: " + (searchDTO != null ? searchDTO.getBossEmail() : "null"));
+            System.out.println("- businessAreaName: " + (searchDTO != null ? searchDTO.getBusinessAreaName() : "null"));
+            System.out.println("- businessAreaLevel: " + (searchDTO != null ? searchDTO.getBusinessAreaLevel() : "null"));
+            System.out.println("- businessManDistributionFlag: " + (searchDTO != null ? searchDTO.getBusinessManDistributionFlag() : "null"));
+            
             List<BusinessMan> list = businessmanListRepository.searchBusinessManList(
                     searchDTO != null ? searchDTO.getEmail() : null,
                     searchDTO != null ? searchDTO.getUserName() : null,
@@ -164,7 +180,7 @@ public class BusinessmanListService {
         BusinessmanListResponseDTO dto = new BusinessmanListResponseDTO();
         dto.setUserIndex(user.getUserIndex());
         dto.setEmail(user.getUsersId() != null ? user.getUsersId().getEmail() : null);
-        dto.setUserName(user.getUserBankHolder());
+        dto.setUserName(user.getUsersId() != null ? user.getUsersId().getName() : null);
         dto.setUserPhone(user.getUsersId() != null ? user.getUsersId().getPhone() : null);
         
         // 생년월일, 성별 정보 추가
@@ -332,16 +348,20 @@ public class BusinessmanListService {
 
     @Transactional
     public ResponseEntity<?> createBusinessman(BusinessmanCreateRequestDTO dto) {
-        // 1. 유효성 검사
-        if (dto.getEmail() == null || dto.getEmail().isEmpty()) {
-            return ResponseEntity.badRequest().body("이메일은 필수입니다.");
-        }
-        if (dto.getUserPw() == null || dto.getUserPw().isEmpty()) {
-            return ResponseEntity.badRequest().body("비밀번호는 필수입니다.");
-        }
-        if (dto.getUserName() == null || dto.getUserName().isEmpty()) {
-            return ResponseEntity.badRequest().body("이름은 필수입니다.");
-        }
+        System.out.println("=== BusinessmanListService.createBusinessman 시작 ===");
+        System.out.println("입력 데이터: " + dto);
+        
+        try {
+            // 1. 유효성 검사
+            if (dto.getEmail() == null || dto.getEmail().isEmpty()) {
+                return ResponseEntity.badRequest().body("이메일은 필수입니다.");
+            }
+            if (dto.getUserPw() == null || dto.getUserPw().isEmpty()) {
+                return ResponseEntity.badRequest().body("비밀번호는 필수입니다.");
+            }
+            if (dto.getUserName() == null || dto.getUserName().isEmpty()) {
+                return ResponseEntity.badRequest().body("이름은 필수입니다.");
+            }
 
         // 2. 연관 엔티티 조회
         UserBank userBank = null;
@@ -382,7 +402,7 @@ public class BusinessmanListService {
         // 4. UserTesseris 생성/수정
         UserTesseris userTesseris = userTesserisRepository.findByUsersId(savedUserEntity).orElse(new UserTesseris());
         userTesseris.setUsersId(savedUserEntity);
-        userTesseris.setUserBirthday(dto.getUserBirthday() != null ? LocalDate.parse(dto.getUserBirthday()) : null);
+        userTesseris.setUserBirthday(dto.getUserBirthday() != null && !dto.getUserBirthday().trim().isEmpty() ? LocalDate.parse(dto.getUserBirthday()) : null);
         userTesseris.setUserGender(userGender);
         userTesseris.setUserRoleIndex(2); // 사업자
         userTesseris.setUserBank(userBank);
@@ -431,11 +451,18 @@ public class BusinessmanListService {
         businessMan.setBusinessGrade(businessGrade);
         businessMan.setBusinessArea(businessArea);
         businessMan.setBusinessManDistributionFlag("정상".equals(dto.getBusinessManDistributionFlag()));
-        businessMan.setBusinessManRegistrationDate(dto.getBusinessManRegistrationDate() != null ? LocalDate.parse(dto.getBusinessManRegistrationDate()) : null);
+        businessMan.setBusinessManRegistrationDate(dto.getBusinessManRegistrationDate() != null && !dto.getBusinessManRegistrationDate().trim().isEmpty() ? LocalDate.parse(dto.getBusinessManRegistrationDate()) : null);
         businessMan.setBusinessManCreateDate(LocalDateTime.now());
         businessmanListRepository.save(businessMan);
 
+        System.out.println("=== BusinessmanListService.createBusinessman 완료 ===");
         return ResponseEntity.ok().body("사업자 회원 등록 성공");
+        } catch (Exception e) {
+            System.err.println("=== BusinessmanListService.createBusinessman 에러 ===");
+            System.err.println("에러 메시지: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("사업자 등록 중 오류가 발생했습니다: " + e.getMessage());
+        }
     }
 
     @Transactional
@@ -672,4 +699,6 @@ public class BusinessmanListService {
                 ))
                 .collect(Collectors.toList());
     }
+    
+
 } 

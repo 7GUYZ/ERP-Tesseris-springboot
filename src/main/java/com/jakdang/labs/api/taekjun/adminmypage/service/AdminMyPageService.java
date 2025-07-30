@@ -251,7 +251,7 @@ public class AdminMyPageService {
     @Transactional
     public boolean changePassword(String userIndex, PasswordChangeRequestDto passwordChangeRequest) {
         log.info("비밀번호 변경 요청 - 사용자번호: {}", userIndex);
-        
+
         try {
             Integer userIndexInt = Integer.parseInt(userIndex);
             
