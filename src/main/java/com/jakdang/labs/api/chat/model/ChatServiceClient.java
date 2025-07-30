@@ -71,7 +71,6 @@ public interface ChatServiceClient {
     /**
      * 방 퇴장시 나간 사람 읽음처리 구분을 위한 나간 시간체크
      */
-    @GetMapping("/{room}/leave/{userid}")
-    
-    public String Leave(@PathVariable("room") String room, @PathVariable("userid") String userid);
+    @PutMapping("/{room}/leave/{userid}")
+    public ResponseDTO<?> Leave(@PathVariable("room") String room, @PathVariable("userid") String userid);
 }

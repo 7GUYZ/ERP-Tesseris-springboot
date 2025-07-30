@@ -182,11 +182,12 @@ public class ChatController {
      * 방 퇴장시 나간 사람 읽음처리 구분을 위한 나간 시간체크
      * 
      */
-    @GetMapping("/{room}/leave/{userid}")
+    @PutMapping("/{room}/leave/{userid}")
     public ResponseEntity<?> Leave(@PathVariable("room") String room, @PathVariable("userid") String userid) {
         try {
             log.info("Leave: {}", room);
             log.info("Leave: {}", userid);
+            log.info("Leave: {}", chatServiceClient.Leave(room, userid));
             return ResponseEntity.ok(chatServiceClient.Leave(room, userid));
         } catch (Exception e) {
             log.error("Error: {}", e.getMessage());
