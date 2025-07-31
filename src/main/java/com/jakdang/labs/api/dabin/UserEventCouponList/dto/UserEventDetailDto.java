@@ -38,5 +38,6 @@ public class UserEventDetailDto {
         private LocalDateTime couponIssuanceTime;
         private Integer couponLimit;
         private LocalDateTime couponLimitTime;
+        private String storeName;
     }
 } 

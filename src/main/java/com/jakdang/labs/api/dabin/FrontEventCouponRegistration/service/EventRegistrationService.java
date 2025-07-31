@@ -57,6 +57,7 @@ public class EventRegistrationService {
                         .couponIssuanceTime((LocalDateTime) row[4])
                         .couponLimit((Integer) row[5])
                         .couponLimitTime((LocalDateTime) row[6])
+                        .storeName((String) row[7])
                         .build();
                     
                     // couponLimitTime 값 로깅
@@ -97,7 +98,7 @@ public class EventRegistrationService {
             
             EventMaster eventMaster = new EventMaster();
             eventMaster.setEventMasterName(request.getEventName().trim());
-            eventMaster.setEventMasterCondition(request.getEventCondition());
+            eventMaster.setEventMasterCondition(request.getEventCondition() != null ? request.getEventCondition() : "이벤트 조건");
             eventMaster.setEventMasterLimit(request.getEventDownLimit());
             eventMaster.setEventMasterCount(request.getCouponIssuanceIndexList().size());
             eventMaster.setEventMasterUserIndex(userIndex.intValue());
@@ -123,7 +124,7 @@ public class EventRegistrationService {
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
             // 데이터베이스 제약 조건 위반 (중복 키 등)
             log.error("이벤트 등록 실패 (제약 조건 위반): {}", e.getMessage(), e);
-            if (e.getMessage().contains("Duplicate entry") || e.getMessage().contains("evnet_master_name")) {
+            if (e.getMessage().contains("Duplicate entry") || e.getMessage().contains("evnet_master_name") || e.getMessage().contains("event_master_name")) {
                 return (ResponseDTO<String>) ResponseDTO.createErrorResponse(400, "이미 존재하는 이벤트 이름입니다. 다른 이름을 사용해주세요.");
             }
             return (ResponseDTO<String>) ResponseDTO.createErrorResponse(400, "이벤트 등록에 실패했습니다. 입력 정보를 확인해주세요.");
