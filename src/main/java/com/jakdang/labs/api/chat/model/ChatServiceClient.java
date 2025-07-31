@@ -30,14 +30,9 @@ public interface ChatServiceClient {
     /**
      * search room
      */
-<<<<<<< HEAD
-    @GetMapping("/{userid}") 
-    public ResponseDTO<List<SearchResponseDTO>> SearchRoom(@PathVariable("userid") String userid);
-=======
     @GetMapping("/{userid}")
     public ResponseDTO<List<RoomRequestDTO>> SearchRoom(@PathVariable("userid") String userid);
 
->>>>>>> dev
     /**
      * send message
      */

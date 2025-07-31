@@ -4,12 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Isolation;
 import lombok.RequiredArgsConstructor;
-<<<<<<< HEAD
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-=======
 import lombok.extern.slf4j.Slf4j;
->>>>>>> dev
 
 import com.jakdang.labs.api.deokkyu.modal_admin.dto.StoreDetailDto;
 import com.jakdang.labs.api.deokkyu.modal_admin.dto.StoreTransactionHistoryDto;
@@ -52,13 +47,7 @@ public class ModalService {
     private final StorehdkRepo storeRepository;
     private final TemporaryStoreDetailhdkRepo temporaryStoreDetailRepository;
     private final TemporaryStoreMasterhdkRepo temporaryStoreMasterRepository;
-<<<<<<< HEAD
-    
-    @PersistenceContext
-    private EntityManager entityManager;
-=======
     private final AlarmSvc alarmSvc;
->>>>>>> dev
 
 
     /**
@@ -561,28 +550,6 @@ public class ModalService {
                 store.setStoreSignPhoto(data.getStoreSignPhoto());
             }
             
-<<<<<<< HEAD
-            System.out.println("💾 DB 저장 시도 중...");
-            System.out.println("🔍 저장 전 최종 store_request_status_index: " + store.getStoreRequestStatusIndex());
-            System.out.println("🔍 Store ID: " + store.getStoreIndex());
-            
-            Store savedStore = storeRepository.save(store);
-            
-            // ✅ JPA 캐시 문제 해결: 변경사항을 DB에 즉시 반영하고 캐시 클리어
-            entityManager.flush();
-            System.out.println("🔄 EntityManager.flush() 완료");
-            
-            entityManager.clear();
-            System.out.println("🧹 EntityManager.clear() 완료");
-            
-            // ✅ DB에서 다시 조회해서 실제 저장된 값 확인
-            Store verifyStore = storeRepository.findById(savedStore.getStoreIndex()).orElse(null);
-            
-            System.out.println("✅ DB 저장 완료!");
-            System.out.println("🔍 저장 후 store_request_status_index: " + savedStore.getStoreRequestStatusIndex());
-            System.out.println("🔍 DB 재조회 store_request_status_index: " + (verifyStore != null ? verifyStore.getStoreRequestStatusIndex() : "null"));
-            
-=======
             storeRepository.save(store);
 
             // 가맹점 신청 처리 알림 서비스 (data.getStoreRequestStatusIndex = 2(승인) OR 3(반려))
@@ -593,7 +560,6 @@ public class ModalService {
                 // 알림 전송 실패해도 DB 저장은 성공으로 처리
             }
 
->>>>>>> dev
             return true;
             
         } catch (Exception e) {

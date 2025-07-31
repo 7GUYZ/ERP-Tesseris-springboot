@@ -61,11 +61,9 @@ public class StoreRegisterService {
     private final UserCmhdkRepo userCmRepository;
     private final GeocodingService geocodingService;
     private final S3FileUploadService s3FileUploadService;
-<<<<<<< HEAD
     private final StoreImageJdbRepo storeImageRepository;
-=======
     private final AlarmSvc alarmSvc;
->>>>>>> dev
+
     
     /**
      * 가맹점 신청 등록

@@ -51,15 +51,10 @@ public interface AdminhdkRepository extends JpaRepository<Admin, Integer> {
            "JOIN a.adminTypeIndex at " +
            "ORDER BY a.adminRegistrationDate DESC")
     List<AdminListResponseDto> findAllAdminList();
-<<<<<<< HEAD
-
-
-=======
     
     /**
      * 디버깅용: Admin 테이블만 조회
      */
     @Query("SELECT a FROM Admin a")
     List<Admin> findAllAdmins();
->>>>>>> dev
 } 

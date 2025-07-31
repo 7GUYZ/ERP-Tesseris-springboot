@@ -79,10 +79,6 @@ public class AdminController {
         }
     }
 
-<<<<<<< HEAD
-
-
-=======
     /**
      * 관리자 등록 API
      * POST /api/admin/create
@@ -123,5 +119,4 @@ public class AdminController {
             return ResponseEntity.internalServerError().body("관리자 등록 중 오류가 발생했습니다: " + e.getMessage());
         }
     }
->>>>>>> dev
 } 
