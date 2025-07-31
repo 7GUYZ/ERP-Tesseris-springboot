@@ -1,5 +1,7 @@
 package com.jakdang.labs.api.chat.dto;
 
+import java.util.List;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -7,10 +9,7 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class MessageReadsRequestDTO {
-    private String messagereads_index;
-    private String read_at;
-    private String user_id;
-    private String message_index;
-
+public class InvitationRequestDTO {
+    private List<String> userid;
+    private String inviter;
 }

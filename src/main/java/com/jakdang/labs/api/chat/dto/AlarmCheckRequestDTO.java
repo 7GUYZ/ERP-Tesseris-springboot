@@ -7,10 +7,8 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class MessageReadsRequestDTO {
-    private String messagereads_index;
-    private String read_at;
+public class AlarmCheckRequestDTO {
     private String user_id;
-    private String message_index;
-
+    private String room_index;
+    private String alarm_index;
 }

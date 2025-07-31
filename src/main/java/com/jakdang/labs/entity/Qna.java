@@ -28,8 +28,9 @@ public class Qna {
     @Column(name = "question_desc", columnDefinition = "TEXT")
     private String questionDesc;
 
-    @Column(name = "answer_user_index")
-    private Integer answerUserIndex;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "answer_user_index")
+    private UserTesseris answerUser;
 
     @Column(name = "answer_title", length = 150)
     private String answerTitle;
@@ -42,4 +43,4 @@ public class Qna {
 
     @Column(name = "answer_create_time")
     private LocalDateTime answerCreateTime;
-} 
+}

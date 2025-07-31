@@ -20,8 +20,8 @@ public class AjgMemberAssetDetailsController {
     
     @GetMapping
     public ResponseEntity<Page<MemberAssetDetailsResponseDto>> getMemberAssetDetails(
-            @RequestParam(defaultValue = "0") Integer page,
-            @RequestParam(defaultValue = "50000") Integer size) {
+            @RequestParam(name = "page", defaultValue = "0") Integer page,
+            @RequestParam(name = "size", defaultValue = "50000") Integer size) {
         
         // 최대 크기 제한 (메모리 보호)
         int maxSize = 100000;
