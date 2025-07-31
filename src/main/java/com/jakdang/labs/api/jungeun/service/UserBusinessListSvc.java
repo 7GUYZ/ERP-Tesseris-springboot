@@ -41,12 +41,13 @@ public class UserBusinessListSvc {
 
         List<UserBusinessFilteredListDTO> dtoList = resultList.stream().map(arr -> 
         UserBusinessFilteredListDTO.builder()
-                .userEmail((String) arr[0])
-                .userName((String) arr[1])
-                .gradeName((String) arr[2])
-                .bossEmail((String) arr[3])
-                .totalCm(arr[4] != null ? ((Number) arr[4]).longValue() : 0L)
-                .storeCount(arr[5] != null ? ((Number) arr[5]).longValue() : 0L)
+                .userIndex((Integer) arr[0])
+                .userEmail((String) arr[1])
+                .userName((String) arr[2])
+                .gradeName((String) arr[3])
+                .bossEmail((String) arr[4])
+                .totalCm(arr[5] != null ? ((Number) arr[5]).longValue() : 0L)
+                .storeCount(arr[6] != null ? ((Number) arr[6]).longValue() : 0L)
                 .build()
         ).toList();
 

@@ -112,6 +112,11 @@ public class AdminPermissionsettings {
     public List<ProgramDTO> getProgram(@RequestParam("menuIndex") Integer menuIndex ) {
         return AdminPermissinonsettingsservice.getProgram(menuIndex);
     }
+    
+    @GetMapping("/getallprograms")
+    public List<ProgramDTO> getAllPrograms() {
+        return AdminPermissinonsettingsservice.getAllPrograms();
+    }
 
     @GetMapping("/getadmintype")
     public List<adminType> getadmintype() {

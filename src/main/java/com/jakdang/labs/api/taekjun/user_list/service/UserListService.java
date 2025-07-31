@@ -152,6 +152,9 @@ public class UserListService {
     }
     
     public byte[] generateCsvFile(UserListSearchDTO searchDTO) throws IOException {
+        System.out.println("=== CSV 파일 생성 시작 ===");
+        System.out.println("검색 조건: " + searchDTO);
+        
         List<UserListResponseDTO> userList;
         
         if (searchDTO != null && (searchDTO.getId() != null || searchDTO.getName() != null || 
@@ -166,6 +169,8 @@ public class UserListService {
         } else {
             userList = getUserList();
         }
+        
+        System.out.println("사용자 목록 크기: " + userList.size());
         
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
              OutputStreamWriter writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {

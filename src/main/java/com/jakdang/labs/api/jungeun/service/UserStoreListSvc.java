@@ -35,21 +35,35 @@ public class UserStoreListSvc {
     }
 
     public ResponseDTO<List<UserStoreListDTO>> getFilteredStoreList(Integer user_index, Integer store_category_index){
+        log.info("🔍 가맹점 조회 시작 - user_index: {}, store_category_index: {}", user_index, store_category_index);
+        
         List<Object[]> resultList = storeRepo.findFilteredStoreListWithUserIndex(user_index, store_category_index);
+        
+        log.info("📊 쿼리 결과 개수: {}", resultList.size());
+        if (resultList.isEmpty()) {
+            log.warn("⚠️ 해당 사업자의 가맹점이 없습니다. user_index: {}", user_index);
+        } else {
+            log.info("✅ 가맹점 조회 성공 - 개수: {}", resultList.size());
+        }
 
-        List<UserStoreListDTO> dtoList = resultList.stream().map(arr -> 
-        UserStoreListDTO.builder()
-            .storeIndex(arr[0] == null ? null : ((Number) arr[0]).intValue())
-            .storeName((String) arr[1])
-            .storePhone((String) arr[2])
-            .storeAddress((String) arr[3])
-            .storeCategoryName((String) arr[4])
-            .userCmUse(arr[5] == null ? null : ((Number) arr[5]).intValue())
-            .storeImage((String) arr[6])
-            .storeBusinessState(arr[7] == null ? null : ((Number) arr[7]).intValue())
-            .build()
-        ).toList();
+        List<UserStoreListDTO> dtoList = resultList.stream().map(arr -> {
+            String storeImage = (String) arr[6];
+            
+            UserStoreListDTO dto = UserStoreListDTO.builder()
+                .storeIndex(arr[0] == null ? null : ((Number) arr[0]).intValue())
+                .storeName((String) arr[1])
+                .storePhone((String) arr[2])
+                .storeAddress((String) arr[3])
+                .storeCategoryName((String) arr[4])
+                .userCmUse(arr[5] == null ? null : ((Number) arr[5]).intValue())
+                .storeImage(storeImage)
+                .storeBusinessState(arr[7] == null ? null : ((Number) arr[7]).intValue())
+                .build();
+            return dto;
+        }).toList();
 
+        log.info("✅ 최종 DTO 리스트 개수: {}", dtoList.size());
+        
         return ResponseDTO.createSuccessResponse("선택 항목에 따른 가맹점 리스트 불러오기 성공", dtoList);
     }
 

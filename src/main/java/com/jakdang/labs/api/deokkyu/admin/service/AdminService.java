@@ -18,6 +18,7 @@ import com.jakdang.labs.api.taekjun.Permissionsettings.repository.UserTesserisRe
 import com.jakdang.labs.api.taekjun.Permissionsettings.repository.UserRepository;
 import com.jakdang.labs.api.taekjun.Permissionsettings.repository.AdminTypeRepository;
 import com.jakdang.labs.api.taekjun.signin.repository.UserGenderJtjRepo;
+import com.jakdang.labs.api.alarm.service.AlarmSvc;
 import com.jakdang.labs.api.auth.dto.RoleType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -35,6 +36,7 @@ public class AdminService {
     private final AdminTypeRepository adminTypeRepository;
     private final UserGenderJtjRepo userGenderRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AlarmSvc alarmSvc;
 
     /**
      * 관리자 리스트 조회 (필터 조건 포함)
@@ -243,6 +245,15 @@ public class AdminService {
             log.info("Admin 저장 완료: {}", admin.getAdminIndex());
             
             log.info("관리자 등록 완료: {}", createDto.getAdminUserEmail());
+
+            // 신규 관리자 등록 알림 서비스
+            try {
+                alarmSvc.sendAdminRegisterAlarm();
+                log.info("신규 관리자 등록 알림 전송 완료");
+            } catch (Exception e) {
+                log.error("신규 관리자 등록 알림 전송 실패: {}", e.getMessage());
+                // 알림 전송 실패해도 관리자 DB 저장은 성공으로 처리
+            }
             return true;
             
         } catch (Exception e) {
