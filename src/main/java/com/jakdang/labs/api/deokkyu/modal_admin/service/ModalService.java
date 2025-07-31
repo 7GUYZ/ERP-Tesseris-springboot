@@ -2,6 +2,7 @@ package com.jakdang.labs.api.deokkyu.modal_admin.service;
 
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import com.jakdang.labs.api.deokkyu.modal_admin.dto.StoreDetailDto;
 import com.jakdang.labs.api.deokkyu.modal_admin.dto.StoreTransactionHistoryDto;
@@ -15,6 +16,7 @@ import com.jakdang.labs.api.deokkyu.businessman.repository.TemporaryStoreMasterh
 import com.jakdang.labs.api.deokkyu.store.repository.UserhdkRepo;
 import com.jakdang.labs.api.deokkyu.store.repository.UserTesserishdkRepo;
 import com.jakdang.labs.api.deokkyu.store.repository.StorehdkRepo;
+import com.jakdang.labs.api.alarm.service.AlarmSvc;
 import com.jakdang.labs.api.auth.entity.UserEntity;
 import com.jakdang.labs.entity.UserTesseris;
 import com.jakdang.labs.entity.UserCmLog;
@@ -32,6 +34,7 @@ import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
+@Slf4j // 로그 출력을 위해 추가
 public class ModalService {
     
     private final UserhdkRepo userRepository;
@@ -42,6 +45,7 @@ public class ModalService {
     private final StorehdkRepo storeRepository;
     private final TemporaryStoreDetailhdkRepo temporaryStoreDetailRepository;
     private final TemporaryStoreMasterhdkRepo temporaryStoreMasterRepository;
+    private final AlarmSvc alarmSvc;
 
 
     /**
@@ -446,7 +450,17 @@ public class ModalService {
             }
             
             storeRepository.save(store);
+
+            // 가맹점 신청 처리 알림 서비스 (data.getStoreRequestStatusIndex = 2(승인) OR 3(반려))
+            try {
+                alarmSvc.sendStoreRegisterAlarm(userTesseris.getUserIndex(), data.getStoreRequestStatusIndex());
+            } catch (Exception e) {
+                log.error("가맹점 신청 처리 알림 전송 실패: {}", e.getMessage());
+                // 알림 전송 실패해도 DB 저장은 성공으로 처리
+            }
+
             return true;
+            
         } catch (Exception e) {
             return false;
         }

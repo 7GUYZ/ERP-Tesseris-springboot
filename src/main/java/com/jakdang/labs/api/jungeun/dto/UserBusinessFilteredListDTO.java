@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class UserBusinessFilteredListDTO {
+    private Integer userIndex;
     private String userEmail; // 우리는 ID 가입이 아니라 이메일 가입임.
     private String userName;
     private String gradeName;

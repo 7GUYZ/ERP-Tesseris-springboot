@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/alarm-history")
+@RequestMapping("/api/alarms/alarm-history")
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "알림 내역 API", description = "알림 내역 조회 관련 API")

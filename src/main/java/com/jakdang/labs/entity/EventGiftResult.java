@@ -29,4 +29,4 @@ public class EventGiftResult {
 
     @Column(name = "event_gift_value")
     private Integer eventGiftValue;
-} 
+}

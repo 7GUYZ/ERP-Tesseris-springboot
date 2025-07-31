@@ -1,6 +1,7 @@
 package com.jakdang.labs.api.taekjun.signin.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -109,6 +110,29 @@ public class ReferralController {
             return ResponseEntity.ok(result);
         } else {
             return ResponseEntity.notFound().build();
+        }
+    }
+    
+    /**
+     * 추천인 보상 지급
+     */
+    @PostMapping("/reward")
+    public ResponseEntity<Map<String, Object>> giveReferralReward(@RequestBody Map<String, Object> request) {
+        try {
+            log.info("추천인 보상 지급 요청: {}", request);
+            
+            // 이미 ReferralService.createReferralRelation에서 자동으로 처리되므로
+            // 여기서는 성공 응답만 반환
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "추천인 보상이 이미 지급되었습니다."
+            ));
+        } catch (Exception e) {
+            log.error("추천인 보상 지급 오류: ", e);
+            return ResponseEntity.internalServerError().body(Map.of(
+                "success", false,
+                "message", "서버 오류가 발생했습니다."
+            ));
         }
     }
 } 

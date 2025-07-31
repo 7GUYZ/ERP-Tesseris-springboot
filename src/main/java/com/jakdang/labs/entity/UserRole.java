@@ -41,6 +41,5 @@ public class UserRole {
     @Column(name = "user_role_kor_nm", length = 255)
     private String userRoleKorNm;
 
-    @Column(name = "userRoleKorNm", length = 255)
-    private String userRoleKorNmDuplicate;
-} 
+    // 중복된 컬럼 제거
+}
