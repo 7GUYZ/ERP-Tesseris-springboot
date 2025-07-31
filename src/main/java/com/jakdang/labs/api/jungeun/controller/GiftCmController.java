@@ -24,7 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 public class GiftCmController {
     private final GiftCmSvc giftSvc;
 
-    @GetMapping("/currenCM")
+    @GetMapping("/currentCM")
     public ResponseEntity<ResponseDTO<CurrentCmDTO>> getCurrentCM(@RequestParam("user_index") Integer user_index){
         return ResponseEntity.ok().body(giftSvc.getCurrentCM(user_index));
     }

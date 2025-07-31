@@ -74,7 +74,12 @@ public class BusinessGradeService {
 
     // 알림 전송(정은)
     try {
-      alarmSvc.sendCommissionChangedAlarm();
+      String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
+      String userId = jwtUtil.getUserId(token); // 토큰에서 userId 추출
+      // userId로 UserTesseris 조회
+      Optional<UserTesseris> userTesserisOpt = userTesserisRepository.findByUsersId(userId);
+      UserTesseris userTesseris = userTesserisOpt.get();
+      alarmSvc.sendCommissionChangedAlarm(userTesseris.getUserIndex());
       log.info("중계수수료 변경 알림 전송 완료");
     } catch (Exception e) {
       log.error("중계수수료 변경 알림 전송 실패: {}", e.getMessage());
