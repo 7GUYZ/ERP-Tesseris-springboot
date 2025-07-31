@@ -13,6 +13,7 @@ import com.jakdang.labs.entity.Admin;
 import com.jakdang.labs.entity.UserTesseris;
 import com.jakdang.labs.api.auth.entity.UserEntity;
 import com.jakdang.labs.entity.adminType;
+import com.jakdang.labs.security.jwt.utils.JwtUtil;
 import com.jakdang.labs.entity.UserGender;
 import com.jakdang.labs.api.taekjun.Permissionsettings.repository.UserTesserisRepository;
 import com.jakdang.labs.api.taekjun.Permissionsettings.repository.UserRepository;
@@ -23,6 +24,7 @@ import com.jakdang.labs.api.auth.dto.RoleType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +39,7 @@ public class AdminService {
     private final UserGenderJtjRepo userGenderRepository;
     private final PasswordEncoder passwordEncoder;
     private final AlarmSvc alarmSvc;
+    private final JwtUtil jwtUtil;
 
     /**
      * 관리자 리스트 조회 (필터 조건 포함)
@@ -129,8 +132,33 @@ public class AdminService {
      * 관리자 등록
      */
     @Transactional
-    public boolean createAdmin(AdminCreateRequestDto createDto) {
+    public boolean createAdmin(AdminCreateRequestDto createDto, String authHeader) {
         try {
+            // 토큰에서 userId 추출하여 동작하는 관리자의 userIndex 구하기
+            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
+            String userId = jwtUtil.getUserId(token);
+            
+            // userId로 UserEntity 조회
+            Optional<UserEntity> currentUserEntityOpt = userRepository.findById(userId);
+            if (currentUserEntityOpt.isEmpty()) {
+                log.error("토큰에서 추출한 userId로 UserEntity를 찾을 수 없습니다: {}", userId);
+                return false;
+            }
+            UserEntity currentUserEntity = currentUserEntityOpt.get();
+            
+            // UserEntity로 UserTesseris 조회
+            Optional<UserTesseris> currentUserTesserisOpt = userTesserisRepository.findByUsersId(currentUserEntity);
+            if (currentUserTesserisOpt.isEmpty()) {
+                log.error("UserEntity에 해당하는 UserTesseris를 찾을 수 없습니다: {}", userId);
+                return false;
+            }
+            
+            // 실행하는 관리자의 userIndex 추출
+            UserTesseris currentUserTesseris = currentUserTesserisOpt.get();
+            Integer currentUserIndex = currentUserTesseris.getUserIndex();
+            
+            log.info("실행하는 관리자 userIndex: {}", currentUserIndex);
+
             log.info("관리자 등록 시작: {}", createDto.getAdminUserEmail());
             log.info("관리자 타입 인덱스: {}", createDto.getAdminTypeIndex());
             
@@ -248,7 +276,7 @@ public class AdminService {
 
             // 신규 관리자 등록 알림 서비스
             try {
-                alarmSvc.sendAdminRegisterAlarm();
+                alarmSvc.sendAdminRegisterAlarm(currentUserIndex);
                 log.info("신규 관리자 등록 알림 전송 완료");
             } catch (Exception e) {
                 log.error("신규 관리자 등록 알림 전송 실패: {}", e.getMessage());
