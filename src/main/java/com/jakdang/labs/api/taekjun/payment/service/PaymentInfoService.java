@@ -9,6 +9,7 @@ import com.jakdang.labs.api.taekjun.payment.repository.StoreCustomerRepository;
 import com.jakdang.labs.api.jungeun.repository.SettingLjeRepo;
 import com.jakdang.labs.api.taekjun.dashdord.repository.UserCmLogJtjRepo;
 import com.jakdang.labs.api.taekjun.customermanagement.repository.CouponRepository;
+import com.jakdang.labs.api.taekjun.signin.repository.UserCmRepository;
 import com.jakdang.labs.entity.Store;
 import com.jakdang.labs.entity.Coupon;
 import com.jakdang.labs.entity.UserCm;
@@ -38,6 +39,7 @@ public class PaymentInfoService {
     private final StoreCustomerRepository storeCustomerRepository;
     private final CouponRepository couponRepository;
     private final SettingLjeRepo settingLjeRepo;
+    private final UserCmRepository userCmRepository;
     
     /**
      * 결제 정보 조회
@@ -272,6 +274,50 @@ public class PaymentInfoService {
             
             totalAmount += couponTotalAmount;
             log.info("쿠폰 사용 총액: {}, 최종 결제 금액: {}", couponTotalAmount, totalAmount);
+            
+            // 쿠폰 사용 시 회사 계정(user_index 1번)에서 쿠폰 금액 차감
+            try {
+                Optional<UserCm> companyUserCm = paymentJtjRepo.findByUserCmIndex(1);
+                if (companyUserCm.isPresent()) {
+                    // 회사 계정에서 쿠폰 총 금액 차감
+                    Integer currentWithdrawal = companyUserCm.get().getUserCmWithdrawal() != null ? companyUserCm.get().getUserCmWithdrawal() : 0;
+                    companyUserCm.get().setUserCmWithdrawal(currentWithdrawal - couponTotalAmount);
+                    userCmRepository.save(companyUserCm.get());
+                    
+                    // 회사 계정 쿠폰 사용 로그 기록
+                    UserCmLog companyCmLog = new UserCmLog();
+                    companyCmLog.setUserCmLogValue(-couponTotalAmount); // 차감이므로 음수
+                    companyCmLog.setUserCmLogTransactionTypeIndex(16); // 거래 타입 (16: 쿠폰 사용)
+                    companyCmLog.setUserCmLogValueTypeIndex(2); // 화폐 단위 (2: CM)
+                    companyCmLog.setUserCmLogPaymentIndex(2); // 거래의 종류 (2: 출금)
+                    companyCmLog.setUserCmpLogPaymentIndex(null); // CMP 거래의 종류 (사용하지 않음)
+                    companyCmLog.setUserCmLogCreateTime(LocalDateTime.now()); // 거래 발생 시간
+                    companyCmLog.setUserCmLogReason("쿠폰 사용 - 고객: " + userIndex + ", 가맹점: " + request.getTargetUserIndex() + ", 쿠폰 총액: " + couponTotalAmount + " CM"); // 거래에 대한 메모
+                    companyCmLog.setUserCmLogTransactionCancel(null); // 취소 (아님)
+                    companyCmLog.setUserCouponValue(couponTotalAmount); // 쿠폰으로 사용된 금액
+                    
+                    // UserTesseris 객체 생성 - 거래 요청인 (회사)
+                    UserTesseris companyTriggerTesseris = new UserTesseris();
+                    companyTriggerTesseris.setUserIndex(1);
+                    companyCmLog.setUserIndexEventTrigger(companyTriggerTesseris);
+                    
+                    // UserTesseris 객체 생성 - 거래 상대방 (결제하는 사용자)
+                    UserTesseris userPartyTesseris = new UserTesseris();
+                    userPartyTesseris.setUserIndex(userIndex);
+                    companyCmLog.setUserIndexEventParty(userPartyTesseris);
+                    
+                    // 회사 CM 로그 저장
+                    userCmLogJtjRepo.save(companyCmLog);
+                    
+                    log.info("회사 계정에서 쿠폰 사용 차감 완료 - 차감액: {}, 새로운 withdrawal: {}", 
+                        couponTotalAmount, companyUserCm.get().getUserCmWithdrawal());
+                } else {
+                    log.warn("회사 계정(user_index 1번)의 UserCm 정보를 찾을 수 없습니다.");
+                }
+            } catch (Exception e) {
+                log.error("회사 계정에서 쿠폰 사용 차감 중 오류 발생", e);
+                throw new RuntimeException("쿠폰 사용 처리 중 오류가 발생했습니다.");
+            }
         }
         
         // 4. CM 잔액 확인 (실제 차감될 CM 금액으로 확인)
@@ -284,13 +330,13 @@ public class PaymentInfoService {
         Integer newWithdrawal = (userCm.get().getUserCmWithdrawal() != null ? userCm.get().getUserCmWithdrawal() : 0) - actualCmAmount;
         userCm.get().setUserCmWithdrawal(newWithdrawal);
         
-        // 6. 가맹점 CM 입금 (deposit 증가)
+        // 6. 가맹점 CM 입금 (deposit 증가) - 원래 결제 금액을 받음
         Optional<UserCm> storeCm = paymentJtjRepo.findByUserCmIndex(request.getTargetUserIndex());
         if (storeCm.isPresent()) {
-            Integer newStoreDeposit = (storeCm.get().getUserCmDeposit() != null ? storeCm.get().getUserCmDeposit() : 0) + actualCmAmount;
+            Integer newStoreDeposit = (storeCm.get().getUserCmDeposit() != null ? storeCm.get().getUserCmDeposit() : 0) + request.getAmount();
             storeCm.get().setUserCmDeposit(newStoreDeposit);
             log.info("가맹점 입금 완료 - 가맹점: {}, 입금액: {}, 새로운 deposit: {}", 
-                request.getTargetUserIndex(), actualCmAmount, newStoreDeposit);
+                request.getTargetUserIndex(), request.getAmount(), newStoreDeposit);
         } else {
             log.warn("가맹점 CM 정보를 찾을 수 없습니다. 가맹점: {}", request.getTargetUserIndex());
         }
@@ -321,15 +367,15 @@ public class PaymentInfoService {
         log.info("사용자 결제 로그 생성 - 사용자: {}, 차감액: {}, 거래타입: 구매", 
             userIndex, actualCmAmount);
         
-        // 8. 가맹점 입금 로그 기록 (CM 출금)
+        // 8. 가맹점 입금 로그 기록 (CM 입금) - 원래 결제 금액으로 기록
         UserCmLog storePaymentLog = new UserCmLog();
-        storePaymentLog.setUserCmLogValue(actualCmAmount); // 거래에 사용된 단위 (입금이므로 양수)
+        storePaymentLog.setUserCmLogValue(request.getAmount()); // 거래에 사용된 단위 (입금이므로 양수)
         storePaymentLog.setUserCmLogTransactionTypeIndex(8); // 거래 타입 (8: 판매)
         storePaymentLog.setUserCmLogValueTypeIndex(2); // 화폐 단위 (2: CM)
         storePaymentLog.setUserCmLogPaymentIndex(2); // 거래의 종류 (2: 출금)
         storePaymentLog.setUserCmpLogPaymentIndex(null); // CMP 거래의 종류 (사용하지 않음)
         storePaymentLog.setUserCmLogCreateTime(LocalDateTime.now()); // 거래 발생 시간
-        storePaymentLog.setUserCmLogReason("판매 - 고객: " + userIndex + ", 금액: " + actualCmAmount + " CM" + 
+        storePaymentLog.setUserCmLogReason("판매 - 고객: " + userIndex + ", 금액: " + request.getAmount() + " CM" + 
             (couponTotalAmount > 0 ? ", 쿠폰 할인: " + couponTotalAmount + " CM" : "")); // 거래에 대한 메모
         storePaymentLog.setUserCmLogTransactionCancel(null); // 판매 취소 (아님)
         storePaymentLog.setUserCouponValue(0); // 쿠폰으로 사용된 금액 (사용하지 않음)
@@ -345,7 +391,7 @@ public class PaymentInfoService {
         storePaymentLog.setUserIndexEventParty(userPartyTesseris);
         
         log.info("가맹점 입금 로그 생성 - 가맹점: {}, 입금액: {}, 거래타입: 판매", 
-            request.getTargetUserIndex(), actualCmAmount);
+            request.getTargetUserIndex(), request.getAmount());
         
         // 9. 데이터베이스에 저장 (UserCm 업데이트 및 UserCmLog 저장)
         // UserCm은 JPA의 변경 감지로 자동 저장됨 (트랜잭션 내에서)
