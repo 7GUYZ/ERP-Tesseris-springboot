@@ -6,20 +6,25 @@ import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jakdang.labs.api.chat.dto.ChatAdminListResponseDto;
+import com.jakdang.labs.api.chat.dto.ChatWebSocketMessageDto;
 import com.jakdang.labs.api.chat.dto.MessageRequestDTO;
 import com.jakdang.labs.api.chat.dto.RoomRequestDTO;
 import com.jakdang.labs.api.chat.dto.SearchResponseDTO;
 import com.jakdang.labs.api.chat.dto.UserListDTO;
+import com.jakdang.labs.api.deokkyu.admin.dto.AdminListResponseDto;
 import com.jakdang.labs.api.chat.model.ChatServiceClient;
 import com.jakdang.labs.api.chat.service.ChatService;
 import com.jakdang.labs.api.common.ResponseDTO;
@@ -39,15 +44,22 @@ public class ChatController {
     private final ChatService chatService;
     // 채팅 db
     private final ChatServiceClient chatServiceClient;
+    // WebSocket 메시지 전송용
+    private final SimpMessagingTemplate messagingTemplate;
 
     @GetMapping("/adminlist")
     public ResponseEntity<List<UserListDTO>> Adminlist() {
+        log.info("=== 간단한 관리자 리스트 조회 API 호출 ===");
+        
         try {
             List<UserListDTO> userList = chatService.Adminlist();
-            log.info("User list: {}", userList);
+            log.info("✅ 관리자 리스트 조회 완료 - 결과 개수: {}", userList.size());
             return ResponseEntity.ok(userList);
         } catch (Exception e) {
-            log.error("Error fetching user list: {}", e.getMessage());
+            log.error("❌ 관리자 리스트 조회 API 오류");
+            log.error("❌ 오류 타입: {}", e.getClass().getSimpleName());
+            log.error("❌ 오류 메시지: {}", e.getMessage());
+            log.error("❌ 오류 상세: ", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -70,14 +82,14 @@ public class ChatController {
      * GET /api/adminchat/list
      */
     @GetMapping("/list")
-    public ResponseEntity<List<ChatAdminListResponseDto>> getChatAllAdminList() {
+    public ResponseEntity<List<AdminListResponseDto>> getChatAllAdminList() {
         log.info("=== 채팅용 관리자 리스트 조회 API 호출 ===");
         
         try {
             log.info("🔍 ChatService.getChatAllAdminList() 호출 시작");
             
             // ChatService를 통해 채팅용 관리자 리스트 조회
-            List<ChatAdminListResponseDto> adminList = chatService.getChatAllAdminList();
+            List<AdminListResponseDto> adminList = chatService.getChatAllAdminList();
             
             log.info("✅ 채팅용 관리자 리스트 조회 완료 - 결과 개수: {}", adminList.size());
             
@@ -137,10 +149,45 @@ public class ChatController {
         }
     }
     /**
-     * send message - 프론트엔드에서 전송되는 메시지 처리
+     * send message (JSON) - 프론트엔드에서 JSON으로 전송되는 메시지 처리
      */
     @PostMapping("/message")
-    public ResponseEntity<String> SendMessage(@RequestPart("message") String messageRequestDTO, @RequestPart(value = "files", required = false) MultipartFile[] files) {
+    public ResponseEntity<String> SendMessageJson(@RequestBody MessageRequestDTO messageRequestDTO) {
+        log.info("=== 📤 JSON 메시지 전송 API 호출 ===");
+        log.info("🔍 수신된 MessageRequestDTO: {}", messageRequestDTO);
+        
+        try {
+            // 프론트에서 받지 않는 필드들을 적절히 처리
+            MessageRequestDTO processedRequest = processMessageRequestDTO(messageRequestDTO);
+            log.info("✅ MessageRequestDTO 처리 완료: {}", processedRequest);
+            
+            // 처리된 DTO를 JSON 문자열로 변환
+            ObjectMapper objectMapper = new ObjectMapper();
+            String processedMessageRequestJson = objectMapper.writeValueAsString(processedRequest);
+            log.info("🔄 최종 JSON 변환 완료: {}", processedMessageRequestJson);
+            
+            // 외부 서비스 호출 (파일 없이 전송)
+            log.info("🌐 외부 채팅 서비스 호출 시작");
+            String response = chatServiceClient.SendMessage(processedMessageRequestJson, null);
+            log.info("✅ 외부 채팅 서비스 응답: {}", response);
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("❌ JSON 메시지 전송 처리 중 오류 발생");
+            log.error("❌ 오류 타입: {}", e.getClass().getSimpleName());
+            log.error("❌ 오류 메시지: {}", e.getMessage());
+            log.error("❌ 오류 상세: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("메시지 전송에 실패했습니다: " + e.getMessage());
+        }
+    }
+
+    /**
+     * send message (Multipart) - 파일과 함께 전송되는 메시지 처리
+     */
+    @PostMapping("/message/multipart")
+    public ResponseEntity<String> SendMessageMultipart(@RequestPart("message") String messageRequestDTO, @RequestPart(value = "files", required = false) MultipartFile[] files) {
         log.info("=== 📤 메시지 전송 API 호출 ===");
         log.info("🔍 수신된 MessageRequestDTO JSON: {}", messageRequestDTO);
         log.info("📁 수신된 파일 개수: {}", files != null ? files.length : 0);
@@ -269,5 +316,72 @@ public class ChatController {
                 roomRequest.getCreated_at());
         
         return roomRequest;
+    }
+
+    // ============= STOMP WebSocket 메시지 핸들러 =============
+
+    /**
+     * STOMP WebSocket을 통한 채팅 메시지 처리
+     * 프론트엔드 ChatWebSocketContext → 메인 백엔드 → 채팅백엔드 → 브로드캐스트
+     */
+    @MessageMapping("/chat/room")
+    public void handleChatMessage(@Payload ChatWebSocketMessageDto webSocketMessage) {
+        log.info("=== 📨 STOMP 채팅 메시지 수신 ===");
+        log.info("🔍 수신된 WebSocket 메시지: {}", webSocketMessage);
+        
+        try {
+            // 1. WebSocket 메시지를 채팅백엔드용 DTO로 변환
+            MessageRequestDTO chatBackendRequest = convertToMessageRequestDTO(webSocketMessage);
+            log.info("✅ DTO 변환 완료: {}", chatBackendRequest);
+            
+            // 2. 채팅백엔드로 HTTP 요청 전송 (메시지 저장)
+            log.info("🌐 채팅백엔드로 메시지 저장 요청 시작");
+            ObjectMapper objectMapper = new ObjectMapper();
+            String chatBackendRequestJson = objectMapper.writeValueAsString(chatBackendRequest);
+            
+            String saveResponse = chatServiceClient.SendMessage(chatBackendRequestJson, null);
+            log.info("✅ 채팅백엔드 저장 응답: {}", saveResponse);
+            
+            // 3. 저장 성공 후 구독자들에게 실시간 브로드캐스트
+            String topicDestination = "/topic/room/" + webSocketMessage.getRoomId();
+            messagingTemplate.convertAndSend(topicDestination, webSocketMessage);
+            log.info("📡 브로드캐스트 완료 - 토픽: {}, 메시지: {}", topicDestination, webSocketMessage.getText());
+            
+        } catch (Exception e) {
+            log.error("❌ STOMP 채팅 메시지 처리 중 오류 발생");
+            log.error("❌ 오류 타입: {}", e.getClass().getSimpleName());
+            log.error("❌ 오류 메시지: {}", e.getMessage());
+            log.error("❌ 오류 상세: ", e);
+            
+            // 에러 발생 시에도 WebSocket으로 에러 메시지 전송 (선택사항)
+            // String errorTopic = "/topic/room/" + webSocketMessage.getRoomId() + "/error";
+            // messagingTemplate.convertAndSend(errorTopic, "메시지 전송에 실패했습니다: " + e.getMessage());
+        }
+    }
+
+    /**
+     * WebSocket 메시지를 채팅백엔드용 MessageRequestDTO로 변환
+     */
+    private MessageRequestDTO convertToMessageRequestDTO(ChatWebSocketMessageDto webSocketMessage) {
+        log.info("🔄 WebSocket → ChatBackend DTO 변환 시작");
+        
+        MessageRequestDTO request = new MessageRequestDTO();
+        
+        // WebSocket 메시지에서 추출 가능한 필드들
+        request.setUser_id(webSocketMessage.getSender().getId());
+        request.setMessage(webSocketMessage.getText());
+        request.setRoom_index(webSocketMessage.getRoomId());
+        request.setSent_at(webSocketMessage.getTimestamp());
+        
+        // 기본값 설정
+        request.setMessage_index(null);  // 채팅백엔드에서 생성
+        request.setActive("Y");         // 기본값: 활성 상태
+        request.setRoom_name(null);     // 기존 방이므로 불필요
+        request.setParticipants(null);  // 기존 방이므로 불필요
+        
+        log.info("✅ DTO 변환 완료 - user_id: {}, room_index: {}, message: {}", 
+                request.getUser_id(), request.getRoom_index(), request.getMessage());
+        
+        return request;
     }
 }

@@ -43,14 +43,15 @@ public class ChatMessageController {
         chatService.joinRoom(request.getRoomId(), request.getUserId());
     }
     
-    /**
-     * 채팅 메시지 전송
-     */
-    @MessageMapping("/chat/room")
-    public void sendMessage(@Payload MessageRequestDTO message) {
-        log.info("채팅 메시지 전송 요청: roomId={}, userId={}", message.getRoom_index(), message.getUser_id());
-        chatService.sendMessage(message);
-    }
+    // 중복 매핑 제거: ChatController.handleChatMessage에서 처리
+    // /**
+    //  * 채팅 메시지 전송
+    //  */
+    // @MessageMapping("/chat/room")
+    // public void sendMessage(@Payload MessageRequestDTO message) {
+    //     log.info("채팅 메시지 전송 요청: roomId={}, userId={}", message.getRoom_index(), message.getUser_id());
+    //     chatService.sendMessage(message);
+    // }
     
     /**
      * 기존 메시지 조회

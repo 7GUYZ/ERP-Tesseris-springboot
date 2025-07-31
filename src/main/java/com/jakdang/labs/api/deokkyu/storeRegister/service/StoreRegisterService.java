@@ -590,7 +590,7 @@ public class StoreRegisterService {
             .temporaryStoreMasterDistributionStatus("y")
             .build();
     }
-    
+
     /**
      * StoreSubscriptionFee 엔티티 생성 및 저장
      */
@@ -855,19 +855,19 @@ public class StoreRegisterService {
         }
         
         try {
-            // userId로 UserEntity 조회
-            UserEntity userEntity = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("UserEntity를 찾을 수 없습니다: " + userId));
-            
+        // userId로 UserEntity 조회
+        UserEntity userEntity = userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("UserEntity를 찾을 수 없습니다: " + userId));
+        
             log.info("UserEntity 조회 성공: userId={}, name={}", userId, userEntity.getName());
             
-            // UserTesseris 조회
-            List<UserTesseris> userTesserisList = userTesserisRepository.findByUsersId(userEntity);
-            if (userTesserisList.isEmpty()) {
+        // UserTesseris 조회
+        List<UserTesseris> userTesserisList = userTesserisRepository.findByUsersId(userEntity);
+        if (userTesserisList.isEmpty()) {
                 log.error("UserTesseris 목록이 비어있습니다: userId={}", userId);
-                throw new RuntimeException("UserTesseris를 찾을 수 없습니다: " + userId);
-            }
-            
+            throw new RuntimeException("UserTesseris를 찾을 수 없습니다: " + userId);
+        }
+        
             log.info("UserTesseris 조회 성공: userId={}, 목록 크기={}", userId, userTesserisList.size());
             
             // 첫 번째 UserTesseris 사용하여 역할 변경
@@ -898,14 +898,14 @@ public class StoreRegisterService {
             
             // 3. 기존 로직대로 ID로 UserEntity 조회 (기존 방식 유지)
             log.info("🔍 3단계: ID로 UserEntity 재조회");
-            UserEntity managerUser = userRepository.findById(managerId)
+        UserEntity managerUser = userRepository.findById(managerId)
                 .orElseThrow(() -> new RuntimeException("매니저 UserEntity를 ID로 찾을 수 없습니다: " + managerId));
             log.info("✅ 3단계 성공: ID로 UserEntity 재조회 완료");
-            
-            // UserEntity로 UserTesseris 조회
+        
+        // UserEntity로 UserTesseris 조회
             log.info("🔍 4단계: UserEntity로 UserTesseris 조회");
-            List<UserTesseris> managerTesserisList = userTesserisRepository.findByUsersId(managerUser);
-            if (managerTesserisList.isEmpty()) {
+        List<UserTesseris> managerTesserisList = userTesserisRepository.findByUsersId(managerUser);
+        if (managerTesserisList.isEmpty()) {
                 throw new RuntimeException("매니저 UserTesseris를 찾을 수 없습니다: " + managerEmail);
             }
             log.info("✅ 4단계 성공: UserTesseris 조회 완료 - 목록 크기: {}", managerTesserisList.size());

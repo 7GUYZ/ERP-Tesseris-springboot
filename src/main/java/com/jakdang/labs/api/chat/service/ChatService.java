@@ -5,6 +5,7 @@ import com.jakdang.labs.api.auth.entity.UserEntity;
 import com.jakdang.labs.entity.UserTesseris;
 import com.jakdang.labs.api.auth.repository.UserRepository;
 import com.jakdang.labs.api.deokkyu.store.repository.UserTesserishdkRepo;
+import com.jakdang.labs.api.deokkyu.admin.dto.AdminListResponseDto;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +13,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -262,6 +264,93 @@ public class ChatService {
             
         } catch (Exception e) {
             log.error("채팅방 참여자 목록 업데이트 중 오류: {}", e.getMessage(), e);
+        }
+    }
+
+    // =============== 관리자 리스트 조회 기능 ===============
+
+    /**
+     * 채팅용 관리자 리스트 조회
+     * AdminListResponseDto 형식으로 반환
+     */
+    public List<AdminListResponseDto> getChatAllAdminList() {
+        log.info("=== 채팅용 관리자 리스트 조회 서비스 시작 ===");
+        
+        try {
+            // UserTesseris 엔티티에서 관리자 역할 사용자들 조회
+            List<UserTesseris> userTesserisAdmins = userTesserisRepository.findAll();
+            List<AdminListResponseDto> adminList = new ArrayList<>();
+            
+            for (UserTesseris userTesseris : userTesserisAdmins) {
+                // UserTesseris에서 연결된 UserEntity 가져오기
+                UserEntity userEntity = userTesseris.getUsersId();
+                
+                if (userEntity != null) {
+                    // AdminListResponseDto 생성
+                    AdminListResponseDto adminDto = AdminListResponseDto.builder()
+                        .adminUserEmail(userEntity.getEmail())
+                        .adminUserName(userEntity.getName())
+                        .adminUserPhone(userEntity.getPhone())
+                        .adminTypeName("관리자") // 기본값, 추후 실제 admin_type 테이블과 연동
+                        .adminRankName(userEntity.getRole() != null ? userEntity.getRole().toString() : "USER")
+                        .adminRegistrationDate(userEntity.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDateTime())
+                        .build();
+                        
+                    adminList.add(adminDto);
+                    
+                    log.debug("관리자 정보 추가: email={}, name={}", 
+                             userEntity.getEmail(), userEntity.getName());
+                }
+            }
+            
+            log.info("✅ 채팅용 관리자 리스트 조회 완료 - 총 {}명", adminList.size());
+            return adminList;
+            
+        } catch (Exception e) {
+            log.error("❌ 채팅용 관리자 리스트 조회 중 오류 발생");
+            log.error("❌ 오류 타입: {}", e.getClass().getSimpleName());
+            log.error("❌ 오류 메시지: {}", e.getMessage());
+            log.error("❌ 오류 상세: ", e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * 간단한 사용자 리스트 조회 (UserListDTO 형식)
+     * 기존 Adminlist() 메서드 구현
+     */
+    public List<UserListDTO> Adminlist() {
+        log.info("=== 간단한 관리자 리스트 조회 시작 ===");
+        
+        try {
+            List<UserTesseris> userTesserisAdmins = userTesserisRepository.findAll();
+            List<UserListDTO> userList = new ArrayList<>();
+            
+            for (UserTesseris userTesseris : userTesserisAdmins) {
+                UserEntity userEntity = userTesseris.getUsersId();
+                
+                if (userEntity != null) {
+                    // UserListDTO의 실제 필드 구조에 맞게 생성
+                    UserListDTO userDto = new UserListDTO(
+                        userTesseris.getUserIndex().toString(),  // user_index
+                        userEntity.getId(),                      // users_id
+                        userTesseris.getUserRoleIndex().toString(), // user_role_index
+                        userEntity.getName()                     // name
+                    );
+                    
+                    userList.add(userDto);
+                    
+                    log.debug("사용자 정보 추가: user_index={}, users_id={}, name={}", 
+                             userTesseris.getUserIndex(), userEntity.getId(), userEntity.getName());
+                }
+            }
+            
+            log.info("✅ 간단한 관리자 리스트 조회 완료 - 총 {}명", userList.size());
+            return userList;
+            
+        } catch (Exception e) {
+            log.error("❌ 간단한 관리자 리스트 조회 중 오류 발생: {}", e.getMessage(), e);
+            return new ArrayList<>();
         }
     }
 }

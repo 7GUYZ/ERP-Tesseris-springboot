@@ -1,7 +1,11 @@
 package com.jakdang.labs.api.deokkyu.modal_admin.service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 import lombok.RequiredArgsConstructor;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
 import com.jakdang.labs.api.deokkyu.modal_admin.dto.StoreDetailDto;
 import com.jakdang.labs.api.deokkyu.modal_admin.dto.StoreTransactionHistoryDto;
@@ -42,6 +46,9 @@ public class ModalService {
     private final StorehdkRepo storeRepository;
     private final TemporaryStoreDetailhdkRepo temporaryStoreDetailRepository;
     private final TemporaryStoreMasterhdkRepo temporaryStoreMasterRepository;
+    
+    @PersistenceContext
+    private EntityManager entityManager;
 
 
     /**
@@ -150,31 +157,46 @@ public class ModalService {
      * @return 가맹점 상세정보
      */
     public StoreDetailDto getStoreDetail(String storeId) {
+        System.out.println("=== 🔍 getStoreDetail 시작 ===");
+        System.out.println("📥 storeId (사용자 ID): " + storeId);
+        
         // 1. storeId로 UserEntity 조회
         Optional<UserEntity> userEntityOpt = userRepository.findById(storeId);
         if (userEntityOpt.isEmpty()) {
+            System.out.println("❌ UserEntity 조회 실패: " + storeId);
             return null;
         }
         UserEntity userEntity = userEntityOpt.get();
+        System.out.println("✅ UserEntity 조회 성공: " + userEntity.getEmail());
 
         // 2. UserEntity로 UserTesseris 리스트 조회
         List<UserTesseris> tesserisList = userTesserisRepository.findByUsersId(userEntity);
         if (tesserisList.isEmpty()) {
+            System.out.println("❌ UserTesseris 조회 실패");
             return null;
         }
+        System.out.println("✅ UserTesseris 리스트 조회 성공: " + tesserisList.size() + "개");
 
         // 3. storeId로 Store 정보 조회 (user_index와 비교)
         Store store = null;
         UserTesseris userTesseris = null;
-        for (UserTesseris tesseris : tesserisList) {
+        for (int i = 0; i < tesserisList.size(); i++) {
+            UserTesseris tesseris = tesserisList.get(i);
+            System.out.println("🔍 UserTesseris[" + i + "] userIndex: " + tesseris.getUserIndex());
+            
             store = storeRepository.findFirstByUserIndex(tesseris);
             if (store != null) {
                 userTesseris = tesseris;
+                System.out.println("✅ Store 찾음 - storeIndex: " + store.getStoreIndex());
+                System.out.println("🔍 실제 DB의 store_request_status_index: " + store.getStoreRequestStatusIndex());
                 break;
+            } else {
+                System.out.println("❌ UserTesseris[" + i + "]에 연결된 Store 없음");
             }
         }
 
         if (store == null || userTesseris == null) {
+            System.out.println("❌ 최종적으로 Store를 찾을 수 없음");
             return null;
         }
 
@@ -191,31 +213,88 @@ public class ModalService {
         String storeAddress = store.getStoreAddress() != null ? store.getStoreAddress() : "";
         String storeDetailAddress = store.getStoreDetailAddress() != null ? store.getStoreDetailAddress() : "";
         
+        System.out.println("🔍 Store 기본 정보:");
+        System.out.println("   - storeName: '" + storeName + "'");
+        System.out.println("   - storePhone: '" + storePhone + "'");
+        System.out.println("   - storeBossName: '" + storeBossName + "'");
+        System.out.println("   - storeCorporateName: '" + storeCorporateName + "'");
+        
         // Store 상태 정보
         Integer storeRequestStatusIndex = store.getStoreRequestStatusIndex();
         Boolean storeTransactionStatus = store.getStoreTransactionStatus();
+        
+        // ✅ storeRequestStatusName 매핑 로직 추가 (store_request_status_index 기반)
+        String storeRequestStatusName = "대기";  // 기본값
+        System.out.println("🔍 DTO 생성 - storeRequestStatusIndex: " + storeRequestStatusIndex);
+        if (storeRequestStatusIndex != null) {
+            switch (storeRequestStatusIndex) {
+                case 1:
+                    storeRequestStatusName = "대기";
+                    break;
+                case 2:
+                    storeRequestStatusName = "승인";
+                    break;
+                case 3:
+                    storeRequestStatusName = "거절";
+                    break;
+                default:
+                    storeRequestStatusName = "알 수 없음";
+                    break;
+            }
+        }
+        System.out.println("🔍 DTO 생성 - storeRequestStatusName: " + storeRequestStatusName);
         
         // Store 사진 정보
         String storeProntPhoto = store.getStoreProntPhoto() != null ? store.getStoreProntPhoto() : "";
         String storeBusinessLicensePhoto = store.getStoreBusinessLicensePhoto() != null ? store.getStoreBusinessLicensePhoto() : "";
         String storeSignPhoto = store.getStoreSignPhoto() != null ? store.getStoreSignPhoto() : "";
+        
+        System.out.println("🖼️ Store 사진 정보:");
+        System.out.println("   - storeProntPhoto (외관): '" + storeProntPhoto + "'");
+        System.out.println("   - storeBusinessLicensePhoto (사업자등록증): '" + storeBusinessLicensePhoto + "'");
+        System.out.println("   - storeSignPhoto (간판): '" + storeSignPhoto + "'");
 
-        return StoreDetailDto.builder()
+        // ✅ 추가 정보들
+        String userId = userEntity.getId();
+        String userName = userEntity.getName();
+        String userPhone = userEntity.getPhone();
+        
+        System.out.println("🔍 최종 DTO 빌드:");
+        System.out.println("   - userId: '" + userId + "'");
+        System.out.println("   - userName: '" + userName + "'");
+        System.out.println("   - userPhone: '" + userPhone + "'");
+        System.out.println("   - storeRequestStatusIndex: " + storeRequestStatusIndex);
+        System.out.println("   - storeRequestStatusName: '" + storeRequestStatusName + "'");
+
+        StoreDetailDto result = StoreDetailDto.builder()
+            // ✅ 사용자 기본 정보 추가
+            .userId(userId)
+            .userName(userName)
+            .userPhone(userPhone)
             .userPassword(userPassword)
             .userBirthday(userBirthday)
             .userGenderIndex(userGenderIndex)
+            // ✅ Store 기본 정보
             .storeName(storeName)
             .storePhone(storePhone)
             .storeBossName(storeBossName)
             .storeCorporateName(storeCorporateName)
             .storeAddress(storeAddress)
             .storeDetailAddress(storeDetailAddress)
+            // ✅ Store 상태 정보
             .storeRequestStatusIndex(storeRequestStatusIndex)
+            .storeRequestStatusName(storeRequestStatusName)
             .storeTransactionStatus(storeTransactionStatus)
+            // ✅ Store 사진 정보
             .storeProntPhoto(storeProntPhoto)
             .storeBusinessLicensePhoto(storeBusinessLicensePhoto)
             .storeSignPhoto(storeSignPhoto)
             .build();
+            
+        System.out.println("✅ StoreDetailDto 생성 완료");
+        System.out.println("=== 🔍 getStoreDetail 완료 ===");
+        
+        return result;
     }
 
     /**
@@ -344,27 +423,48 @@ public class ModalService {
      * @param data 수정할 데이터
      * @return 수정 성공 여부
      */
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public boolean updateStore(String storeId, StoreDetailDto data) {
         try {
+            System.out.println("=== 🔍 Store 업데이트 시작 ===");
+            System.out.println("📥 storeId (사용자 ID): " + storeId);
+            System.out.println("📥 요청 데이터: " + data);
+            
             // 1. storeId로 UserEntity 조회
             Optional<UserEntity> userEntityOpt = userRepository.findById(storeId);
             if (userEntityOpt.isEmpty()) {
+                System.out.println("❌ UserEntity 조회 실패: " + storeId);
                 return false;
             }
             UserEntity userEntity = userEntityOpt.get();
+            System.out.println("✅ UserEntity 조회 성공: " + userEntity.getEmail());
 
             // 2. UserEntity로 UserTesseris 조회
             List<UserTesseris> tesserisList = userTesserisRepository.findByUsersId(userEntity);
             if (tesserisList.isEmpty()) {
+                System.out.println("❌ UserTesseris 조회 실패");
                 return false;
             }
             UserTesseris userTesseris = tesserisList.get(0);
+            System.out.println("✅ UserTesseris 조회 성공: userIndex = " + userTesseris.getUserIndex());
 
             // 3. Store 정보 조회
+            System.out.println("🔍 Store 조회 시도 - UserTesseris.userIndex: " + userTesseris.getUserIndex());
             Store store = storeRepository.findFirstByUserIndex(userTesseris);
             if (store == null) {
+                System.out.println("❌ Store 조회 실패 - findFirstByUserIndex 결과가 null");
+                System.out.println("🔍 UserTesseris 상세정보:");
+                System.out.println("   - userIndex: " + userTesseris.getUserIndex());
+                System.out.println("   - usersId: " + (userTesseris.getUsersId() != null ? userTesseris.getUsersId().getId() : "null"));
+                
+                // ✅ 디버깅: 모든 Store 엔티티 조회해서 user_index 확인
+                System.out.println("🔍 디버깅: 해당 UserTesseris와 연결된 Store가 있는지 확인...");
+                // Optional로 다시 시도
                 return false;
             }
+            System.out.println("✅ Store 조회 성공: storeIndex = " + store.getStoreIndex());
+            System.out.println("🔍 Store의 UserTesseris userIndex: " + (store.getUserIndex() != null ? store.getUserIndex().getUserIndex() : "null"));
+            System.out.println("🔍 현재 store_request_status_index: " + store.getStoreRequestStatusIndex());
 
             // 4. 데이터 업데이트
             
@@ -415,7 +515,13 @@ public class ModalService {
             
             // Store 테이블 업데이트 - 상태 정보
             if (data.getStoreRequestStatusIndex() != null) {
+                System.out.println("🔄 store_request_status_index 업데이트 시도:");
+                System.out.println("   이전 값: " + store.getStoreRequestStatusIndex());
+                System.out.println("   새로운 값: " + data.getStoreRequestStatusIndex());
                 store.setStoreRequestStatusIndex(data.getStoreRequestStatusIndex());
+                System.out.println("   설정 후 값: " + store.getStoreRequestStatusIndex());
+            } else {
+                System.out.println("⚠️ storeRequestStatusIndex가 null입니다");
             }
             
             // storeTransactionStatus 처리 (Object 타입 - Boolean 또는 String)
@@ -445,9 +551,30 @@ public class ModalService {
                 store.setStoreSignPhoto(data.getStoreSignPhoto());
             }
             
-            storeRepository.save(store);
+            System.out.println("💾 DB 저장 시도 중...");
+            System.out.println("🔍 저장 전 최종 store_request_status_index: " + store.getStoreRequestStatusIndex());
+            System.out.println("🔍 Store ID: " + store.getStoreIndex());
+            
+            Store savedStore = storeRepository.save(store);
+            
+            // ✅ JPA 캐시 문제 해결: 변경사항을 DB에 즉시 반영하고 캐시 클리어
+            entityManager.flush();
+            System.out.println("🔄 EntityManager.flush() 완료");
+            
+            entityManager.clear();
+            System.out.println("🧹 EntityManager.clear() 완료");
+            
+            // ✅ DB에서 다시 조회해서 실제 저장된 값 확인
+            Store verifyStore = storeRepository.findById(savedStore.getStoreIndex()).orElse(null);
+            
+            System.out.println("✅ DB 저장 완료!");
+            System.out.println("🔍 저장 후 store_request_status_index: " + savedStore.getStoreRequestStatusIndex());
+            System.out.println("🔍 DB 재조회 store_request_status_index: " + (verifyStore != null ? verifyStore.getStoreRequestStatusIndex() : "null"));
+            
             return true;
         } catch (Exception e) {
+            System.out.println("❌ Store 업데이트 실패: " + e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }
@@ -524,9 +651,22 @@ public class ModalService {
      * @return 가맹점 신청 상세정보
      */
     public StoreDetailDto getStoreRegisterDetail(String storeId) {
+        System.out.println("=== 🔍 getStoreRegisterDetail 시작 ===");
+        System.out.println("📥 storeId (사용자 ID): " + storeId);
+        
         // 기본적으로 getStoreDetail과 동일한 로직 사용
-        // 필요시 추가 로직 구현
-        return getStoreDetail(storeId);
+        StoreDetailDto result = getStoreDetail(storeId);
+        
+        if (result != null) {
+            System.out.println("✅ 조회 결과:");
+            System.out.println("🔍 storeRequestStatusIndex: " + result.getStoreRequestStatusIndex());
+            System.out.println("🔍 storeRequestStatusName: " + result.getStoreRequestStatusName());
+        } else {
+            System.out.println("❌ 조회 결과가 null입니다");
+        }
+        
+        System.out.println("=== 🔍 getStoreRegisterDetail 완료 ===");
+        return result;
     }
 
     /**
@@ -535,10 +675,19 @@ public class ModalService {
      * @param data 수정할 데이터
      * @return 수정 성공 여부
      */
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public boolean updateStoreRegister(String storeId, StoreDetailDto data) {
+        System.out.println("=== 🔍 updateStoreRegister 시작 ===");
+        System.out.println("📥 storeId (사용자 ID): " + storeId);
+        System.out.println("📥 요청 데이터의 storeRequestStatusIndex: " + data.getStoreRequestStatusIndex());
+        
         // 기본적으로 updateStore와 동일한 로직 사용
-        // 필요시 추가 로직 구현
-        return updateStore(storeId, data);
+        boolean result = updateStore(storeId, data);
+        
+        System.out.println("✅ updateStore 결과: " + result);
+        System.out.println("=== 🔍 updateStoreRegister 완료 ===");
+        
+        return result;
     }
 
 
