@@ -34,7 +34,7 @@ public interface PaymentJtjRepo extends JpaRepository<Store, Integer> {
         SELECT c FROM Coupon c 
         WHERE c.providedUser.userIndex = :userIndex 
         AND c.issuanceUser.userIndex = :storeUserIndex
-        AND c.couponProvidedStatusIndex IN (1, 2, 3)
+        AND c.couponProvidedStatusIndex = 1
         AND (:couponName IS NULL OR c.couponName LIKE %:couponName%)
         ORDER BY c.couponIssuanceTime DESC
     """)
