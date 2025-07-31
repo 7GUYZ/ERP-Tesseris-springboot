@@ -15,8 +15,8 @@ import java.util.Optional;
 @Repository
 public interface PaymentJtjRepo extends JpaRepository<Store, Integer> {
     
-    // 가맹점 목록 조회 (모든 가맹점 조회)
-    @Query("SELECT s FROM Store s ORDER BY s.storeName")
+    // 가맹점 목록 조회 (승인된 가맹점만 조회)
+    @Query("SELECT s FROM Store s WHERE s.storeRequestStatusIndex = 2 ORDER BY s.storeName")
     List<Store> findAllActiveStores();
     
     // 사용자의 쿠폰 목록 조회

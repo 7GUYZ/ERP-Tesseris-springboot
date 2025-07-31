@@ -6,6 +6,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.jakdang.labs.entity.AuthorityType;
+import java.util.List;
 
 @Repository
 public interface PermissionCheckRepository extends JpaRepository<AuthorityType, Long> {
@@ -19,6 +20,6 @@ public interface PermissionCheckRepository extends JpaRepository<AuthorityType, 
         WHERE admin_type_index = :adminTypeIndex 
         AND program_index = :programIndex
     """, nativeQuery = true)
-    Object[] checkAllPermissions(@Param("adminTypeIndex") Integer adminTypeIndex, 
-                                @Param("programIndex") Integer programIndex);
+    List<Object[]> checkAllPermissions(@Param("adminTypeIndex") Integer adminTypeIndex, 
+                                      @Param("programIndex") Integer programIndex);
 } 

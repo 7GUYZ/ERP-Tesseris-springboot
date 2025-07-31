@@ -9,7 +9,7 @@ import com.jakdang.labs.api.taekjun.checkpermission.dto.PermissionCheckRequestDT
 import com.jakdang.labs.api.taekjun.checkpermission.service.PermissionCheckService;
 
 @RestController
-@RequestMapping("/checkpermission")
+@RequestMapping("/api/checkpermission")
 @RequiredArgsConstructor
 public class PermissionCheckController {
     private final PermissionCheckService permissionCheckService;
@@ -31,5 +31,11 @@ public class PermissionCheckController {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body(null);
         }
+    }
+    
+    // 테스트용 GET 요청 추가
+    @GetMapping("/test")
+    public ResponseEntity<String> test() {
+        return ResponseEntity.ok("checkpermission API is working!");
     }
 } 
