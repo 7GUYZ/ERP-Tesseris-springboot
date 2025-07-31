@@ -43,7 +43,9 @@ public interface SalesPerformanceJdbRepo extends JpaRepository<com.jakdang.labs.
         AND (:storeUserId IS NULL OR :storeUserId = '' OR su.usersId.id LIKE CONCAT('%', :storeUserId, '%'))
         AND (:storeName IS NULL OR :storeName = '' OR s.storeName LIKE CONCAT('%', :storeName, '%'))
         AND (:storeRequestStatusIndex IS NULL OR :storeRequestStatusIndex = 0 OR s.storeRequestStatusIndex = :storeRequestStatusIndex)
-        AND (:storeTransactionStatus IS NULL OR s.storeTransactionStatus = :storeTransactionStatus)
+        AND (:storeTransactionStatus IS NULL OR 
+             (:storeTransactionStatus = true AND s.storeTransactionStatus = true) OR 
+             (:storeTransactionStatus = false AND (s.storeTransactionStatus = false OR s.storeTransactionStatus IS NULL)))
     """)
     
     List<SalesPerformanceSearchResponseDto> searchSalesPerformance(

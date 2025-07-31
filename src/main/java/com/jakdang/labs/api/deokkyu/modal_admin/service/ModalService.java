@@ -4,8 +4,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Isolation;
 import lombok.RequiredArgsConstructor;
+<<<<<<< HEAD
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+=======
+import lombok.extern.slf4j.Slf4j;
+>>>>>>> dev
 
 import com.jakdang.labs.api.deokkyu.modal_admin.dto.StoreDetailDto;
 import com.jakdang.labs.api.deokkyu.modal_admin.dto.StoreTransactionHistoryDto;
@@ -19,6 +23,7 @@ import com.jakdang.labs.api.deokkyu.businessman.repository.TemporaryStoreMasterh
 import com.jakdang.labs.api.deokkyu.store.repository.UserhdkRepo;
 import com.jakdang.labs.api.deokkyu.store.repository.UserTesserishdkRepo;
 import com.jakdang.labs.api.deokkyu.store.repository.StorehdkRepo;
+import com.jakdang.labs.api.alarm.service.AlarmSvc;
 import com.jakdang.labs.api.auth.entity.UserEntity;
 import com.jakdang.labs.entity.UserTesseris;
 import com.jakdang.labs.entity.UserCmLog;
@@ -36,6 +41,7 @@ import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
+@Slf4j // 로그 출력을 위해 추가
 public class ModalService {
     
     private final UserhdkRepo userRepository;
@@ -46,9 +52,13 @@ public class ModalService {
     private final StorehdkRepo storeRepository;
     private final TemporaryStoreDetailhdkRepo temporaryStoreDetailRepository;
     private final TemporaryStoreMasterhdkRepo temporaryStoreMasterRepository;
+<<<<<<< HEAD
     
     @PersistenceContext
     private EntityManager entityManager;
+=======
+    private final AlarmSvc alarmSvc;
+>>>>>>> dev
 
 
     /**
@@ -551,6 +561,7 @@ public class ModalService {
                 store.setStoreSignPhoto(data.getStoreSignPhoto());
             }
             
+<<<<<<< HEAD
             System.out.println("💾 DB 저장 시도 중...");
             System.out.println("🔍 저장 전 최종 store_request_status_index: " + store.getStoreRequestStatusIndex());
             System.out.println("🔍 Store ID: " + store.getStoreIndex());
@@ -571,7 +582,20 @@ public class ModalService {
             System.out.println("🔍 저장 후 store_request_status_index: " + savedStore.getStoreRequestStatusIndex());
             System.out.println("🔍 DB 재조회 store_request_status_index: " + (verifyStore != null ? verifyStore.getStoreRequestStatusIndex() : "null"));
             
+=======
+            storeRepository.save(store);
+
+            // 가맹점 신청 처리 알림 서비스 (data.getStoreRequestStatusIndex = 2(승인) OR 3(반려))
+            try {
+                alarmSvc.sendStoreRegisterAlarm(userTesseris.getUserIndex(), data.getStoreRequestStatusIndex());
+            } catch (Exception e) {
+                log.error("가맹점 신청 처리 알림 전송 실패: {}", e.getMessage());
+                // 알림 전송 실패해도 DB 저장은 성공으로 처리
+            }
+
+>>>>>>> dev
             return true;
+            
         } catch (Exception e) {
             System.out.println("❌ Store 업데이트 실패: " + e.getMessage());
             e.printStackTrace();

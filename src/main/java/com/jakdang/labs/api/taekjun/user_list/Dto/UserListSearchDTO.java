@@ -4,7 +4,8 @@ import lombok.Data;
 
 @Data
 public class UserListSearchDTO {
-    private String id;           // 아이디 (이메일)
+    private String id;           // 아이디
+    private String email;        // 이메일
     private String name;         // 이름
     private String phone;        // 핸드폰 번호
     private String userRole;     // 등급

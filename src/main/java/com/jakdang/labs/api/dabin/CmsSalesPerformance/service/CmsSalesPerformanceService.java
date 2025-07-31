@@ -30,14 +30,10 @@ public class CmsSalesPerformanceService {
 
     // 영업실적 검색
     public List<SalesPerformanceSearchResponseDto> searchSalesPerformance(SalesPerformanceSearchRequestDto dto) {
-        Boolean businessManDistributionFlag = null;
-        if (dto.getBusinessManDistributionFlag() != null) {
-            businessManDistributionFlag = dto.getBusinessManDistributionFlag() == 1;
-        }
-        Boolean storeTransactionStatus = null;
-        if (dto.getStoreTransactionStatus() != null) {
-            storeTransactionStatus = dto.getStoreTransactionStatus() == 1;
-        }
+        // Integer → Boolean 변환 (1: true, 0: false, null: null)
+        Boolean businessManDistributionFlag = convertToBoolean(dto.getBusinessManDistributionFlag());
+        Boolean storeTransactionStatus = convertToBoolean(dto.getStoreTransactionStatus());
+        
         // 빈 문자열 파라미터를 null로 변환
         if (dto.getBusinessUserId() != null && dto.getBusinessUserId().isBlank()) {
             dto.setBusinessUserId(null);
@@ -61,6 +57,15 @@ public class CmsSalesPerformanceService {
             dto.getStoreRequestStatusIndex() != null ? dto.getStoreRequestStatusIndex() : 0,
             storeTransactionStatus
         );
+    }
+
+    /**
+     * Integer를 Boolean으로 변환하는 헬퍼 메서드
+     * 1 → true, 0 → false, null → null
+     */
+    private Boolean convertToBoolean(Integer value) {
+        if (value == null) return null;
+        return value == 1;
     }
 
     // 사업자 등급 리스트

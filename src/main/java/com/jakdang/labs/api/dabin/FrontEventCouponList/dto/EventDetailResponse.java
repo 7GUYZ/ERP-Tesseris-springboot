@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -22,12 +23,21 @@ public class EventDetailResponse {
     private String storeBusinessState;
     private String storeTransactionStatus;
     
-    // 쿠폰 정보
-    private Long couponIndex;
-    private String couponName;
-    private Integer couponPrice;
-    private String couponIssuanceStatus;
-    private LocalDateTime couponIssuanceTime;
-    private Integer couponLimit;
-    private LocalDateTime couponLimitTime;
+    // 쿠폰 정보 (여러 개 지원)
+    private List<CouponInfo> coupons;
+    
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CouponInfo {
+        private Long couponIndex;
+        private String couponName;
+        private Integer couponPrice;
+        private String couponIssuanceStatus;
+        private LocalDateTime couponIssuanceTime;
+        private Integer couponLimit;
+        private LocalDateTime couponLimitTime;
+        private String storeName;
+    }
 } 

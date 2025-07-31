@@ -18,7 +18,7 @@ public interface BusinessManLjeRepo extends JpaRepository<BusinessMan, Integer> 
     @Query("SELECT bg.businessGradeIndex, bg.businessGradeName FROM BusinessGrade bg WHERE bg.businessGradeIndex > :myGradeIndex ORDER BY bg.businessGradeIndex ASC")
     List<Object[]> findGradeIndexAndNameGreaterThan(@Param("myGradeIndex") Integer myGradeIndex);
 
-    @Query(value = "SELECT u.email, u.name, bg.business_grade_name, boss_u.email as boss_email, " +
+    @Query(value = "SELECT ut.user_index, u.email, u.name, bg.business_grade_name, boss_u.email as boss_email, " +
             "COALESCE(MAX(cm.total_cm), 0) as total_cm, COALESCE(MAX(s.store_count), 0) as store_count " +
             "FROM business_man bm " +
             "JOIN user_tesseris ut ON bm.user_index = ut.user_index " +
@@ -32,7 +32,7 @@ public interface BusinessManLjeRepo extends JpaRepository<BusinessMan, Integer> 
             "LEFT JOIN (   SELECT business_man_user_index, COUNT(store_index) AS store_count   FROM store   WHERE store_request_status_index = 2   GROUP BY business_man_user_index ) s ON s.business_man_user_index = bm.business_man_index "
             +
             "WHERE bm.business_grade_index = :business_grade_index " +
-            "GROUP BY u.email, u.name, bg.business_grade_name, boss_u.email", nativeQuery = true)
+            "GROUP BY ut.user_index, u.email, u.name, bg.business_grade_name, boss_u.email", nativeQuery = true)
     List<Object[]> findBusinessListWithBossEmail(@Param("business_grade_index") Integer business_grade_index);
 
 

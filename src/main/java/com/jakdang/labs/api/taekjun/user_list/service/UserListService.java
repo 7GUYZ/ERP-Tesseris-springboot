@@ -47,28 +47,51 @@ public class UserListService {
     }
     
     public List<UserListResponseDTO> getUserListWithSearch(UserListSearchDTO searchDTO) {
-        List<Object[]> rawList = userListJtjRepo.findUserListWithSearch(
-            searchDTO.getId(),
-            searchDTO.getName(),
-            searchDTO.getPhone(),
-            searchDTO.getUserRole(),
-            searchDTO.getStartDate(),
-            searchDTO.getEndDate()
-        );
+        System.out.println("=== 검색 요청 정보 ===");
+        System.out.println("ID: " + searchDTO.getId());
+        System.out.println("Name: " + searchDTO.getName());
+        System.out.println("Phone: " + searchDTO.getPhone());
+        System.out.println("UserRole: " + searchDTO.getUserRole());
+        System.out.println("StartDate: " + searchDTO.getStartDate());
+        System.out.println("EndDate: " + searchDTO.getEndDate());
+        System.out.println("=========================");
         
-        return rawList.stream()
-                .map(this::mapToDto)
-                .collect(Collectors.toList())
-                .stream()
-                .collect(Collectors.toMap(
-                    UserListResponseDTO::getUserIndex,
-                    dto -> dto,
-                    (existing, replacement) -> existing  // 기존 데이터 유지
-                ))
-                .values()
-                .stream()
-                .sorted((a, b) -> Integer.compare(b.getUserIndex(), a.getUserIndex()))  // 최신순 정렬
-                .collect(Collectors.toList());
+        try {
+            // 빈 문자열을 null로 변환
+            String id = (searchDTO.getId() != null && !searchDTO.getId().trim().isEmpty()) ? searchDTO.getId().trim() : null;
+            String name = (searchDTO.getName() != null && !searchDTO.getName().trim().isEmpty()) ? searchDTO.getName().trim() : null;
+            String phone = (searchDTO.getPhone() != null && !searchDTO.getPhone().trim().isEmpty()) ? searchDTO.getPhone().trim() : null;
+            String userRole = (searchDTO.getUserRole() != null && !searchDTO.getUserRole().trim().isEmpty()) ? searchDTO.getUserRole().trim() : null;
+            String startDate = (searchDTO.getStartDate() != null && !searchDTO.getStartDate().trim().isEmpty()) ? searchDTO.getStartDate().trim() : null;
+            String endDate = (searchDTO.getEndDate() != null && !searchDTO.getEndDate().trim().isEmpty()) ? searchDTO.getEndDate().trim() : null;
+            
+            List<Object[]> rawList = userListJtjRepo.findUserListWithSearch(
+                id, name, phone, userRole, startDate, endDate
+            );
+            
+            System.out.println("=== 검색 결과 ===");
+            System.out.println("검색된 데이터 개수: " + rawList.size());
+            System.out.println("==================");
+            
+            return rawList.stream()
+                    .map(this::mapToDto)
+                    .collect(Collectors.toList())
+                    .stream()
+                    .collect(Collectors.toMap(
+                        UserListResponseDTO::getUserIndex,
+                        dto -> dto,
+                        (existing, replacement) -> existing  // 기존 데이터 유지
+                    ))
+                    .values()
+                    .stream()
+                    .sorted((a, b) -> Integer.compare(b.getUserIndex(), a.getUserIndex()))  // 최신순 정렬
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            System.err.println("=== UserListService.getUserListWithSearch 에러 ===");
+            System.err.println("에러 메시지: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     private UserListResponseDTO mapToDto(Object[] row) {
@@ -129,6 +152,9 @@ public class UserListService {
     }
     
     public byte[] generateCsvFile(UserListSearchDTO searchDTO) throws IOException {
+        System.out.println("=== CSV 파일 생성 시작 ===");
+        System.out.println("검색 조건: " + searchDTO);
+        
         List<UserListResponseDTO> userList;
         
         if (searchDTO != null && (searchDTO.getId() != null || searchDTO.getName() != null || 
@@ -143,6 +169,8 @@ public class UserListService {
         } else {
             userList = getUserList();
         }
+        
+        System.out.println("사용자 목록 크기: " + userList.size());
         
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
              OutputStreamWriter writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {

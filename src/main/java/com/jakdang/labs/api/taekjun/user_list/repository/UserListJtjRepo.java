@@ -78,12 +78,12 @@ public interface UserListJtjRepo extends JpaRepository<UserTesseris, Integer> {
         LEFT JOIN user_cm cm ON u.user_index = cm.user_cm_index
         WHERE u.user_role_index <> 4 AND u.user_role_index <> 7
         AND ue.activated = 1
-        AND (:id IS NULL OR ue.email LIKE CONCAT('%', :id, '%'))
-        AND (:name IS NULL OR ue.name LIKE CONCAT('%', :name, '%') OR TRIM(ue.name) LIKE CONCAT('%', :name, '%'))
-        AND (:phone IS NULL OR ue.phone LIKE CONCAT('%', :phone, '%'))
-        AND (:userRole IS NULL OR r.user_role_kor_nm = :userRole)
-        AND (:startDate IS NULL OR ue.created_at >= :startDate)
-        AND (:endDate IS NULL OR ue.created_at <= :endDate)
+        AND (:id IS NULL OR :id = '' OR ue.email LIKE CONCAT('%', :id, '%'))
+        AND (:name IS NULL OR :name = '' OR ue.name LIKE CONCAT('%', :name, '%'))
+        AND (:phone IS NULL OR :phone = '' OR ue.phone LIKE CONCAT('%', :phone, '%'))
+        AND (:userRole IS NULL OR :userRole = '' OR r.user_role_kor_nm = :userRole)
+        AND (:startDate IS NULL OR :startDate = '' OR ue.created_at >= STR_TO_DATE(:startDate, '%Y-%m-%d'))
+        AND (:endDate IS NULL OR :endDate = '' OR ue.created_at <= STR_TO_DATE(:endDate, '%Y-%m-%d'))
         ORDER BY u.user_index DESC
     """, nativeQuery = true)
     List<Object[]> findUserListWithSearch(

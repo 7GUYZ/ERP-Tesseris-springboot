@@ -2,26 +2,28 @@ package com.jakdang.labs.api.taekjun.customermanagement.service;
 
 import com.jakdang.labs.api.taekjun.customermanagement.dto.CustomerListResponseDTO;
 import com.jakdang.labs.api.taekjun.customermanagement.dto.CustomerUpdateDTO;
+import com.jakdang.labs.api.taekjun.customermanagement.repository.CustomerManagementJtjRepo;
+import com.jakdang.labs.api.taekjun.customermanagement.repository.CouponRepository;
+import com.jakdang.labs.api.taekjun.Permissionsettings.repository.UserTesserisRepository;
+import com.jakdang.labs.api.taekjun.signin.repository.UserCmRepository;
+import com.jakdang.labs.api.taekjun.dashdord.repository.UserCmLogJtjRepo;
 import com.jakdang.labs.entity.StoreCustomer;
 import com.jakdang.labs.entity.Coupon;
 import com.jakdang.labs.entity.UserTesseris;
 import com.jakdang.labs.entity.UserCm;
-import com.jakdang.labs.api.taekjun.customermanagement.repository.CustomerManagementJtjRepo;
-import com.jakdang.labs.api.taekjun.customermanagement.repository.CouponRepository;
+import com.jakdang.labs.entity.UserCmLog;
 import com.jakdang.labs.api.alarm.service.AlarmSvc;
-import com.jakdang.labs.api.taekjun.Permissionsettings.repository.UserTesserisRepository;
-import com.jakdang.labs.api.taekjun.signin.repository.UserCmRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import java.util.ArrayList;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +34,7 @@ public class CustomerManagementService {
     private final CouponRepository couponRepository;
     private final UserTesserisRepository userTesserisRepository;
     private final UserCmRepository userCmRepository;
+    private final UserCmLogJtjRepo userCmLogRepository;
     private final AlarmSvc alarmSvc;
 
     /**
@@ -215,10 +218,12 @@ public class CustomerManagementService {
 
         // 보유 CM 확인 (UserCm 테이블에서 조회)
         Integer currentCm = getUserCurrentCm(userCmIndex);
-
+        
         // 필요 CM 계산 (쿠폰 금액 × 고객 수)
         Integer needCm = couponPrice * customers.size();
-
+        
+        log.info("현재 CM 잔액: {}, 필요 CM: {}, 고객 수: {}", currentCm, needCm, customers.size());
+        
         // CM 잔액 확인
         if (currentCm < needCm) {
             log.warn("보유 CM이 부족합니다. 현재: {}, 필요: {}", currentCm, needCm);
@@ -227,6 +232,33 @@ public class CustomerManagementService {
 
         // CM 차감
         updateUserCm(userCmIndex, needCm);
+        
+        // CM 차감 로그 기록
+        UserCmLog cmLog = new UserCmLog();
+        cmLog.setUserCmLogValue(-needCm); // 차감이므로 음수
+        cmLog.setUserCmLogTransactionTypeIndex(14); // 거래 타입 (14: 쿠폰)
+        cmLog.setUserCmLogValueTypeIndex(2); // 화폐 단위 (2: CM)
+        cmLog.setUserCmLogPaymentIndex(2); // 거래의 종류 (2: 출금)
+        cmLog.setUserCmpLogPaymentIndex(null); // CMP 거래의 종류 (사용하지 않음)
+        cmLog.setUserCmLogCreateTime(LocalDateTime.now()); // 거래 발생 시간
+        cmLog.setUserCmLogReason("쿠폰 발급 - " + customers.size() + "명에게 " + couponName + " 발급"); // 거래에 대한 메모
+        cmLog.setUserCmLogTransactionCancel(null); // 취소 (아님)
+        cmLog.setUserCouponValue(0); // 쿠폰으로 사용된 금액 (발급이므로 0)
+        
+        // UserTesseris 객체 생성 - 거래 요청인 (가맹점)
+        UserTesseris issuanceUserTesseris = new UserTesseris();
+        issuanceUserTesseris.setUserIndex(userCmIndex);
+        cmLog.setUserIndexEventTrigger(issuanceUserTesseris);
+        
+        // UserTesseris 객체 생성 - 거래 상대방 (시스템)
+        UserTesseris systemTesseris = new UserTesseris();
+        systemTesseris.setUserIndex(0); // 시스템 계정 (임시)
+        cmLog.setUserIndexEventParty(systemTesseris);
+        
+        // CM 로그 저장
+        userCmLogRepository.save(cmLog);
+        
+        log.info("CM 차감 로그 저장 완료 - 가맹점: {}, 차감액: {}, 고객 수: {}", userCmIndex, needCm, customers.size());
 
         // 각 고객에게 쿠폰 발급
         for (StoreCustomer customer : customers) {
@@ -260,6 +292,51 @@ public class CustomerManagementService {
             }
         }
 
+        // 쿠폰 발급 후 user_index 1번 계정에 쿠폰 금액 입금
+        try {
+            // user_index 1번 계정의 UserCm 조회
+            Optional<UserCm> systemUserCm = userCmRepository.findByUserCmIndex(1);
+            if (systemUserCm.isPresent()) {
+                // user_index 1번 계정에 쿠폰 총 금액 입금
+                Integer currentDeposit = systemUserCm.get().getUserCmDeposit() != null ? systemUserCm.get().getUserCmDeposit() : 0;
+                systemUserCm.get().setUserCmDeposit(currentDeposit + needCm);
+                userCmRepository.save(systemUserCm.get());
+                
+                // user_index 1번 계정 입금 로그 기록
+                UserCmLog systemCmLog = new UserCmLog();
+                systemCmLog.setUserCmLogValue(needCm); // 입금이므로 양수
+                systemCmLog.setUserCmLogTransactionTypeIndex(15); // 거래 타입 (15: 쿠폰 발급 수익)
+                systemCmLog.setUserCmLogValueTypeIndex(2); // 화폐 단위 (2: CM)
+                systemCmLog.setUserCmLogPaymentIndex(1); // 거래의 종류 (1: 입금)
+                systemCmLog.setUserCmpLogPaymentIndex(null); // CMP 거래의 종류 (사용하지 않음)
+                systemCmLog.setUserCmLogCreateTime(LocalDateTime.now()); // 거래 발생 시간
+                systemCmLog.setUserCmLogReason("쿠폰 발급 수익 - 가맹점: " + storeUserIndex + ", 쿠폰명: " + couponName + ", 총액: " + needCm + " CM"); // 거래에 대한 메모
+                systemCmLog.setUserCmLogTransactionCancel(null); // 취소 (아님)
+                systemCmLog.setUserCouponValue(0); // 쿠폰으로 사용된 금액 (입금이므로 0)
+                
+                // UserTesseris 객체 생성 - 거래 요청인 (시스템)
+                UserTesseris systemTriggerTesseris = new UserTesseris();
+                systemTriggerTesseris.setUserIndex(1);
+                systemCmLog.setUserIndexEventTrigger(systemTriggerTesseris);
+                
+                // UserTesseris 객체 생성 - 거래 상대방 (가맹점)
+                UserTesseris storePartyTesseris = new UserTesseris();
+                storePartyTesseris.setUserIndex(Integer.parseInt(storeUserIndex));
+                systemCmLog.setUserIndexEventParty(storePartyTesseris);
+                
+                // 시스템 CM 로그 저장
+                userCmLogRepository.save(systemCmLog);
+                
+                log.info("user_index 1번 계정에 쿠폰 발급 수익 입금 완료 - 입금액: {}, 새로운 deposit: {}", 
+                    needCm, systemUserCm.get().getUserCmDeposit());
+            } else {
+                log.warn("user_index 1번 계정의 UserCm 정보를 찾을 수 없습니다.");
+            }
+        } catch (Exception e) {
+            log.error("user_index 1번 계정에 쿠폰 발급 수익 입금 중 오류 발생", e);
+            // 쿠폰 발급은 성공했으므로 오류가 발생해도 실패로 처리하지 않음
+        }
+        
         log.info("{}명의 고객에게 쿠폰을 성공적으로 발급했습니다. 사용된 CM: {}", customers.size(), needCm);
         return true;
     }
@@ -280,8 +357,8 @@ public class CustomerManagementService {
         Optional<UserCm> userCm = userCmRepository.findByUserCmIndex(userCmIndex);
         if (userCm.isPresent()) {
             UserCm cm = userCm.get();
-            // CM 잔액 = 입금 - 출금
-            Integer currentCm = (cm.getUserCmDeposit() != null ? cm.getUserCmDeposit() : 0) -
+            // CM 잔액 = 입금 + 출금 (출금은 음수)
+            Integer currentCm = (cm.getUserCmDeposit() != null ? cm.getUserCmDeposit() : 0) +
                     (cm.getUserCmWithdrawal() != null ? cm.getUserCmWithdrawal() : 0);
             log.info("현재 CM 잔액 조회 - userCmIndex: {}, currentCm: {}", userCmIndex, currentCm);
             return currentCm;
@@ -300,7 +377,7 @@ public class CustomerManagementService {
         if (userCmOpt.isPresent()) {
             UserCm userCm = userCmOpt.get();
 
-            // 현재 출금량에 차감할 금액을 뺌 (감소)
+            // 현재 출금량에 차감할 금액을 더함 (증가)
             Integer currentWithdrawal = userCm.getUserCmWithdrawal() != null ? userCm.getUserCmWithdrawal() : 0;
             userCm.setUserCmWithdrawal(currentWithdrawal - useAmount);
 

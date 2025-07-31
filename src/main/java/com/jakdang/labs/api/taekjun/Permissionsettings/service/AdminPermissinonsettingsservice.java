@@ -305,6 +305,10 @@ public class AdminPermissinonsettingsservice {
     public List<ProgramDTO> getProgram(Integer menuIndex) {
         return programRepository.findProgramDTOsByMenuIndex(menuIndex);
     }
+    
+    public List<ProgramDTO> getAllPrograms() {
+        return programRepository.findAllProgramDTOs();
+    }
 
     public List<adminType> getAdminType() {
         return adminTypeRepository.findAll();

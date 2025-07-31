@@ -2,6 +2,8 @@ package com.jakdang.labs.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jakdang.labs.exceptions.handler.CustomException;
+
+import feign.Logger;
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
 import feign.Response;
@@ -18,6 +20,7 @@ import java.util.Map;
 public class FeignConfig {
     @Value("${fegin.school.appId}")
     private String appId;
+
     @Bean
     public ObjectMapper feignObjectMapper() {
         ObjectMapper mapper = new ObjectMapper();
@@ -30,7 +33,7 @@ public class FeignConfig {
         return new RequestInterceptor() {
             @Override
             public void apply(RequestTemplate template) {
-                template.header("AppId", appId);  // AppId 헤더 추가
+                template.header("AppId", appId); // AppId 헤더 추가
             }
         };
     }
@@ -43,6 +46,7 @@ public class FeignConfig {
     public static class FeignErrorDecoder implements ErrorDecoder {
 
         private final ErrorDecoder defaultErrorDecoder = new Default();
+
         @Override
         public Exception decode(String methodKey, Response response) {
             try {
@@ -58,7 +62,7 @@ public class FeignConfig {
 
                 // 메시지가 잘못된 경우에는 원본 메시지를 그대로 반환
                 if (errorMessage == null) {
-                    errorMessage = responseBody;  // 예외 메시지가 없으면 원본 메시지 사용
+                    errorMessage = responseBody; // 예외 메시지가 없으면 원본 메시지 사용
                 }
 
                 // CustomException 던지기

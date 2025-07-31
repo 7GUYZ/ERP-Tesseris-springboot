@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.jakdang.labs.api.deokkyu.admin.dto.AdminListRequestDto;
 import com.jakdang.labs.api.deokkyu.admin.dto.AdminListResponseDto;
+import com.jakdang.labs.api.deokkyu.admin.dto.AdminCreateRequestDto;
 import com.jakdang.labs.api.deokkyu.admin.service.AdminService;
 import java.time.LocalDate;
 import java.util.List;
@@ -78,6 +79,49 @@ public class AdminController {
         }
     }
 
+<<<<<<< HEAD
 
 
+=======
+    /**
+     * 관리자 등록 API
+     * POST /api/admin/create
+     */
+    @PostMapping("/create")
+    public ResponseEntity<String> createAdmin(@RequestBody AdminCreateRequestDto createDto) {
+        try {
+            log.info("관리자 등록 API 호출: {}", createDto.getAdminUserEmail());
+            
+            // DTO 유효성 검증
+            if (createDto.getAdminUserEmail() == null || createDto.getAdminUserEmail().trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("이메일은 필수입니다.");
+            }
+            if (createDto.getAdminPassword() == null || createDto.getAdminPassword().trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("비밀번호는 필수입니다.");
+            }
+            if (createDto.getAdminPasswordConfirm() == null || createDto.getAdminPasswordConfirm().trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("비밀번호 확인은 필수입니다.");
+            }
+            if (!createDto.getAdminPassword().equals(createDto.getAdminPasswordConfirm())) {
+                return ResponseEntity.badRequest().body("비밀번호와 비밀번호 확인이 일치하지 않습니다.");
+            }
+            if (createDto.getAdminTypeIndex() == null) {
+                return ResponseEntity.badRequest().body("관리자 타입은 필수입니다.");
+            }
+            
+            boolean success = adminService.createAdmin(createDto);
+            if (success) {
+                return ResponseEntity.ok("관리자가 성공적으로 등록되었습니다.");
+            } else {
+                return ResponseEntity.badRequest().body("관리자 등록에 실패했습니다. 입력 정보를 확인해주세요.");
+            }
+        } catch (RuntimeException e) {
+            log.error("관리자 등록 중 런타임 오류", e);
+            return ResponseEntity.badRequest().body("관리자 등록 실패: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("관리자 등록 오류", e);
+            return ResponseEntity.internalServerError().body("관리자 등록 중 오류가 발생했습니다: " + e.getMessage());
+        }
+    }
+>>>>>>> dev
 } 

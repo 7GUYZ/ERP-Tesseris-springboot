@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -23,12 +25,16 @@ public class BaseEntity {
 
     @PrePersist
     protected void onCreate(){
-        this.createdAt = Instant.now();
-        this.updatedAt = Instant.now();
+        // 한국 시간으로 설정
+        ZonedDateTime koreanTime = ZonedDateTime.now(ZoneId.of("Asia/Seoul"));
+        this.createdAt = koreanTime.toInstant();
+        this.updatedAt = koreanTime.toInstant();
     }
 
     @PreUpdate
     protected void onUpdate(){
-        this.updatedAt = Instant.now();
+        // 한국 시간으로 설정
+        ZonedDateTime koreanTime = ZonedDateTime.now(ZoneId.of("Asia/Seoul"));
+        this.updatedAt = koreanTime.toInstant();
     }
 }

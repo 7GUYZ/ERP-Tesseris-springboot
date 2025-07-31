@@ -15,5 +15,8 @@ public interface ProgramRepository extends JpaRepository<Program, Integer> {
     
     @Query("SELECT new com.jakdang.labs.api.taekjun.Permissionsettings.dto.ProgramDTO(p.programIndex, p.programName) FROM Program p WHERE p.menuIndex = :menuIndex")
     List<com.jakdang.labs.api.taekjun.Permissionsettings.dto.ProgramDTO> findProgramDTOsByMenuIndex(Integer menuIndex);
+    
+    @Query("SELECT new com.jakdang.labs.api.taekjun.Permissionsettings.dto.ProgramDTO(p.programIndex, p.programName) FROM Program p")
+    List<com.jakdang.labs.api.taekjun.Permissionsettings.dto.ProgramDTO> findAllProgramDTOs();
   
 } 

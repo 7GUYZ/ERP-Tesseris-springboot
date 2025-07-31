@@ -8,6 +8,7 @@ import com.jakdang.labs.exceptions.JwtExceptionCode;
 import com.jakdang.labs.api.auth.dto.CustomUserDetails;
 import com.jakdang.labs.exceptions.handler.CustomException;
 import com.jakdang.labs.exceptions.handler.JwtException;
+import com.jakdang.labs.api.auth.service.RefreshTokenService;
 import com.jakdang.labs.security.jwt.utils.JwtUtil;
 import com.jakdang.labs.security.jwt.utils.TokenUtils;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -35,6 +36,7 @@ import java.util.Optional;
 /**
  * JWT 인증 필터
  * 요청에서 JWT 토큰을 추출하고 검증하여 사용자 인증을 처리하는 필터
+ * 토큰 만료 시 자동 갱신 기능 포함
  */
 @RequiredArgsConstructor
 @Slf4j
@@ -42,12 +44,14 @@ public class JWTFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final TokenUtils tokenUtils;
+    private final RefreshTokenService refreshTokenService;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
     /**
      * 필터 내부 처리 로직
      * 요청에서 액세스 토큰을 추출하고 검증하여 인증을 처리
+     * 토큰 만료 시 자동 갱신 시도
      * 
      * @param request HTTP 요청
      * @param response HTTP 응답
@@ -78,10 +82,10 @@ public class JWTFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
 
         } catch (ExpiredJwtException e) {
-            log.error("만료된 JWT 토큰");
-            handleJwtException(response, JwtExceptionCode.EXPIRED_JWT_TOKEN);
+            log.warn("만료된 JWT 토큰 - 자동 갱신 시도");
+            handleTokenExpiration(request, response, filterChain);
         } catch (MalformedJwtException e) {
-            log.error("잘못된 형식의 JWT 토큰}");
+            log.error("잘못된 형식의 JWT 토큰");
             handleJwtException(response, JwtExceptionCode.INVALID_JWT_TOKEN);
         } catch (SignatureException e) {
             log.error("JWT 서명 위조가 의심됩니다.");
@@ -95,6 +99,47 @@ public class JWTFilter extends OncePerRequestFilter {
         } catch (Exception e) {
             log.error("JWT 토큰 처리 중 예상치 못한 오류");
             handleJwtException(response, JwtExceptionCode.INVALID_JWT_TOKEN);
+        }
+    }
+
+    /**
+     * 토큰 만료 시 자동 갱신 처리
+     * 리프레시 토큰을 사용하여 새로운 액세스 토큰을 발급받고 요청을 계속 진행
+     * 
+     * @param request HTTP 요청
+     * @param response HTTP 응답
+     * @param filterChain 필터 체인
+     * @throws IOException IO 예외
+     * @throws ServletException 서블릿 예외
+     */
+    private void handleTokenExpiration(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws IOException, ServletException {
+        
+        try {
+            // 리프레시 토큰으로 새로운 액세스 토큰 발급
+            String newAccessToken = refreshTokenService.refreshTokens(request.getCookies(), response);
+            
+            if (newAccessToken != null) {
+                // 새로운 토큰으로 인증 객체 생성
+                Authentication authentication = createAuthentication(newAccessToken);
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+                
+                // 응답 헤더에 새로운 토큰 설정
+                response.setHeader("Authorization", "Bearer " + newAccessToken);
+                response.setHeader("X-Token-Refreshed", "true");
+                
+                log.info("토큰 자동 갱신 성공");
+                
+                // 원래 요청 계속 진행
+                filterChain.doFilter(request, response);
+            } else {
+                log.error("토큰 갱신 실패 - 리프레시 토큰이 유효하지 않음");
+                handleJwtException(response, JwtExceptionCode.EXPIRED_JWT_TOKEN);
+            }
+            
+        } catch (Exception e) {
+            log.error("토큰 갱신 중 오류 발생: {}", e.getMessage());
+            handleJwtException(response, JwtExceptionCode.EXPIRED_JWT_TOKEN);
         }
     }
 

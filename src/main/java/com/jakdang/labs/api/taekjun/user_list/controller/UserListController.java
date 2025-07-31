@@ -47,7 +47,12 @@ public class UserListController {
     @PostMapping("/download")
     public ResponseEntity<byte[]> downloadUserList(@RequestBody UserListSearchDTO searchDTO) {
         try {
+            System.out.println("=== CSV 다운로드 API 호출됨 ===");
+            System.out.println("검색 조건: " + searchDTO);
+            
             byte[] csvData = userListService.generateCsvFile(searchDTO);
+            
+            System.out.println("CSV 데이터 생성 완료, 크기: " + csvData.length + " bytes");
             
             // 파일명 생성 (현재 날짜 포함)
             String fileName = "회원목록_" + java.time.LocalDate.now().toString().replace("-", "") + ".csv";
@@ -57,11 +62,16 @@ public class UserListController {
             headers.setContentDispositionFormData("attachment", fileName);
             headers.setContentLength(csvData.length);
             
+            System.out.println("CSV 다운로드 응답 생성 완료");
+            
             return ResponseEntity.ok()
                 .headers(headers)
                 .body(csvData);
                 
         } catch (Exception e) {
+            System.err.println("=== CSV 다운로드 API 에러 ===");
+            System.err.println("에러 메시지: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.internalServerError().build();
         }
     }

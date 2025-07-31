@@ -4,10 +4,9 @@ import com.jakdang.labs.api.common.ResponseDTO;
 import com.jakdang.labs.api.dabin.FrontEventCouponRegistration.dto.CouponForEventResponse;
 import com.jakdang.labs.api.dabin.FrontEventCouponRegistration.dto.EventRegistrationRequest;
 import com.jakdang.labs.api.dabin.FrontEventCouponRegistration.service.EventRegistrationService;
-import com.jakdang.labs.api.taekjun.Permissionsettings.repository.UserTesserisRepository;
 import com.jakdang.labs.entity.UserTesseris;
+import com.jakdang.labs.api.dabin.FrontMyPageStoreInfo.repository.UserTesserisJdbRepo;
 import com.jakdang.labs.api.auth.dto.CustomUserDetails;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -22,7 +21,7 @@ import java.util.List;
 public class EventRegistrationController {
     
     private final EventRegistrationService eventRegistrationService;
-    private final UserTesserisRepository userTesserisRepository;
+    private final UserTesserisJdbRepo userTesserisRepository;
     
     /**
      * JWT 기반 사용 가능한 쿠폰 목록 조회
@@ -53,30 +52,4 @@ public class EventRegistrationController {
         log.info("JWT 이벤트 등록 요청: userId={}, userIndex={}, eventName={}", userId, userIndex, request.getEventName());
         return eventRegistrationService.registerEvent(request, userIndex);
     }
-    
-
-    
-    /**
-     * 기존 방식 (하위 호환)
-     */
-    @GetMapping(value = "/coupons", params = "userIndex")
-    public ResponseDTO<List<CouponForEventResponse>> getAvailableCoupons(
-            @RequestParam(name = "userIndex") Long userIndex,
-            @RequestParam(name = "minPrice", required = false) Integer minPrice) {
-        log.info("사용 가능한 쿠폰 목록 조회 요청: userIndex={}, minPrice={}", userIndex, minPrice);
-        return eventRegistrationService.getAvailableCoupons(userIndex, minPrice);
-    }
-    
-    /**
-     * 기존 방식 (하위 호환)
-     */
-    @PostMapping(value = "/register", params = "userIndex")
-    public ResponseDTO<String> registerEvent(
-            @RequestBody EventRegistrationRequest request,
-            @RequestParam(name = "userIndex") Long userIndex) {
-        log.info("이벤트 등록 요청: userIndex={}, eventName={}", userIndex, request.getEventName());
-        return eventRegistrationService.registerEvent(request, userIndex);
-    }
-    
-
 } 

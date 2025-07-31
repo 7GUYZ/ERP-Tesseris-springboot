@@ -15,6 +15,7 @@ import com.jakdang.labs.security.jwt.service.LogoutService;
 import com.jakdang.labs.security.jwt.service.TokenService;
 import com.jakdang.labs.security.jwt.utils.JwtUtil;
 import com.jakdang.labs.security.jwt.utils.TokenUtils;
+import com.jakdang.labs.api.auth.service.RefreshTokenService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -90,6 +91,7 @@ public class SecurityConfig {
     private final UserTesserisLjeSvc userTesserisSvc;
     private final AdminLjeSvc adminSvc;
     private final CmsAccessLogLjeSvc cmsLogSvc;
+    private final RefreshTokenService refreshTokenService;
 
 //    private final CustomOAuth2UserService customOAuth2UserService;
 //    private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
@@ -154,15 +156,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, GET_PUBLIC_URLS).permitAll()
                         .requestMatchers(HttpMethod.POST, POST_PUBLIC_URLS).permitAll()
                         .requestMatchers("/api/master/**").hasAnyRole("ADMIN", "TEACHER")
-                        .requestMatchers("/ws/**", "/ws/chat/**", "/springboot/ws/notifications/**", "/ws/notifications/**", 
-                                        "/springboot/ws/notifications/info", "/ws/notifications/info",
-                                        "/springboot/ws/notifications/*/*", "/ws/notifications/*/*",
-                                        "/springboot/ws/notifications/*/*/*", "/ws/notifications/*/*/*").permitAll()
+                        .requestMatchers("/ws/**", "/ws/chat/**", "/api/ws/notifications/**", "/ws/notifications/**", 
+                        "/springboot/api/ws/notifications/**", "/api/springboot/ws/notifications/**").permitAll()
                         .anyRequest().authenticated());
 
         // 필터 설정
         http
-                .addFilterBefore(new JWTFilter(jwtUtil, tokenUtils), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new JWTFilter(jwtUtil, tokenUtils, refreshTokenService), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(new LogoutFilter(logoutService, tokenUtils, objectMapper, jwtUtil, userTesserisSvc, cmsLogSvc), JWTFilter.class)
                 // (**0715 정은 수정...service 호출하려고 LoginFilter에 생성자 추가했더니 이것도 수정해야된대용..)
                 .addFilterAt(new LoginFilter(authenticationManager, tokenService, tokenUtils, objectMapper, userTesserisSvc, adminSvc, cmsLogSvc), UsernamePasswordAuthenticationFilter.class);

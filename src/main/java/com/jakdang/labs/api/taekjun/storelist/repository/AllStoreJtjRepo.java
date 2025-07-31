@@ -50,7 +50,7 @@ public interface AllStoreJtjRepo extends JpaRepository<Store, Integer> {
             LEFT JOIN store_category t2 ON t1.store_category_index = t2.store_category_index
             LEFT JOIN user_cm t3 ON t1.user_index = t3.user_cm_index
             LEFT JOIN store_business_hours t4 ON t1.user_index = t4.store_user_index
-            LEFT JOIN store_image t5 ON t1.user_index = t5.store_user_index AND t5.store_main_image_status = 'T'
+            LEFT JOIN store_image t5 ON t1.store_index = t5.store_user_index AND t5.store_main_image_status = 'T'
             LEFT JOIN business_man bm ON t1.business_man_user_index = bm.business_man_index
             WHERE
                 t1.store_request_status_index = 2
@@ -109,7 +109,7 @@ public interface AllStoreJtjRepo extends JpaRepository<Store, Integer> {
                 INNER JOIN store_category c ON s.store_category_index = c.store_category_index
                 INNER JOIN user_cm u ON s.user_index = u.user_cm_index
                 LEFT JOIN store_business_hours h ON s.user_index = h.store_user_index
-                LEFT JOIN store_image i ON s.user_index = i.store_user_index
+                LEFT JOIN store_image i ON s.store_index = i.store_user_index
                 -- 임시 휴무와 정기 휴무 정보는 store 테이블에 직접 저장됨
                 WHERE s.store_index = :store_index
                 GROUP BY s.store_index, s.store_name, s.store_phone, s.store_address, 

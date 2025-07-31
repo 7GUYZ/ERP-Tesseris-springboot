@@ -18,16 +18,15 @@ public interface AdminhdkRepository extends JpaRepository<Admin, Integer> {
      */
     @Query("SELECT new com.jakdang.labs.api.deokkyu.admin.dto.AdminListResponseDto(" +
            "COALESCE(u.email, ''), COALESCE(u.name, ''), COALESCE(u.phone, ''), " +
-           "COALESCE(at.adminTypeName, ''), COALESCE(a.adminRankName, ''), a.adminRegistrationDate) " +
+           "COALESCE(at.adminTypeName, ''), a.adminRegistrationDate) " +
            "FROM Admin a " +
-           "LEFT JOIN a.userIndex ut " +
-           "LEFT JOIN ut.usersId u " +
-           "LEFT JOIN a.adminTypeIndex at " +
+           "JOIN a.userIndex ut " +
+           "JOIN ut.usersId u " +
+           "JOIN a.adminTypeIndex at " +
            "WHERE (:adminUserEmail IS NULL OR :adminUserEmail = '' OR u.email LIKE CONCAT('%', :adminUserEmail, '%')) " +
            "AND (:adminUserName IS NULL OR :adminUserName = '' OR u.name LIKE CONCAT('%', :adminUserName, '%')) " +
            "AND (:adminUserPhone IS NULL OR :adminUserPhone = '' OR u.phone LIKE CONCAT('%', :adminUserPhone, '%')) " +
            "AND (:adminTypeName IS NULL OR :adminTypeName = '' OR at.adminTypeName LIKE CONCAT('%', :adminTypeName, '%')) " +
-           "AND (:adminRankName IS NULL OR :adminRankName = '' OR a.adminRankName LIKE CONCAT('%', :adminRankName, '%')) " +
            "AND (:startDate IS NULL OR DATE(a.adminRegistrationDate) >= :startDate) " +
            "AND (:endDate IS NULL OR DATE(a.adminRegistrationDate) <= :endDate) " +
            "ORDER BY a.adminRegistrationDate DESC")
@@ -36,7 +35,6 @@ public interface AdminhdkRepository extends JpaRepository<Admin, Integer> {
             @Param("adminUserName") String adminUserName,
             @Param("adminUserPhone") String adminUserPhone,
             @Param("adminTypeName") String adminTypeName,
-            @Param("adminRankName") String adminRankName,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );
@@ -46,13 +44,22 @@ public interface AdminhdkRepository extends JpaRepository<Admin, Integer> {
      */
     @Query("SELECT new com.jakdang.labs.api.deokkyu.admin.dto.AdminListResponseDto(" +
            "COALESCE(u.email, ''), COALESCE(u.name, ''), COALESCE(u.phone, ''), " +
-           "COALESCE(at.adminTypeName, ''), COALESCE(a.adminRankName, ''), a.adminRegistrationDate) " +
+           "COALESCE(at.adminTypeName, ''), a.adminRegistrationDate) " +
            "FROM Admin a " +
-           "LEFT JOIN a.userIndex ut " +
-           "LEFT JOIN ut.usersId u " +
-           "LEFT JOIN a.adminTypeIndex at " +
+           "JOIN a.userIndex ut " +
+           "JOIN ut.usersId u " +
+           "JOIN a.adminTypeIndex at " +
            "ORDER BY a.adminRegistrationDate DESC")
     List<AdminListResponseDto> findAllAdminList();
+<<<<<<< HEAD
 
 
+=======
+    
+    /**
+     * 디버깅용: Admin 테이블만 조회
+     */
+    @Query("SELECT a FROM Admin a")
+    List<Admin> findAllAdmins();
+>>>>>>> dev
 } 
