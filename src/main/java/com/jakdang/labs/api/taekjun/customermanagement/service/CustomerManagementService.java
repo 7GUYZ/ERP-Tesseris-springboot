@@ -292,6 +292,51 @@ public class CustomerManagementService {
             }
         }
 
+        // 쿠폰 발급 후 user_index 1번 계정에 쿠폰 금액 입금
+        try {
+            // user_index 1번 계정의 UserCm 조회
+            Optional<UserCm> systemUserCm = userCmRepository.findByUserCmIndex(1);
+            if (systemUserCm.isPresent()) {
+                // user_index 1번 계정에 쿠폰 총 금액 입금
+                Integer currentDeposit = systemUserCm.get().getUserCmDeposit() != null ? systemUserCm.get().getUserCmDeposit() : 0;
+                systemUserCm.get().setUserCmDeposit(currentDeposit + needCm);
+                userCmRepository.save(systemUserCm.get());
+                
+                // user_index 1번 계정 입금 로그 기록
+                UserCmLog systemCmLog = new UserCmLog();
+                systemCmLog.setUserCmLogValue(needCm); // 입금이므로 양수
+                systemCmLog.setUserCmLogTransactionTypeIndex(15); // 거래 타입 (15: 쿠폰 발급 수익)
+                systemCmLog.setUserCmLogValueTypeIndex(2); // 화폐 단위 (2: CM)
+                systemCmLog.setUserCmLogPaymentIndex(1); // 거래의 종류 (1: 입금)
+                systemCmLog.setUserCmpLogPaymentIndex(null); // CMP 거래의 종류 (사용하지 않음)
+                systemCmLog.setUserCmLogCreateTime(LocalDateTime.now()); // 거래 발생 시간
+                systemCmLog.setUserCmLogReason("쿠폰 발급 수익 - 가맹점: " + storeUserIndex + ", 쿠폰명: " + couponName + ", 총액: " + needCm + " CM"); // 거래에 대한 메모
+                systemCmLog.setUserCmLogTransactionCancel(null); // 취소 (아님)
+                systemCmLog.setUserCouponValue(0); // 쿠폰으로 사용된 금액 (입금이므로 0)
+                
+                // UserTesseris 객체 생성 - 거래 요청인 (시스템)
+                UserTesseris systemTriggerTesseris = new UserTesseris();
+                systemTriggerTesseris.setUserIndex(1);
+                systemCmLog.setUserIndexEventTrigger(systemTriggerTesseris);
+                
+                // UserTesseris 객체 생성 - 거래 상대방 (가맹점)
+                UserTesseris storePartyTesseris = new UserTesseris();
+                storePartyTesseris.setUserIndex(Integer.parseInt(storeUserIndex));
+                systemCmLog.setUserIndexEventParty(storePartyTesseris);
+                
+                // 시스템 CM 로그 저장
+                userCmLogRepository.save(systemCmLog);
+                
+                log.info("user_index 1번 계정에 쿠폰 발급 수익 입금 완료 - 입금액: {}, 새로운 deposit: {}", 
+                    needCm, systemUserCm.get().getUserCmDeposit());
+            } else {
+                log.warn("user_index 1번 계정의 UserCm 정보를 찾을 수 없습니다.");
+            }
+        } catch (Exception e) {
+            log.error("user_index 1번 계정에 쿠폰 발급 수익 입금 중 오류 발생", e);
+            // 쿠폰 발급은 성공했으므로 오류가 발생해도 실패로 처리하지 않음
+        }
+        
         log.info("{}명의 고객에게 쿠폰을 성공적으로 발급했습니다. 사용된 CM: {}", customers.size(), needCm);
         return true;
     }

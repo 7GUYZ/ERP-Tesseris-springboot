@@ -46,15 +46,9 @@ public class DashboardService {
                     .chargedCmYesterday(getChargedCmByDate(yesterdayStr))
                     .chargedCmToday(getChargedCmByDate(todayStr))
                     // 중개수수료 관련 통계
-                    .businessCashCommissionTotal(getBusinessCashCommissionTotal())
-                    .businessCashCommissionYesterday(getBusinessCashCommissionByDate(yesterdayStr))
-                    .businessCashCommissionToday(getBusinessCashCommissionByDate(todayStr))
                     .businessCmCommissionTotal(getBusinessCmCommissionTotal())
                     .businessCmCommissionYesterday(getBusinessCmCommissionByDate(yesterdayStr))
                     .businessCmCommissionToday(getBusinessCmCommissionByDate(todayStr))
-                    .companyCashCommissionTotal(getCompanyCashCommissionTotal())
-                    .companyCashCommissionYesterday(getCompanyCashCommissionByDate(yesterdayStr))
-                    .companyCashCommissionToday(getCompanyCashCommissionByDate(todayStr))
                     .companyCmCashTotal(getCompanyCmCashTotal())
                     .companyCmCashYesterday(getCompanyCmCashByDate(yesterdayStr))
                     .companyCmCashToday(getCompanyCmCashByDate(todayStr))
@@ -83,10 +77,6 @@ public class DashboardService {
                     .businessManTotal(getBusinessManTotal())
                     .businessManYesterday(getBusinessManByDate(yesterdayStr))
                     .businessManToday(getBusinessManByDate(todayStr))
-                    // 수수료 수익 (임시로 0으로 설정, 추후 계산 로직 추가 필요)
-                    .commissionRevenueTotal(0L)
-                    .commissionRevenueYesterday(0L)
-                    .commissionRevenueToday(0L)
                     .build();
             log.info("대시보드 통계 조회 완료");
             return statistics;
@@ -104,23 +94,11 @@ public class DashboardService {
         return userCmLogJtjRepo.getChargedCmByDate(date);
     }
     // 중개수수료 관련 메서드
-    private Long getBusinessCashCommissionTotal() {
-        return userCmLogJtjRepo.getBusinessCashCommissionTotal();
-    }
-    private Long getBusinessCashCommissionByDate(String date) {
-        return userCmLogJtjRepo.getBusinessCashCommissionByDate(date);
-    }
     private Long getBusinessCmCommissionTotal() {
         return userCmLogJtjRepo.getBusinessCmCommissionTotal();
     }
     private Long getBusinessCmCommissionByDate(String date) {
         return userCmLogJtjRepo.getBusinessCmCommissionByDate(date);
-    }
-    private Long getCompanyCashCommissionTotal() {
-        return userCmLogJtjRepo.getCompanyCashCommissionTotal();
-    }
-    private Long getCompanyCashCommissionByDate(String date) {
-        return userCmLogJtjRepo.getCompanyCashCommissionByDate(date);
     }
     private Long getCompanyCmCashTotal() {
         return userCmLogJtjRepo.getCompanyCmCashTotal();

@@ -399,20 +399,20 @@ public class AlarmSvc {
     /**
      * 1. 월 CM 한도 변경 알림
      */
-    public void sendMonthlyCmLimitChangedAlarm(Integer cmLimit) {
+    public void sendMonthlyCmLimitChangedAlarm(Integer userIndex, Integer cmLimit) {
         List<String> allUserIndexes = getAllUserIndexes();
         List<String> adminUserIndexes = findAdminsWithAuthority(ProgramIndexes.CM_LIMIT_MANAGEMENT);
         String value = String.valueOf(cmLimit) + "CM";
-        sendAlarmWithValue(AlarmTypeIds.MONTHLY_CM_LIMIT, allUserIndexes, adminUserIndexes, value, null);
+        sendAlarmWithValue(AlarmTypeIds.MONTHLY_CM_LIMIT, allUserIndexes, adminUserIndexes, value, userIndex);
     }
 
     /**
      * 2. 공지사항 알림 전송
      */
-    public void sendNoticeAlarm(String noticeTitle) {
+    public void sendNoticeAlarm(Integer userIndex, String noticeTitle) {
         List<String> allUserIndexes = getAllUserIndexes();
         List<String> adminUserIndexes = findAdminsWithAuthority(ProgramIndexes.NOTICE_MANAGEMENT);
-        sendAlarmWithValue(AlarmTypeIds.NOTICE, allUserIndexes, adminUserIndexes, noticeTitle, null);
+        sendAlarmWithValue(AlarmTypeIds.NOTICE, allUserIndexes, adminUserIndexes, noticeTitle, userIndex);
     }
 
     /**
@@ -445,10 +445,10 @@ public class AlarmSvc {
     /**
      * 5. 중계수수료 변경 알림 전송 (비동기 처리)
      */
-    public void sendCommissionChangedAlarm() {
+    public void sendCommissionChangedAlarm(Integer userIndex) {
         sendAsyncAlarm(() -> {
             List<String> adminUserIndexes = findAdminsWithAuthority(ProgramIndexes.COMMISSION_MANAGEMENT);
-            sendAlarmWithValue(AlarmTypeIds.COMMISSION_CHANGED, new ArrayList<>(), adminUserIndexes, "", null);
+            sendAlarmWithValue(AlarmTypeIds.COMMISSION_CHANGED, new ArrayList<>(), adminUserIndexes, "", userIndex);
             log.info("중계수수료 변경 알림 전송 완료 - 대상 관리자: {}명", adminUserIndexes.size());
         }, "중계수수료 변경");
     }
@@ -487,7 +487,6 @@ public class AlarmSvc {
      */
     public void sendStoreRegisterAlarm(Integer userIndex, Integer storeRequestStatusIndex) {
         sendAsyncAlarm(() -> {
-            List<String> adminUserIndexes = findAdminsWithAuthority(ProgramIndexes.STORE_REGISTER_MANAGEMENT);
             String alarmMessage = createStoreRegisterMessage(storeRequestStatusIndex);
             List<String> userIndexes = createSingleUserList(userIndex);
             sendAlarmWithValue(AlarmTypeIds.STORE_REGISTER, userIndexes, new ArrayList<>(), alarmMessage, null);
@@ -537,5 +536,15 @@ public class AlarmSvc {
             List<String> userIndexes = createSingleUserList(userIndex);
             sendAlarmWithValue(AlarmTypeIds.QNA_ANSWER, userIndexes, new ArrayList<>(), null, adminIndex);
         }, "Q&A 답변 완료");
+    }
+
+    /**
+     * 11. 가맹점 신청 등록 알림 전송 (user->admin)
+     */
+    public void sendNewStoreRegisterAlarm(Integer userIndex) {
+        sendAsyncAlarm(() -> {
+            List<String> adminUserIndexes = findAdminsWithAuthority(ProgramIndexes.STORE_REGISTER_MANAGEMENT);
+            sendAlarmWithValue(AlarmTypeIds.STORE_REGISTER, new ArrayList<>(), adminUserIndexes, null, userIndex);
+        }, "신규 가맹점 신청 접수");
     }
 }

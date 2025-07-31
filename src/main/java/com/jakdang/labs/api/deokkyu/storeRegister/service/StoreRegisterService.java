@@ -15,6 +15,7 @@ import com.jakdang.labs.api.deokkyu.storeRegister.dto.StoreRegisterRequestDto;
 import com.jakdang.labs.entity.Store;
 import com.jakdang.labs.entity.TemporaryStoreMaster;
 import com.jakdang.labs.entity.TemporaryStoreDetail;
+import com.jakdang.labs.api.alarm.service.AlarmSvc;
 import com.jakdang.labs.api.auth.entity.UserEntity;
 import com.jakdang.labs.entity.UserTesseris;
 import com.jakdang.labs.api.deokkyu.store.repository.StorehdkRepo;
@@ -48,6 +49,7 @@ public class StoreRegisterService {
     private final BusinessAreahdkRepo businessAreaRepository;
     private final GeocodingService geocodingService;
     private final S3FileUploadService s3FileUploadService;
+    private final AlarmSvc alarmSvc;
     
     /**
      * 가맹점 신청 등록
@@ -128,6 +130,15 @@ public class StoreRegisterService {
             response.put("status", storeRegisterDto.getStatus());
             
             log.info("가맹점 신청 등록 완료");
+
+            // 가맹점 등록 알림 서비스 (user->admin)
+            try {
+                alarmSvc.sendNewStoreRegisterAlarm(savedStore.getUserIndex().getUserIndex());
+                log.info("가맹점 신청 등록 알림 전송 완료");
+            } catch (Exception e) {
+                log.error("가맹점 신청 등록 알림 전송 실패: {}", e.getMessage());
+            }
+
             return response;
             
         } catch (Exception e) {
