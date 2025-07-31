@@ -46,11 +46,9 @@ public class ChatController {
     private final ChatServiceClient chatServiceClient;
 
     @GetMapping("/adminlist")
-    public ResponseEntity<List<UserListDTO>> Adminlist() {
+    public ResponseEntity<ResponseDTO<?>> Adminlist() {
         try {
-            List<UserListDTO> userList = chatService.Adminlist();
-            log.info("User list: {}", userList);
-            return ResponseEntity.ok(userList);
+            return ResponseEntity.ok(ResponseDTO.createSuccessResponse("조회 성공", chatService.Adminlist()));
         } catch (Exception e) {
             log.error("Error fetching user list: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
