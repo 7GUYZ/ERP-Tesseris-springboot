@@ -43,7 +43,8 @@ public class NoticeService {
 
       // userId로 UserTesseris 조회
       UserTesseris user = userRepository.findByUsersId_Id(userId).orElse(null);
-      if (user == null) return false;
+      if (user == null)
+        return false;
 
       Notice notice = new Notice();
       notice.setUserIndex(user.getUserIndex()); // userIndex 저장
@@ -51,6 +52,17 @@ public class NoticeService {
       notice.setNoticeDesc(request.getNoticeDesc());
       notice.setNoticeCreateTime(LocalDateTime.now());
       noticeRepository.save(notice);
+
+      // 공지사항 등록 성공 시 알림 전송(정은)
+      try {
+        String noticeTitle = request.getNoticeTitle();
+        alarmSvc.sendNoticeAlarm(user.getUserIndex(), noticeTitle);
+        log.info("공지사항 알림 전송 완료: {}", noticeTitle);
+      } catch (Exception e) {
+        log.error("공지사항 등록 알림 전송 실패: {}", e.getMessage());
+        // 알림 전송 실패해도 공지사항 등록은 성공으로 처리
+      }
+      
       return true;
     } catch (Exception e) {
       return false;
@@ -85,7 +97,8 @@ public class NoticeService {
   @Transactional
   public boolean updateNotice(NoticeDTO.UpdateRequest request, String authHeader) {
     try {
-      if (!verifyPassword(request.getPassword(), authHeader)) return false;
+      if (!verifyPassword(request.getPassword(), authHeader))
+        return false;
       Notice notice = noticeRepository.findById(request.getNoticeIndex())
           .orElseThrow(() -> new IllegalArgumentException("공지사항을 찾을 수 없습니다."));
       notice.setNoticeTitle(request.getNoticeTitle());
@@ -101,9 +114,10 @@ public class NoticeService {
   @Transactional
   public boolean deleteNotice(DeleteRequest request, String authHeader) {
     try {
-      if (!verifyPassword(request.getPassword(), authHeader)) return false;
+      if (!verifyPassword(request.getPassword(), authHeader))
+        return false;
       Notice notice = noticeRepository.findById(request.getNoticeIndex())
-        .orElseThrow(() -> new IllegalArgumentException("공지사항을 찾을 수 없습니다."));
+          .orElseThrow(() -> new IllegalArgumentException("공지사항을 찾을 수 없습니다."));
       noticeRepository.delete(notice);
       return true;
     } catch (Exception e) {
@@ -113,19 +127,21 @@ public class NoticeService {
 
   // 비밀번호 검증
   public boolean verifyPassword(String password, String authHeader) {
-    if (authHeader == null || !authHeader.startsWith("Bearer ")) return false;
+    if (authHeader == null || !authHeader.startsWith("Bearer "))
+      return false;
     String token = authHeader.substring(7);
     String email = jwtUtil.getUserEmail(token);
     UserEntity user = authRepository.findByEmail(email).orElse(null);
-    if (user == null) return false;
+    if (user == null)
+      return false;
     return passwordEncoder.matches(password, user.getPassword());
   }
 
-      // Entity → DTO 변환
+  // Entity → DTO 변환
   private NoticeDTO.Response toResponse(Notice notice) {
     NoticeDTO.Response dto = new NoticeDTO.Response();
     dto.setNoticeIndex(notice.getNoticeIndex());
-    
+
     // userIndex → userEmail 변환
     String userEmail = null;
     try {
@@ -141,7 +157,7 @@ public class NoticeService {
       System.out.println("User 정보 조회 중 오류: " + e.getMessage());
       userEmail = "unknown";
     }
-    
+
     dto.setUserEmail(userEmail);
     dto.setNoticeTitle(notice.getNoticeTitle());
     dto.setNoticeDesc(notice.getNoticeDesc());
@@ -149,18 +165,4 @@ public class NoticeService {
     return dto;
   }
 
-  /**
-   * 공지사항 알림 전송
-   */
-  public void sendNoticeAlarm(String noticeTitle) {
-    try {
-      // 알림 전송
-      alarmSvc.sendNoticeAlarm(noticeTitle);
-      log.info("공지사항 알림 전송 완료: {}", noticeTitle);
-
-    } catch (Exception e) {
-      System.err.println("공지사항 알림 전송 중 오류: " + e.getMessage());
-      // 알림 전송 실패해도 공지사항 등록은 성공으로 처리
-    }
-  }
-} 
+}
