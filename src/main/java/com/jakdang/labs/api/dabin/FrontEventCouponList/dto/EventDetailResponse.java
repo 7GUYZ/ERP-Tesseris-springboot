@@ -38,5 +38,6 @@ public class EventDetailResponse {
         private LocalDateTime couponIssuanceTime;
         private Integer couponLimit;
         private LocalDateTime couponLimitTime;
+        private String storeName;
     }
 } 

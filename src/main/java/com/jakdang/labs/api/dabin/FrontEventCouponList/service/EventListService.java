@@ -125,6 +125,7 @@ public class EventListService {
                     .couponIssuanceTime(couponRow[4] != null ? (LocalDateTime) couponRow[4] : null)
                     .couponLimit(((Number) couponRow[5]).intValue())
                     .couponLimitTime(couponRow[6] != null ? (LocalDateTime) couponRow[6] : null)
+                    .storeName((String) couponRow[7])
                     .build())
                 .collect(Collectors.toList());
             

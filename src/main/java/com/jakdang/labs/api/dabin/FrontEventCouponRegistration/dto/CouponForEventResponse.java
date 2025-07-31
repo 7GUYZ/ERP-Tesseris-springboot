@@ -17,11 +17,12 @@ public class CouponForEventResponse {
     private LocalDateTime couponIssuanceTime;
     private Integer couponLimit;
     private LocalDateTime couponLimitTime;
+    private String storeName;
     
     // JPQL에서 사용할 생성자
     public CouponForEventResponse(Long couponIndex, String couponName, Integer couponPrice, 
                                  String couponIssuanceStatus, LocalDateTime couponIssuanceTime, 
-                                 Integer couponLimit, LocalDateTime couponLimitTime) {
+                                 Integer couponLimit, LocalDateTime couponLimitTime, String storeName) {
         this.couponIndex = couponIndex;
         this.couponName = couponName;
         this.couponPrice = couponPrice;
@@ -29,5 +30,6 @@ public class CouponForEventResponse {
         this.couponIssuanceTime = couponIssuanceTime;
         this.couponLimit = couponLimit;
         this.couponLimitTime = couponLimitTime;
+        this.storeName = storeName;
     }
 } 
