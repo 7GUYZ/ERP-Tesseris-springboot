@@ -35,9 +35,10 @@ public interface EventListDetailRepository extends JpaRepository<Store, Integer>
     
     @Query("""
         SELECT t1.couponIndex, t1.couponName, t1.couponPrice, t2.couponIssuanceStatus,
-               t1.couponIssuanceTime, t1.couponLimit, t1.couponLimitTime
+               t1.couponIssuanceTime, t1.couponLimit, t1.couponLimitTime, s.storeName
         FROM Coupon t1
         INNER JOIN CouponIssuanceStatus t2 ON t1.couponIssuanceStatusIndex = t2.couponIssuanceStatusIndex
+        LEFT JOIN Store s ON t1.issuanceUser.userIndex = s.userIndex.userIndex
         WHERE t1.issuanceUser.userIndex = :eventMasterUserIndex
         AND t1.couponIssuanceStatusIndex = 1
         AND t1.couponIndex IN (

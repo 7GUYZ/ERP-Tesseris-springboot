@@ -58,9 +58,10 @@ public class UserEventDetailRepository {
     public List<Object[]> findEventCoupons(Integer eventMasterUserIndex, Integer eventMasterIndex) {
         String sql = """
             SELECT t1.coupon_index, t1.coupon_name, t1.coupon_price, t2.coupon_issuance_status,
-                   t1.coupon_issuance_time, t1.coupon_limit, t1.coupon_limit_time
+                   t1.coupon_issuance_time, t1.coupon_limit, t1.coupon_limit_time, t3.store_name
             FROM coupon t1
             INNER JOIN coupon_issuance_status t2 ON t1.coupon_issuance_status_index = t2.coupon_issuance_status_index
+            LEFT JOIN store t3 ON t1.issuance_user_index = t3.user_index
             WHERE t1.issuance_user_index = ?
             AND t1.coupon_issuance_status_index = 1
             AND t1.coupon_index IN (
@@ -79,7 +80,8 @@ public class UserEventDetailRepository {
                 rs.getString("coupon_issuance_status"),
                 rs.getTimestamp("coupon_issuance_time") != null ? rs.getTimestamp("coupon_issuance_time").toLocalDateTime() : null,
                 rs.getInt("coupon_limit"),
-                rs.getTimestamp("coupon_limit_time") != null ? rs.getTimestamp("coupon_limit_time").toLocalDateTime() : null
+                rs.getTimestamp("coupon_limit_time") != null ? rs.getTimestamp("coupon_limit_time").toLocalDateTime() : null,
+                rs.getString("store_name")
             };
         }, eventMasterUserIndex, eventMasterIndex);
     }
