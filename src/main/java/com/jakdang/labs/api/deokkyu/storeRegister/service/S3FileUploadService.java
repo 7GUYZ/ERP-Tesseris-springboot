@@ -10,6 +10,8 @@ import com.amazonaws.services.s3.model.CannedAccessControlList;
 import com.amazonaws.services.s3.model.DeleteObjectRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.amazonaws.services.s3.model.GeneratePresignedUrlRequest;
+import com.amazonaws.HttpMethod;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -18,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.Date;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
@@ -162,6 +165,35 @@ public class S3FileUploadService {
         } catch (Exception e) {
             log.error("버킷 존재 여부 확인 실패: bucket={}", bucket, e);
             return false;
+        }
+    }
+    
+    /**
+     * S3 Presigned URL 생성 (10분 유효)
+     * @param fileKey S3 파일 키 또는 전체 URL
+     * @return Presigned URL
+     */
+    public String generatePresignedUrl(String fileKey) {
+        try {
+            // URL에서 파일 키 추출 (전체 URL이 전달된 경우)
+            String extractedFileKey = extractFileKeyFromUrl(fileKey);
+            
+            log.info("🔗 Presigned URL 생성 시작: fileKey={}", extractedFileKey);
+            
+            Date expiration = new Date(System.currentTimeMillis() + 1000 * 60 * 10); // 10분 유효
+            GeneratePresignedUrlRequest request = new GeneratePresignedUrlRequest(bucket, extractedFileKey)
+                .withMethod(HttpMethod.GET)
+                .withExpiration(expiration);
+
+            String presignedUrl = amazonS3.generatePresignedUrl(request).toString();
+            log.info("✅ Presigned URL 생성 성공: {}", presignedUrl);
+            
+            return presignedUrl;
+            
+        } catch (Exception e) {
+            log.error("❌ Presigned URL 생성 실패: fileKey={}, 오류: {}", fileKey, e.getMessage());
+            log.error("❌ 오류 상세: ", e);
+            return null;
         }
     }
 } 

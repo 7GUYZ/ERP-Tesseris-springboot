@@ -8,6 +8,7 @@ import com.jakdang.labs.api.deokkyu.store.dto.CustomerDto;
 import com.jakdang.labs.api.deokkyu.store.dto.StoreListDto;
 import com.jakdang.labs.api.deokkyu.store.dto.StoreListSearchDto;
 import com.jakdang.labs.api.deokkyu.store.dto.StoreRegisterdListDto;
+
 import com.jakdang.labs.entity.BusinessGrade;
 import com.jakdang.labs.entity.BusinessMan;
 import com.jakdang.labs.entity.Store;
@@ -34,6 +35,7 @@ import com.jakdang.labs.api.deokkyu.store.repository.UserTesserishdkRepo;
 import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -42,6 +44,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor // 생성자 이걸로 만들어줌
+@Slf4j
 @Service
 public class StoreService {
     private final StorehdkRepo storeRepository;

@@ -70,6 +70,7 @@ public class StoreRegisterRequestDto {
     @AllArgsConstructor
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class UserInfo {
+        private Integer user_index;  // ✅ user_index 필드 추가
         private String name;
         private String phone;
     }

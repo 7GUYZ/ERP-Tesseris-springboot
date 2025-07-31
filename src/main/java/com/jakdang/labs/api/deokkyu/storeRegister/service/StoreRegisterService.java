@@ -34,7 +34,9 @@ import com.jakdang.labs.entity.BusinessArea;
 import com.jakdang.labs.entity.StoreSubscriptionFee;
 import com.jakdang.labs.entity.UserCmLog;
 import com.jakdang.labs.entity.UserCm;
+import com.jakdang.labs.entity.StoreImage;
 import com.jakdang.labs.api.deokkyu.storeRegister.service.S3FileUploadService;
+import com.jakdang.labs.api.dabin.FrontMyPageStoreInfo.repository.StoreImageJdbRepo;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -58,6 +60,7 @@ public class StoreRegisterService {
     private final UserCmhdkRepo userCmRepository;
     private final GeocodingService geocodingService;
     private final S3FileUploadService s3FileUploadService;
+    private final StoreImageJdbRepo storeImageRepository;
     
     /**
      * 가맹점 신청 등록
@@ -74,6 +77,8 @@ public class StoreRegisterService {
         
         try {
             log.info("=== 🚀 가맹점 신청 등록 처리 시작 ===");
+            
+
             
             // === 1. 파라미터 확인 ===
             log.info("📊 입력 파라미터 확인:");
@@ -117,6 +122,18 @@ public class StoreRegisterService {
             log.info("🔄 JSON 문자열을 DTO로 변환 시작");
             StoreRegisterRequestDto storeRegisterDto = customObjectMapper.readValue(storeData, StoreRegisterRequestDto.class);
             log.info("✅ JSON 변환 완료");
+            
+            // === 0. userIndex 정보 확인 ===
+            log.info("🔍 === USER INDEX 정보 확인 ===");
+            log.info("   - dto.getUserIndex(): {}", storeRegisterDto.getUserIndex());
+            if (storeRegisterDto.getUserInfo() != null) {
+                log.info("   - dto.getUserInfo().getUser_index(): {}", storeRegisterDto.getUserInfo().getUser_index());
+                log.info("   - dto.getUserInfo().getName(): '{}'", storeRegisterDto.getUserInfo().getName());
+                log.info("   - dto.getUserInfo().getPhone(): '{}'", storeRegisterDto.getUserInfo().getPhone());
+            } else {
+                log.info("   - dto.getUserInfo(): null");
+            }
+            log.info("🔍 === USER INDEX 정보 확인 완료 ===");
             
             // 기본 정보 설정
             storeRegisterDto.setStatus("PENDING"); // 대기 상태로 설정
@@ -209,6 +226,15 @@ public class StoreRegisterService {
                         log.info("   - S3 URL: {}", s3Url);
                         log.info("   - DB 파일명: {}", savedStore.getStoreBusinessLicensePhoto());
                         log.info("   - 업로드 파일명: {}", storeBusinessLicensePhoto.getOriginalFilename());
+                        
+                        // 🔄 Store 테이블에 S3 URL 업데이트
+                        log.info("🔄 Store 테이블 사업자등록증 URL 업데이트 시작");
+                        savedStore.setStoreBusinessLicensePhoto(s3Url);
+                        Store updatedStore = storeRepository.save(savedStore);
+                        log.info("✅ Store 테이블 사업자등록증 URL 업데이트 완료: {}", s3Url);
+                        
+                        // 📋 StoreImage 테이블에도 저장
+                        saveStoreImage(updatedStore, s3Url, "business_license");
                     } else {
                         log.error("❌ 사업자등록증 사진 S3 업로드 실패 - S3 URL이 null 또는 빈값");
                         log.error("   - 원본 파일명: {}", storeBusinessLicensePhoto.getOriginalFilename());
@@ -248,6 +274,15 @@ public class StoreRegisterService {
                         log.info("   - S3 URL: {}", s3Url);
                         log.info("   - DB 파일명: {}", savedStore.getStoreSignPhoto());
                         log.info("   - 업로드 파일명: {}", storeSignPhoto.getOriginalFilename());
+                        
+                        // 🔄 Store 테이블에 S3 URL 업데이트
+                        log.info("🔄 Store 테이블 간판사진 URL 업데이트 시작");
+                        savedStore.setStoreSignPhoto(s3Url);
+                        Store updatedStore = storeRepository.save(savedStore);
+                        log.info("✅ Store 테이블 간판사진 URL 업데이트 완료: {}", s3Url);
+                        
+                        // 📋 StoreImage 테이블에도 저장
+                        saveStoreImage(updatedStore, s3Url, "sign_photo");
                     } else {
                         log.error("❌ 간판 사진 S3 업로드 실패 - S3 URL이 null 또는 빈값");
                         log.error("   - 원본 파일명: {}", storeSignPhoto.getOriginalFilename());
@@ -287,6 +322,15 @@ public class StoreRegisterService {
                         log.info("   - S3 URL: {}", s3Url);
                         log.info("   - DB 파일명: {}", savedStore.getStoreProntPhoto());
                         log.info("   - 업로드 파일명: {}", storeFrontPhoto.getOriginalFilename());
+                        
+                        // 🔄 Store 테이블에 S3 URL 업데이트
+                        log.info("🔄 Store 테이블 외관사진 URL 업데이트 시작");
+                        savedStore.setStoreProntPhoto(s3Url);
+                        Store updatedStore = storeRepository.save(savedStore);
+                        log.info("✅ Store 테이블 외관사진 URL 업데이트 완료: {}", s3Url);
+                        
+                        // 📋 StoreImage 테이블에도 저장
+                        saveStoreImage(updatedStore, s3Url, "front_photo");
                     } else {
                         log.error("❌ 외관 사진 S3 업로드 실패 - S3 URL이 null 또는 빈값");
                         log.error("   - 원본 파일명: {}", storeFrontPhoto.getOriginalFilename());
@@ -335,33 +379,65 @@ public class StoreRegisterService {
         // user_index 조회
         UserTesseris userTesseris = null;
         
-        // 1. userIndex가 있는 경우 직접 조회
+        // 1. 최상위 userIndex가 있는 경우 직접 조회
         if (dto.getUserIndex() != null) {
+            log.info("🔍 최상위 userIndex 발견: {}", dto.getUserIndex());
             userTesseris = userTesserisRepository.findById(dto.getUserIndex())
                 .orElseThrow(() -> new RuntimeException("UserTesseris를 찾을 수 없습니다: " + dto.getUserIndex()));
-        } 
-        // 2. userIndex가 없는 경우 userInfo.name으로 조회
+        }
+        // 2. userInfo.user_index가 있는 경우 직접 조회 (✅ 추가된 로직)
+        else if (dto.getUserInfo() != null && dto.getUserInfo().getUser_index() != null) {
+            Integer userIndexFromUserInfo = dto.getUserInfo().getUser_index();
+            log.info("🔍 userInfo.user_index 발견: {}", userIndexFromUserInfo);
+            userTesseris = userTesserisRepository.findById(userIndexFromUserInfo)
+                .orElseThrow(() -> new RuntimeException("UserTesseris를 찾을 수 없습니다: " + userIndexFromUserInfo));
+        }
+        // 3. userIndex가 없는 경우에만 userInfo.name으로 조회 (마지막 수단)
         else if (dto.getUserInfo() != null && dto.getUserInfo().getName() != null) {
             String userName = dto.getUserInfo().getName();
             
-            // userName으로 UserEntity 조회
-            UserEntity userEntity = userRepository.findByName(userName)
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다: " + userName));
+            log.info("🔍 사용자 이름으로 UserEntity 조회 시작: userName='{}'", userName);
             
-            // UserEntity로 UserTesseris 조회
-            List<UserTesseris> tesserisList = userTesserisRepository.findByUsersId(userEntity);
-            if (tesserisList.isEmpty()) {
-                throw new RuntimeException("UserTesseris를 찾을 수 없습니다: " + userName);
+            try {
+                // userName으로 UserEntity 조회 - 안전한 메서드 사용 (중복 방지)
+                log.info("📋 findFirstByName() 호출 전 - 중복 방지");
+                UserEntity userEntity = userRepository.findFirstByName(userName)
+                    .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다: " + userName));
+                log.info("✅ findFirstByName() 성공: userId={}", userEntity.getId());
+                
+                // UserEntity로 UserTesseris 조회
+                List<UserTesseris> tesserisList = userTesserisRepository.findByUsersId(userEntity);
+                if (tesserisList.isEmpty()) {
+                    throw new RuntimeException("UserTesseris를 찾을 수 없습니다: " + userName);
+                }
+                userTesseris = tesserisList.get(0);
+                
+            } catch (Exception e) {
+                log.error("❌ 사용자 조회 중 오류 발생: userName='{}', 오류: {}", userName, e.getMessage());
+                log.error("❌ 오류 상세: ", e);
+                throw e;
             }
-            userTesseris = tesserisList.get(0);
         } else {
             throw new RuntimeException("사용자 정보가 부족합니다. userIndex 또는 userInfo.name이 필요합니다.");
         }
+        
+        // === ✅ 최종 선택된 UserTesseris 정보 확인 ===
+        log.info("✅ === 최종 선택된 사용자 정보 ===");
+        log.info("   - UserTesseris.userIndex: {}", userTesseris.getUserIndex());
+        log.info("   - UserTesseris.usersId: {}", userTesseris.getUsersId() != null ? userTesseris.getUsersId().getId() : "null");
+        log.info("   - UserTesseris.userRoleIndex: {}", userTesseris.getUserRoleIndex());
+        log.info("✅ === 최종 선택된 사용자 정보 완료 ===");
         
         Store store = new Store();
         
         // UserTesseris 설정
         store.setUserIndex(userTesseris);
+        
+        // === ✅ Store에 설정된 UserTesseris 확인 ===
+        log.info("🏢 === Store 엔티티에 설정된 사용자 정보 ===");
+        log.info("   - store.getUserIndex().getUserIndex(): {}", store.getUserIndex().getUserIndex());
+        log.info("   - store.getUserIndex().getUsersId(): {}", store.getUserIndex().getUsersId().getId());
+        log.info("🏢 === Store 엔티티 사용자 정보 설정 완료 ===");
         
         // 새로운 데이터 구조에서 정보 추출
         String storeRegistrationNum = dto.getBusinessInfo() != null ? dto.getBusinessInfo().getStoreRegistrationNum() : dto.getStoreRegistrationNum();
@@ -599,27 +675,21 @@ public class StoreRegisterService {
         
         log.info("=== 💰 StoreSubscriptionFee 저장 시작 ===");
         
-        // Store의 business_man_user_index 확인
-        Integer businessManUserIndex = store.getBusinessManUserIndex();
-        log.info("🔍 Store에서 가져온 business_man_user_index: {}", businessManUserIndex);
+        // ✅ Store의 business_man_user_index 확인 (이제 business_man_index 값임)
+        Integer businessManIndex = store.getBusinessManUserIndex();
+        log.info("🔍 Store에서 가져온 business_man_user_index (실제로는 business_man_index): {}", businessManIndex);
         
-        if (businessManUserIndex == null) {
+        if (businessManIndex == null) {
             log.warn("⚠️ Store의 business_man_user_index가 null입니다. StoreSubscriptionFee 저장을 건너뜁니다.");
             return;
         }
         
         try {
-            // UserTesseris로 BusinessMan 조회 (올바른 방식)
-            log.info("🔍 UserTesseris 조회 시작: user_index={}", businessManUserIndex);
-            UserTesseris userTesseris = userTesserisRepository.findById(businessManUserIndex)
-                .orElseThrow(() -> new RuntimeException("UserTesseris를 찾을 수 없습니다: " + businessManUserIndex));
-            log.info("✅ UserTesseris 조회 성공: user_index={}", userTesseris.getUserIndex());
-            
-            log.info("🔍 BusinessMan 조회 시작: UserTesseris.user_index={}", userTesseris.getUserIndex());
-            BusinessMan businessMan = businessManRepository.findByUserIndex(userTesseris)
-                .orElseThrow(() -> new RuntimeException("BusinessMan을 찾을 수 없습니다. user_index: " + businessManUserIndex));
-            log.info("✅ BusinessMan 조회 성공: user_index={}, business_man_index={}", 
-                    businessManUserIndex, businessMan.getBusinessManIndex());
+            // ✅ business_man_index로 BusinessMan 직접 조회
+            log.info("🔍 BusinessMan 조회 시작: business_man_index={}", businessManIndex);
+            BusinessMan businessMan = businessManRepository.findById(businessManIndex)
+                .orElseThrow(() -> new RuntimeException("BusinessMan을 찾을 수 없습니다. business_man_index: " + businessManIndex));
+            log.info("✅ BusinessMan 조회 성공: business_man_index={}", businessMan.getBusinessManIndex());
             
             // StoreSubscriptionFee 엔티티 생성
             log.info("🔨 StoreSubscriptionFee 엔티티 생성 시작");
@@ -661,15 +731,15 @@ public class StoreRegisterService {
 
     /**
      * TemporaryStoreDetail 엔티티들 생성 (복잡한 로직)
-     * 3. temporary_store_detail에 insert하기. (business_man_user_index 하나당 1개 칼럼 insert)
+     * 3. temporary_store_detail에 insert하기. (business_man_index 하나당 1개 칼럼 insert)
      */
     private void createTemporaryStoreDetailEntities(Store store, TemporaryStoreMaster temporaryStoreMaster) {
-        Integer businessManUserIndex = store.getBusinessManUserIndex();
+        Integer businessManIndex = store.getBusinessManUserIndex(); // 실제로는 business_man_index 값
         
-        if (businessManUserIndex != null) {
-            processBusinessManHierarchy(businessManUserIndex, temporaryStoreMaster);
+        if (businessManIndex != null) {
+            processBusinessManHierarchy(businessManIndex, temporaryStoreMaster);
         } else {
-            // business_man_user_index가 없는 경우 기본 레코드 생성
+            // business_man_index가 없는 경우 기본 레코드 생성
             createDefaultTemporaryStoreDetail(store, temporaryStoreMaster);
         }
     }
@@ -677,22 +747,22 @@ public class StoreRegisterService {
     /**
      * business_man 계층 구조를 처리하여 temporary_store_detail 레코드들 생성
      */
-    private void processBusinessManHierarchy(Integer businessManUserIndex, TemporaryStoreMaster temporaryStoreMaster) {
-        Integer currentBusinessManUserIndex = businessManUserIndex;
+    private void processBusinessManHierarchy(Integer businessManIndex, TemporaryStoreMaster temporaryStoreMaster) {
+        Integer currentBusinessManIndex = businessManIndex;
         
-        while (currentBusinessManUserIndex != null) {
-            // UserTesseris 먼저 찾기
-            UserTesseris currentUserTesseris = userTesserisRepository.findById(currentBusinessManUserIndex).orElse(null);
-            if (currentUserTesseris == null) {
-                log.warn("UserTesseris를 찾을 수 없습니다: user_index={}", currentBusinessManUserIndex);
+        while (currentBusinessManIndex != null) {
+            // ✅ business_man_index로 BusinessMan 직접 찾기
+            BusinessMan businessMan = businessManRepository.findById(currentBusinessManIndex).orElse(null);
+            
+            if (businessMan == null) {
+                log.warn("BusinessMan을 찾을 수 없습니다: business_man_index={}", currentBusinessManIndex);
                 break;
             }
             
-            // business_man 테이블에서 UserTesseris로 찾기
-            BusinessMan businessMan = businessManRepository.findByUserIndex(currentUserTesseris).orElse(null);
-            
-            if (businessMan == null) {
-                log.warn("BusinessMan을 찾을 수 없습니다: user_index={}", currentBusinessManUserIndex);
+            // ✅ BusinessMan에서 UserTesseris 가져오기
+            UserTesseris currentUserTesseris = businessMan.getUserIndex();
+            if (currentUserTesseris == null) {
+                log.warn("BusinessMan의 UserTesseris가 null입니다: business_man_index={}", currentBusinessManIndex);
                 break;
             }
             
@@ -722,8 +792,8 @@ public class StoreRegisterService {
                 .build();
             
             TemporaryStoreDetail saved = temporaryStoreDetailRepository.save(temporaryStoreDetail);
-            log.info("TemporaryStoreDetail 저장: user_index={}, business_grade={}, temporary_store_value={}, detail_index={}", 
-                    currentBusinessManUserIndex, businessGrade.getBusinessGradeName(), temporaryStoreValue, saved.getTemporaryStoreDetailIndex());
+            log.info("TemporaryStoreDetail 저장: business_man_index={}, user_index={}, business_grade={}, temporary_store_value={}, detail_index={}", 
+                    currentBusinessManIndex, currentUserTesseris.getUserIndex(), businessGrade.getBusinessGradeName(), temporaryStoreValue, saved.getTemporaryStoreDetailIndex());
             
             // user_cm_log 테이블에 INSERT (1:1 대응)
             createUserCmLogEntity(temporaryStoreMaster, saved, temporaryStoreValue.intValue());
@@ -731,8 +801,30 @@ public class StoreRegisterService {
             // user_cm 테이블 UPDATE (user_cm_deposit += user_cm_log_value)
             updateUserCmDeposit(currentUserTesseris.getUserIndex(), temporaryStoreValue.intValue());
             
-            // 다음 상위 business_man 찾기 (boss_user_index)
-            currentBusinessManUserIndex = businessMan.getBossUserIndex();
+            // ✅ 다음 상위 business_man 찾기 (boss_user_index → business_man_index 변환)
+            Integer bossUserIndex = businessMan.getBossUserIndex();
+            if (bossUserIndex != null) {
+                log.info("🔍 상위 BusinessMan 조회: boss_user_index={}", bossUserIndex);
+                // boss_user_index(user_index)로 UserTesseris 찾기
+                UserTesseris bossUserTesseris = userTesserisRepository.findById(bossUserIndex).orElse(null);
+                if (bossUserTesseris != null) {
+                    // UserTesseris로 BusinessMan 찾기
+                    BusinessMan bossBusinessMan = businessManRepository.findByUserIndex(bossUserTesseris).orElse(null);
+                    if (bossBusinessMan != null) {
+                        currentBusinessManIndex = bossBusinessMan.getBusinessManIndex();
+                        log.info("✅ 상위 BusinessMan 발견: boss_user_index={} → business_man_index={}", bossUserIndex, currentBusinessManIndex);
+                    } else {
+                        log.warn("⚠️ boss_user_index={}에 해당하는 BusinessMan이 없습니다", bossUserIndex);
+                        currentBusinessManIndex = null;
+                    }
+                } else {
+                    log.warn("⚠️ boss_user_index={}에 해당하는 UserTesseris가 없습니다", bossUserIndex);
+                    currentBusinessManIndex = null;
+                }
+            } else {
+                log.info("ℹ️ boss_user_index가 null - 최상위 BusinessMan입니다");
+                currentBusinessManIndex = null;
+            }
         }
     }
     
@@ -880,6 +972,32 @@ public class StoreRegisterService {
     }
 
     /**
+     * StoreImage 테이블에 사진 정보 저장
+     * @param store 저장된 Store 엔티티
+     * @param imageUrl S3 업로드된 이미지 URL
+     * @param imageType 이미지 타입 ("business_license", "sign_photo", "front_photo")
+     */
+    private void saveStoreImage(Store store, String imageUrl, String imageType) {
+        try {
+            log.info("🖼️ StoreImage 테이블 저장 시작: type={}, url={}", imageType, imageUrl);
+            
+            StoreImage storeImage = new StoreImage();
+            storeImage.setStoreUserIndex(store);
+            storeImage.setStoreImage(imageUrl);
+            storeImage.setStoreMainImageStatus(imageType);
+            
+            StoreImage savedStoreImage = storeImageRepository.save(storeImage);
+            log.info("✅ StoreImage 테이블 저장 완료: imageIndex={}, type={}", 
+                    savedStoreImage.getStoreImageIndex(), imageType);
+            
+        } catch (Exception e) {
+            log.error("❌ StoreImage 테이블 저장 실패: type={}, url={}", imageType, imageUrl);
+            log.error("❌ 오류 상세: ", e);
+            // StoreImage 저장 실패는 전체 프로세스를 중단시키지 않음 (로그만 남김)
+        }
+    }
+
+    /**
      * managerEmail로 user_tesseris 테이블에서 user_index 찾기 (business_man 테이블에 존재하는지 검증)
      */
     private Integer findManagerUserIndex(String managerEmail) {
@@ -887,48 +1005,60 @@ public class StoreRegisterService {
             log.info("=== 🔍 매니저 조회 프로세스 시작 ===");
             log.info("🔍 1단계: 매니저 이메일로 UserEntity 조회 - email: {}", managerEmail);
             
-            // 1. managerEmail로 UserEntity 조회
-            UserEntity managerUserByEmail = userRepository.findByEmail(managerEmail)
-                .orElseThrow(() -> new RuntimeException("매니저 UserEntity를 이메일로 찾을 수 없습니다: " + managerEmail));
-            log.info("✅ 1단계 성공: 이메일로 UserEntity 조회 완료");
-            
-            // 2. UserEntity의 ID 얻기
-            String managerId = managerUserByEmail.getId();
-            log.info("🔍 2단계: UserEntity ID 추출 - userId: {}", managerId);
-            
-            // 3. 기존 로직대로 ID로 UserEntity 조회 (기존 방식 유지)
-            log.info("🔍 3단계: ID로 UserEntity 재조회");
-        UserEntity managerUser = userRepository.findById(managerId)
-                .orElseThrow(() -> new RuntimeException("매니저 UserEntity를 ID로 찾을 수 없습니다: " + managerId));
-            log.info("✅ 3단계 성공: ID로 UserEntity 재조회 완료");
-        
-        // UserEntity로 UserTesseris 조회
-            log.info("🔍 4단계: UserEntity로 UserTesseris 조회");
-        List<UserTesseris> managerTesserisList = userTesserisRepository.findByUsersId(managerUser);
-        if (managerTesserisList.isEmpty()) {
-                throw new RuntimeException("매니저 UserTesseris를 찾을 수 없습니다: " + managerEmail);
+            try {
+                // 1. managerEmail로 UserEntity 조회 - email은 unique하므로 안전
+                log.info("📋 findByEmail() 호출 전: email='{}' - email은 unique", managerEmail);
+                UserEntity managerUserByEmail = userRepository.findByEmail(managerEmail)
+                    .orElseThrow(() -> new RuntimeException("매니저 UserEntity를 이메일로 찾을 수 없습니다: " + managerEmail));
+                log.info("✅ 1단계 성공: 이메일로 UserEntity 조회 완료: userId={}", managerUserByEmail.getId());
+                
+                // 2. UserEntity의 ID 얻기
+                String managerId = managerUserByEmail.getId();
+                log.info("🔍 2단계: UserEntity ID 추출 - userId: {}", managerId);
+                
+                // 3. 기존 로직대로 ID로 UserEntity 조회 (기존 방식 유지)
+                log.info("🔍 3단계: ID로 UserEntity 재조회");
+                UserEntity managerUser = userRepository.findById(managerId)
+                    .orElseThrow(() -> new RuntimeException("매니저 UserEntity를 ID로 찾을 수 없습니다: " + managerId));
+                log.info("✅ 3단계 성공: ID로 UserEntity 재조회 완료");
+                
+                // Userntity로 UserTesseris 조회
+                log.info("🔍 4단계: UserEntity로 UserTesseris 조회");
+                List<UserTesseris> managerTesserisList = userTesserisRepository.findByUsersId(managerUser);
+                if (managerTesserisList.isEmpty()) {
+                    throw new RuntimeException("매니저 UserTesseris를 찾을 수 없습니다: " + managerEmail);
+                }
+                log.info("✅ 4단계 성공: UserTesseris 조회 완료 - 목록 크기: {}", managerTesserisList.size());
+                
+                UserTesseris managerUserTesseris = managerTesserisList.get(0);
+                Integer userIndex = managerUserTesseris.getUserIndex();
+                log.info("🔍 5단계: UserTesseris에서 user_index 추출 - user_index: {}", userIndex);
+                
+                // ✅ user_index로 BusinessMan 테이블에서 business_man_index 찾기
+                log.info("🔍 6단계: BusinessMan 테이블에서 business_man_index 조회");
+                BusinessMan businessMan = businessManRepository.findByUserIndex(managerUserTesseris).orElse(null);
+                
+                if (businessMan == null) {
+                    log.warn("⚠️ 6단계 실패: 매니저 {}(user_index={})는 business_man 테이블에 존재하지 않습니다.", managerEmail, userIndex);
+                    log.warn("⚠️ business_man_user_index를 null로 설정합니다.");
+                    return null; // business_man 테이블에 없으면 null 반환
+                }
+                
+                // ✅ business_man_index를 반환 (Store.business_man_user_index에 저장될 값)
+                Integer businessManIndex = businessMan.getBusinessManIndex();
+                log.info("✅ 6단계 성공: BusinessMan 조회 완료");
+                log.info("   - user_index: {}", userIndex);
+                log.info("   - business_man_index: {}", businessManIndex);
+                log.info("🎯 최종 결과: business_man_index={} 반환 (Store.business_man_user_index에 저장)", businessManIndex);
+                log.info("=== 🔍 매니저 조회 프로세스 완료 ===");
+                
+                return businessManIndex; // ✅ BusinessMan.business_man_index 반환
+                
+            } catch (Exception innerE) {
+                log.error("❌ 매니저 조회 내부 오류: email='{}', 오류: {}", managerEmail, innerE.getMessage());
+                log.error("❌ 내부 오류 상세: ", innerE);
+                throw innerE;
             }
-            log.info("✅ 4단계 성공: UserTesseris 조회 완료 - 목록 크기: {}", managerTesserisList.size());
-            
-            UserTesseris managerUserTesseris = managerTesserisList.get(0);
-            Integer userIndex = managerUserTesseris.getUserIndex();
-            log.info("🔍 5단계: UserTesseris에서 user_index 추출 - user_index: {}", userIndex);
-            
-            // 해당 user_index가 business_man 테이블에 존재하는지 검증
-            log.info("🔍 6단계: BusinessMan 테이블에서 존재 여부 검증");
-            BusinessMan businessMan = businessManRepository.findByUserIndex(managerUserTesseris).orElse(null);
-            
-            if (businessMan == null) {
-                log.warn("⚠️ 6단계 실패: 매니저 {}(user_index={})는 business_man 테이블에 존재하지 않습니다.", managerEmail, userIndex);
-                log.warn("⚠️ business_man_user_index를 null로 설정합니다.");
-                return null; // business_man 테이블에 없으면 null 반환
-            }
-            
-            log.info("✅ 6단계 성공: BusinessMan 조회 완료 - business_man_index: {}", businessMan.getBusinessManIndex());
-            log.info("🎯 최종 결과: 매니저 user_index={} 반환", userIndex);
-            log.info("=== 🔍 매니저 조회 프로세스 완료 ===");
-            
-            return userIndex; // UserTesseris의 user_index 반환
             
         } catch (Exception e) {
             log.error("❌ 매니저 조회 프로세스 실패");
