@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.amazonaws.services.s3.internal.eventstreaming.Message;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jakdang.labs.api.chat.dto.AlarmCheckRequestDTO;
 import com.jakdang.labs.api.chat.dto.InvitationRequestDTO;
@@ -89,12 +90,10 @@ public class ChatController {
      * send message
      */
     @PostMapping("/sendmessage")
-    public ResponseEntity<String> SendMessage(@RequestPart("message") String messageRequestDTO,
-            @RequestPart(value = "files", required = false) List<MultipartFile> files) {
+    public ResponseEntity<ResponseDTO<?>> SendMessage(@RequestBody MessageRequestDTO messageRequestDTO) {
         try {
             log.info("SendMessage: {}", messageRequestDTO);
-            log.info("SendMessage: {}", files);
-            return ResponseEntity.ok(chatServiceClient.SendMessage(messageRequestDTO, files));
+            return ResponseEntity.ok(chatServiceClient.SendMessage(messageRequestDTO));
         } catch (Exception e) {
             log.error("Error: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
