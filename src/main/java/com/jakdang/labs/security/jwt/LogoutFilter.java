@@ -80,11 +80,25 @@ public class LogoutFilter extends OncePerRequestFilter {
 
             logoutService.processLogout(refreshToken);
             
-            // 모든 refresh 쿠키 삭제 (adminRefresh, userRefresh)
-            Cookie adminLogoutCookie = tokenUtils.createLogoutCookie("adminRefresh");
-            Cookie userLogoutCookie = tokenUtils.createLogoutCookie("userRefresh");
-            response.addCookie(adminLogoutCookie);
-            response.addCookie(userLogoutCookie);
+            // 토큰에서 user_role_index 추출하여 해당하는 쿠키만 삭제
+            if (refreshToken != null) {
+                String category = jwtUtil.getCategory(refreshToken);
+                if ("adminRefresh".equals(category)) {
+                    // 관리자: adminRefresh만 삭제
+                    Cookie adminLogoutCookie = tokenUtils.createLogoutCookie("adminRefresh");
+                    response.addCookie(adminLogoutCookie);
+                } else {
+                    // 일반 사용자: userRefresh만 삭제
+                    Cookie userLogoutCookie = tokenUtils.createLogoutCookie("userRefresh");
+                    response.addCookie(userLogoutCookie);
+                }
+            } else {
+                // 토큰이 없는 경우 모든 쿠키 삭제
+                Cookie adminLogoutCookie = tokenUtils.createLogoutCookie("adminRefresh");
+                Cookie userLogoutCookie = tokenUtils.createLogoutCookie("userRefresh");
+                response.addCookie(adminLogoutCookie);
+                response.addCookie(userLogoutCookie);
+            }
 
             // cms_access_log 테이블에 로그아웃 기록 삽입하기
             // 1. 토큰에서 사용자 id 추출
