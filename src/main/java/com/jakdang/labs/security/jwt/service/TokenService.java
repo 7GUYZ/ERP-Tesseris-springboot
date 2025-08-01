@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * JWT 토큰 관리 서비스
  * 액세스 토큰과 리프레시 토큰의 생성, 갱신, 저장을 담당하는 서비스
+ * adminRefresh, userRefresh 쿠키를 지원합니다.
  */
 @Service
 @RequiredArgsConstructor
@@ -34,17 +35,19 @@ public class TokenService {
     /**
      * 토큰 쌍 생성
      * 액세스 토큰과 리프레시 토큰을 생성하고 데이터베이스에 저장
+     * adminRefresh, userRefresh 쿠키를 지원합니다.
      * 
      * @param username 사용자명
      * @param role 사용자 역할
      * @param email 사용자 이메일
      * @param userId 사용자 ID
+     * @param user_role_index 사용자 역할 인덱스 (4: admin, 그 외: user)
      * @return 토큰 쌍 DTO
      */
     @Transactional
-    public TokenDTO createTokenPair(String username, String role, String email, String userId) {
+    public TokenDTO createTokenPair(String username, String role, String email, String userId, Integer user_role_index) {
         String accessToken = createAccessToken(username, role, email, userId);
-        String refreshToken = createRefreshToken(username, role, email, userId);
+        String refreshToken = createRefreshToken(username, role, email, userId, user_role_index);
 
         saveTokenPair(accessToken, refreshToken);
 
@@ -54,6 +57,7 @@ public class TokenService {
     /**
      * 토큰 쌍 갱신
      * 기존 리프레시 토큰을 검증하고 새로운 토큰 쌍을 생성
+     * adminRefresh, userRefresh 쿠키를 지원합니다.
      * 
      * @param refreshToken 기존 리프레시 토큰
      * @return 새로운 토큰 쌍 DTO
@@ -66,9 +70,13 @@ public class TokenService {
         String role = jwtUtil.getRole(refreshToken);
         String userId = jwtUtil.getUserId(refreshToken);
         String email = jwtUtil.getUserEmail(refreshToken);
+        
+        // 기존 토큰에서 user_role_index 추출 (JWT 카테고리로 판단)
+        String category = jwtUtil.getCategory(refreshToken);
+        Integer user_role_index = "adminRefresh".equals(category) ? 4 : 1;
 
         String newAccessToken = createAccessToken(username, role, email, userId);
-        String newRefreshToken = createRefreshToken(username, role, email, userId);
+        String newRefreshToken = createRefreshToken(username, role, email, userId, user_role_index);
 
         updateRefreshEntity(userToken, newAccessToken, newRefreshToken);
 
@@ -77,6 +85,7 @@ public class TokenService {
 
     /**
      * 리프레시 토큰 엔티티 조회
+     * adminRefresh, userRefresh 쿠키에서 추출된 토큰을 지원합니다.
      * 
      * @param refreshToken 리프레시 토큰
      * @return 사용자 토큰 엔티티
@@ -101,20 +110,24 @@ public class TokenService {
 
     /**
      * 리프레시 토큰 생성
+     * adminRefresh, userRefresh 쿠키에 저장될 토큰을 생성합니다.
      * 
      * @param username 사용자명
      * @param role 사용자 역할
      * @param email 사용자 이메일
      * @param userId 사용자 ID
+     * @param user_role_index 사용자 역할 인덱스 (4: admin, 그 외: user)
      * @return 리프레시 토큰
      */
-    private String createRefreshToken(String username, String role, String email, String userId) {
-        return jwtUtil.createJwt("refresh", username, role, email, userId, refreshTokenExpiration);
+    private String createRefreshToken(String username, String role, String email, String userId, Integer user_role_index) {
+        String category = (user_role_index == 4) ? "adminRefresh" : "userRefresh";
+        return jwtUtil.createJwt(category, username, role, email, userId, refreshTokenExpiration);
     }
 
     /**
      * 
      * 리프레시 토큰을 데이터베이스에 저장
+     * adminRefresh, userRefresh 쿠키에 저장될 토큰 정보를 관리합니다.
      * 
      * @param accessToken 액세스 토큰
      * @param refreshToken 리프레시 토큰
@@ -138,6 +151,7 @@ public class TokenService {
     /**
      * 리프레시 토큰 엔티티 업데이트
      * 기존 토큰 엔티티를 새로운 토큰으로 업데이트
+     * adminRefresh, userRefresh 쿠키에 저장될 새로운 토큰으로 교체합니다.
      * 
      * @param oldEntity 기존 토큰 엔티티
      * @param newAccessToken 새로운 액세스 토큰
