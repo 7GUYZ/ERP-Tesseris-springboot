@@ -1,5 +1,6 @@
 // package com.jakdang.labs.api.chat.service;
 
+<<<<<<< HEAD
 // import com.jakdang.labs.api.chat.dto.*;
 // import com.jakdang.labs.api.auth.entity.UserEntity;
 // import com.jakdang.labs.entity.UserTesseris;
@@ -266,9 +267,17 @@
 //             log.error("채팅방 참여자 목록 업데이트 중 오류: {}", e.getMessage(), e);
 //         }
 //     }
+=======
+import org.springframework.stereotype.Service;
+import com.jakdang.labs.api.chat.repository.AjgChatServiceRepository;
+import com.jakdang.labs.api.common.ResponseDTO;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+>>>>>>> jihun
 
 //     // =============== 관리자 리스트 조회 기능 ===============
 
+<<<<<<< HEAD
 //     /**
 //      * 채팅용 관리자 리스트 조회
 //      * AdminListResponseDto 형식으로 반환
@@ -354,3 +363,9 @@
 //         }
 //     }
 // }
+=======
+    public ResponseDTO<?> Adminlist() {
+        return ResponseDTO.createSuccessResponse("조회 성공", ajgChatServiceRepository.findAdminList());
+    }
+}
+>>>>>>> jihun

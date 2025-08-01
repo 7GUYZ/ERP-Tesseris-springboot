@@ -21,6 +21,7 @@
 // import org.springframework.web.bind.annotation.RestController;
 // import org.springframework.web.multipart.MultipartFile;
 
+<<<<<<< HEAD
 // import com.fasterxml.jackson.databind.ObjectMapper;
 // import com.jakdang.labs.api.chat.dto.ChatWebSocketMessageDto;
 // import com.jakdang.labs.api.chat.dto.MessageRequestDTO;
@@ -31,6 +32,18 @@
 // import com.jakdang.labs.api.chat.model.ChatServiceClient;
 // import com.jakdang.labs.api.chat.service.ChatService;
 // import com.jakdang.labs.api.common.ResponseDTO;
+=======
+import com.amazonaws.services.s3.internal.eventstreaming.Message;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jakdang.labs.api.chat.dto.AlarmCheckRequestDTO;
+import com.jakdang.labs.api.chat.dto.InvitationRequestDTO;
+import com.jakdang.labs.api.chat.dto.MessageRequestDTO;
+import com.jakdang.labs.api.chat.dto.RoomRequestDTO;
+import com.jakdang.labs.api.chat.dto.UserListDTO;
+import com.jakdang.labs.api.chat.model.ChatServiceClient;
+import com.jakdang.labs.api.chat.service.ChatService;
+import com.jakdang.labs.api.common.ResponseDTO;
+>>>>>>> jihun
 
 // import feign.FeignException;
 // import io.swagger.v3.oas.annotations.tags.Tag;
@@ -50,6 +63,7 @@
 //     // WebSocket 메시지 전송용
 //     private final SimpMessagingTemplate messagingTemplate;
 
+<<<<<<< HEAD
 //     @GetMapping("/adminlist")
 //     public ResponseEntity<List<UserListDTO>> Adminlist() {
 //         log.info("=== 간단한 관리자 리스트 조회 API 호출 ===");
@@ -66,6 +80,17 @@
 //             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
 //         }
 //     }
+=======
+    @GetMapping("/adminlist")
+    public ResponseEntity<ResponseDTO<?>> Adminlist() {
+        try {
+            return ResponseEntity.ok(ResponseDTO.createSuccessResponse("조회 성공", chatService.Adminlist()));
+        } catch (Exception e) {
+            log.error("Error fetching user list: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+>>>>>>> jihun
 
 //     /**
 //      * 테스트용 간단한 엔드포인트
@@ -77,6 +102,22 @@
 //     }
 
 
+<<<<<<< HEAD
+=======
+    /**
+     * send message
+     */
+    @PostMapping("/sendmessage")
+    public ResponseEntity<ResponseDTO<?>> SendMessage(@RequestBody MessageRequestDTO messageRequestDTO) {
+        try {
+            log.info("SendMessage: {}", messageRequestDTO);
+            return ResponseEntity.ok(chatServiceClient.SendMessage(messageRequestDTO));
+        } catch (Exception e) {
+            log.error("Error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+>>>>>>> jihun
 
 
 
