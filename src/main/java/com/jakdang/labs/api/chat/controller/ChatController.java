@@ -72,17 +72,17 @@ public class ChatController {
      * search room
      */
     @GetMapping("/{userid}")
-    public ResponseEntity<ResponseDTO<List<RoomRequestDTO>>> SearchRoom(@PathVariable("userid") String userid) {
+    public ResponseEntity<ResponseDTO<?>> SearchRoom(@PathVariable("userid") String userid) {
         try {
-            ResponseDTO<List<RoomRequestDTO>> roomList = chatServiceClient.SearchRoom(userid);
+            ResponseDTO<?> roomList = chatServiceClient.SearchRoom(userid);
             log.info("SearchRoom: {}", roomList);
             return ResponseEntity.ok(roomList);
         } catch (FeignException e) {
             log.error("Feign Error: {}", e.getMessage());
-            return ResponseEntity.ok(new ResponseDTO<List<RoomRequestDTO>>(e.status(), e.getMessage(), null));
+            return ResponseEntity.ok(new ResponseDTO<>(e.status(), e.getMessage(), null));
         } catch (Exception e) {
             log.error("Error: {}", e.getMessage());
-            return ResponseEntity.ok(new ResponseDTO<List<RoomRequestDTO>>(404, e.getMessage(), null));
+            return ResponseEntity.ok(new ResponseDTO<>(404, e.getMessage(), null));
         }
     }
 
