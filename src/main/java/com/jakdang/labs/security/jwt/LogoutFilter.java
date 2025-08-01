@@ -82,8 +82,13 @@ public class LogoutFilter extends OncePerRequestFilter {
             
             // 토큰에서 user_role_index 추출하여 해당하는 쿠키만 삭제
             if (refreshToken != null) {
-                String category = jwtUtil.getCategory(refreshToken);
-                if ("adminRefresh".equals(category)) {
+                // 토큰에서 사용자 id 추출
+                String id = jwtUtil.getUserId(refreshToken);
+                // userTesseris에서 user_role_index 추출
+                LoginUserTesserisDTO userDTO = userSvc.findByUsersId(id);
+                Integer user_role_index = userDTO.getUserRoleIndex();
+                
+                if (user_role_index == 4) {
                     // 관리자: adminRefresh만 삭제
                     Cookie adminLogoutCookie = tokenUtils.createLogoutCookie("adminRefresh");
                     response.addCookie(adminLogoutCookie);
