@@ -84,7 +84,7 @@ public class AdminController {
      * POST /api/admin/create
      */
     @PostMapping("/create")
-    public ResponseEntity<String> createAdmin(@RequestBody AdminCreateRequestDto createDto) {
+    public ResponseEntity<String> createAdmin(@RequestBody AdminCreateRequestDto createDto, @RequestHeader("Authorization") String authHeader) {
         try {
             log.info("관리자 등록 API 호출: {}", createDto.getAdminUserEmail());
             
@@ -105,7 +105,7 @@ public class AdminController {
                 return ResponseEntity.badRequest().body("관리자 타입은 필수입니다.");
             }
             
-            boolean success = adminService.createAdmin(createDto);
+            boolean success = adminService.createAdmin(createDto, authHeader);
             if (success) {
                 return ResponseEntity.ok("관리자가 성공적으로 등록되었습니다.");
             } else {

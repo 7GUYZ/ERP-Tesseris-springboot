@@ -456,11 +456,11 @@ public class AlarmSvc {
     /**
      * 6. 권한 변경 알림 전송 (비동기 처리)
      */
-    public void sendAuthorityChangedAlarm(String adminTypeName, String programName, String changeType) {
+    public void sendAuthorityChangedAlarm(Integer userIndex, String adminTypeName, String programName, String changeType) {
         sendAsyncAlarm(() -> {
             List<String> adminUserIndexes = findAdminsWithAuthority(ProgramIndexes.AUTHORITY_MANAGEMENT);
             String alarmMessage = createAuthorityChangeMessage(adminTypeName, programName, changeType);
-            sendAlarmWithValue(AlarmTypeIds.AUTHORITY_CHANGED, new ArrayList<>(), adminUserIndexes, alarmMessage, null);
+            sendAlarmWithValue(AlarmTypeIds.AUTHORITY_CHANGED, new ArrayList<>(), adminUserIndexes, alarmMessage, userIndex);
             log.info("권한 {} 알림 전송 완료 - 등급: {}, 프로그램: {}, 대상 관리자: {}명", 
                 changeType, adminTypeName, programName, adminUserIndexes.size());
         }, "권한 변경");
@@ -510,11 +510,11 @@ public class AlarmSvc {
     /**
      * 8. 신규 관리자 등록 알림 전송
      */
-    public void sendAdminRegisterAlarm() {
+    public void sendAdminRegisterAlarm(Integer userIndex) {
         sendAsyncAlarm(() -> {
             List<String> adminUserIndexes = findAdminsWithAuthority(ProgramIndexes.ADMIN_MANAGEMENT);
-            sendAlarmWithValue(AlarmTypeIds.ADMIN_REGISTER, new ArrayList<>(), adminUserIndexes, "", null);
-            log.info("신규 관리자 등록 알림 전송 완료 - 대상 관리자: {}명", adminUserIndexes.size());
+            sendAlarmWithValue(AlarmTypeIds.ADMIN_REGISTER, new ArrayList<>(), adminUserIndexes, "", userIndex);
+            log.info("신규 관리자 등록 알림 전송 완료 - 동작 관리자: {}, 대상 관리자: {}명", userIndex, adminUserIndexes.size());
         }, "신규 관리자 등록");
     }
 
