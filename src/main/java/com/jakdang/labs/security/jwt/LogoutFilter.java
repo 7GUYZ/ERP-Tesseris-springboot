@@ -80,7 +80,7 @@ public class LogoutFilter extends OncePerRequestFilter {
 
             logoutService.processLogout(refreshToken);
             
-            // 토큰에서 카테고리를 추출하여 해당하는 쿠키만 삭제
+            // 토큰에서 user_role_index 추출하여 해당하는 쿠키만 삭제
             if (refreshToken != null) {
                 String category = jwtUtil.getCategory(refreshToken);
                 if ("adminRefresh".equals(category)) {
