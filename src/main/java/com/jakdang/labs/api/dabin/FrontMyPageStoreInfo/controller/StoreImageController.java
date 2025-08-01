@@ -59,7 +59,7 @@ public class StoreImageController {
 
     // Presigned URL 발급
     @GetMapping("/presigned")
-    public ResponseEntity<String> getPresignedImageUrl(@RequestParam("fileKey") String fileKey) {
+    public ResponseEntity<String> getPresignedImageUrl(@RequestParam String fileKey) {
         String url = storeImageService.getPresignedImageUrl(fileKey);
         return ResponseEntity.ok(url);
     }
