@@ -55,19 +55,6 @@ public class ChatController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-
-    @GetMapping("/hello")
-    public String hello() {
-        try {
-            String result = chatServiceClient.hello();
-            log.info("Hello: {}", result);
-            return result;
-        } catch (Exception e) {
-            log.error("Error: {}", e.getMessage());
-            return "ERROR: " + e.getMessage();
-        }
-    }
-
     /**
      * search room
      */

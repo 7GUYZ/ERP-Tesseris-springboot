@@ -25,21 +25,21 @@ public class ChatWebSocketController {
      */
     @MessageMapping("/adminchat.sendMessage/{roomId}")
     @SendTo("/queue/{roomId}")
-    public Map<String, Object> sendMessage(@Payload Map<String, Object> messageData, 
-                                         SimpMessageHeaderAccessor headerAccessor) {
-        
+    public Map<String, Object> sendMessage(@Payload Map<String, Object> messageData,
+            SimpMessageHeaderAccessor headerAccessor) {
+
         log.info("채팅 메시지 수신: {}", messageData);
-        
+
         // 메시지에 타임스탬프 추가
         messageData.put("timestamp", System.currentTimeMillis());
-        
+
         // 발신자 정보 추가
         if (headerAccessor.getUser() != null) {
             messageData.put("sender", headerAccessor.getUser().getName());
         }
-        
+
         log.info("채팅 메시지 브로드캐스트: {}", messageData);
-        
+
         return messageData;
     }
 
@@ -50,19 +50,18 @@ public class ChatWebSocketController {
     @MessageMapping("/adminchat.joinRoom/{roomId}")
     @SendTo("/queue/{roomId}")
     public Map<String, Object> joinRoom(@Payload Map<String, Object> joinMessage,
-                                      SimpMessageHeaderAccessor headerAccessor) {
-        
-        log.info("채팅방 입장: roomId={}, user={}", 
-                joinMessage.get("roomId"), 
+            SimpMessageHeaderAccessor headerAccessor) {
+
+        log.info("채팅방 입장: roomId={}, user={}",
+                joinMessage.get("roomId"),
                 headerAccessor.getUser() != null ? headerAccessor.getUser().getName() : "unknown");
-        
+
         // 입장 메시지 브로드캐스트
         Map<String, Object> systemMessage = Map.of(
-            "type", "system",
-            "message", "새로운 사용자가 입장했습니다.",
-            "timestamp", System.currentTimeMillis()
-        );
-        
+                "type", "system",
+                "message", "새로운 사용자가 입장했습니다.",
+                "timestamp", System.currentTimeMillis());
+
         return systemMessage;
     }
 
@@ -72,19 +71,18 @@ public class ChatWebSocketController {
     @MessageMapping("/adminchat.leaveRoom/{roomId}")
     @SendTo("/queue/{roomId}")
     public Map<String, Object> leaveRoom(@Payload Map<String, Object> leaveMessage,
-                                       SimpMessageHeaderAccessor headerAccessor) {
-        
-        log.info("채팅방 퇴장: roomId={}, user={}", 
-                leaveMessage.get("roomId"), 
+            SimpMessageHeaderAccessor headerAccessor) {
+
+        log.info("채팅방 퇴장: roomId={}, user={}",
+                leaveMessage.get("roomId"),
                 headerAccessor.getUser() != null ? headerAccessor.getUser().getName() : "unknown");
-        
+
         // 퇴장 메시지 브로드캐스트
         Map<String, Object> systemMessage = Map.of(
-            "type", "system",
-            "message", "사용자가 퇴장했습니다.",
-            "timestamp", System.currentTimeMillis()
-        );
-        
+                "type", "system",
+                "message", "사용자가 퇴장했습니다.",
+                "timestamp", System.currentTimeMillis());
+
         return systemMessage;
     }
-} 
+}
