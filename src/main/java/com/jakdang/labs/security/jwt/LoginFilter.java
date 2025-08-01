@@ -199,16 +199,11 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
         log.info("로그인 성공 - 리프레시 토큰 쿠키 설정 시작");
         
-        // user_role_index에 따라 해당하는 쿠키만 삭제
-        if (user_role_index == 4) {
-            // 관리자: adminRefresh만 삭제
-            Cookie adminLogoutCookie = tokenUtils.createLogoutCookie("adminRefresh");
-            response.addCookie(adminLogoutCookie);
-        } else {
-            // 일반 사용자: userRefresh만 삭제
-            Cookie userLogoutCookie = tokenUtils.createLogoutCookie("userRefresh");
-            response.addCookie(userLogoutCookie);
-        }
+        // 기존 refresh 쿠키 삭제
+        Cookie adminLogoutCookie = tokenUtils.createLogoutCookie("adminRefresh");
+        Cookie userLogoutCookie = tokenUtils.createLogoutCookie("userRefresh");
+        response.addCookie(adminLogoutCookie);
+        response.addCookie(userLogoutCookie);
         
         // 새로운 쿠키 설정
         tokenUtils.addRefreshTokenCookie(user_role_index, response, tokenPair.getRefreshToken()); // 0801 정은 수정 - user_role_index에 따라 쿠키이름 다르게 설정
