@@ -8,6 +8,7 @@ import com.jakdang.labs.api.deokkyu.store.dto.CustomerDto;
 import com.jakdang.labs.api.deokkyu.store.dto.StoreListDto;
 import com.jakdang.labs.api.deokkyu.store.dto.StoreListSearchDto;
 import com.jakdang.labs.api.deokkyu.store.dto.StoreRegisterdListDto;
+
 import com.jakdang.labs.entity.BusinessGrade;
 import com.jakdang.labs.entity.BusinessMan;
 import com.jakdang.labs.entity.Store;
@@ -34,6 +35,7 @@ import com.jakdang.labs.api.deokkyu.store.repository.UserTesserishdkRepo;
 import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -42,6 +44,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor // 생성자 이걸로 만들어줌
+@Slf4j
 @Service
 public class StoreService {
     private final StorehdkRepo storeRepository;
@@ -349,41 +352,44 @@ public class StoreService {
             .collect(Collectors.toList());
     }
 
- // 가맹점 신청 현황 페이지에서 가맹점 리스트(등록된 가맹점) 반환
+     // 가맹점 신청 현황 페이지에서 가맹점 리스트(등록된 가맹점) 반환
     public List<StoreRegisterdListDto> getFilteredRegisterdStores(StoreListSearchDto filter) {
-        // 1. store_subscription_fee에 존재하는 user_index만 추출
+        // 1. store_subscription_fee 테이블의 모든 데이터 조회
         List<StoreSubscriptionFee> feeList = storeSubscriptionFeeRepository.findAll();
-        List<Integer> userIndexes = new ArrayList<>();
-        for (StoreSubscriptionFee fee : feeList) {
-            Store store = fee.getStoreUserIndex();
-            if (store != null && store.getUserIndex() != null) {
-                userIndexes.add(store.getUserIndex().getUserIndex());
-            }
-        }
-        userIndexes = userIndexes.stream().distinct().collect(Collectors.toList());
-
-        // 2. userIndexes로 UserTesseris 리스트 조회
-        List<UserTesseris> tesserisList = userTesserisRepository.findAllById(userIndexes);
-
-        // 3. tesserisList로 필요한 DTO 생성
+        
+        // 2. 각 StoreSubscriptionFee로부터 DTO 생성
         List<StoreRegisterdListDto> result = new ArrayList<>();
-        List<Store> stores = storeRepository.findAll();
-        for (UserTesseris userTesseris : tesserisList) {
-            // filter 조건 체크 (getStoreDtos와 동일하게 적용)
-            UserEntity user = userTesseris.getUsersId();
-            String userId = user != null ? user.getId() : null;
+        
+        for (StoreSubscriptionFee fee : feeList) {
+            // ✅ StoreSubscriptionFee에서 Store와 BusinessMan 직접 가져오기
+            Store store = fee.getStoreUserIndex();  // store_user_index → Store
+            BusinessMan businessMan = fee.getBusinessManUserIndex();  // business_man_user_index → BusinessMan
+            
+            if (store == null) continue;
+            
+            // ✅ Store에서 가맹점 사용자 정보 가져오기 (Store → UserTesseris → UserEntity)
+            UserTesseris storeUserTesseris = store.getUserIndex();
+            UserEntity storeUser = storeUserTesseris != null ? storeUserTesseris.getUsersId() : null;
+            String userId = storeUser != null ? storeUser.getId() : null;
+            
+            // ✅ BusinessMan에서 사업자 정보 가져오기 (BusinessMan → UserTesseris → UserEntity)
+            UserTesseris businessUserTesseris = businessMan != null ? businessMan.getUserIndex() : null;
+            UserEntity businessUser = businessUserTesseris != null ? businessUserTesseris.getUsersId() : null;
+            String businessUserId = businessUser != null ? businessUser.getId() : null;
+            String businessUserName = businessUser != null ? businessUser.getName() : null;
+            String businessGradeName = businessMan != null && businessMan.getBusinessGrade() != null ? 
+                                     businessMan.getBusinessGrade().getBusinessGradeName() : null;
+            
+            // filter 조건 체크
             if (filter.getUserId() != null && !filter.getUserId().isBlank()) {
                 if (userId == null || !userId.contains(filter.getUserId())) continue;
             }
             if (filter.getUserName() != null && !filter.getUserName().isBlank()) {
-                if (user == null || user.getName() == null || !user.getName().contains(filter.getUserName())) continue;
+                if (storeUser == null || storeUser.getName() == null || !storeUser.getName().contains(filter.getUserName())) continue;
             }
             if (filter.getUserPhone() != null && !filter.getUserPhone().isBlank()) {
-                if (user == null || user.getPhone() == null || !user.getPhone().contains(filter.getUserPhone())) continue;
+                if (storeUser == null || storeUser.getPhone() == null || !storeUser.getPhone().contains(filter.getUserPhone())) continue;
             }
-            // 연결된 Store 찾기 (userIndex로)
-            Store store = storeRepository.findByUserIndex(userTesseris);
-            if (store == null) continue;
             if (filter.getStoreBossName() != null && !filter.getStoreBossName().isBlank()) {
                 if (store.getStoreBossName() == null || !store.getStoreBossName().contains(filter.getStoreBossName())) continue;
             }
@@ -394,11 +400,27 @@ public class StoreService {
                 if (store.getStoreName() == null || !store.getStoreName().contains(filter.getStoreName())) continue;
             }
             
-            // storeRequestStatusName 필터링 추가
+            // ✅ storeRequestStatusName 필터링 추가 (직접 매핑)
             if (filter.getStoreRequestStatusName() != null && !filter.getStoreRequestStatusName().isBlank() && !filter.getStoreRequestStatusName().equals("전체")) {
-                Optional<StoreRequestStatus> requestId = storeRequestStatusRepository.findById(store.getStoreRequestStatusIndex());
-                if (requestId.isEmpty() || requestId.get().getStoreRequestStatusName() == null ||
-                !requestId.get().getStoreRequestStatusName().contains(filter.getStoreRequestStatusName())) {
+                String currentStatusName = "대기";  // 기본값
+                if (store.getStoreRequestStatusIndex() != null) {
+                    switch (store.getStoreRequestStatusIndex()) {
+                        case 1:
+                            currentStatusName = "대기";
+                            break;
+                        case 2:
+                            currentStatusName = "승인";
+                            break;
+                        case 3:
+                            currentStatusName = "거절";
+                            break;
+                        default:
+                            currentStatusName = "알 수 없음";
+                            break;
+                    }
+                }
+                
+                if (!currentStatusName.contains(filter.getStoreRequestStatusName())) {
                     continue;
                 }
             }
@@ -421,19 +443,23 @@ public class StoreService {
                     continue;
                 }
             }
-            // StoreSubscriptionFee 정보 (가장 최근 값 1개만)
-            List<StoreSubscriptionFee> fees = storeSubscriptionFeeRepository.findByStoreUserIndex(store);
-            StoreSubscriptionFee fee = null;
-            if (!fees.isEmpty()) {
-                fee = fees.stream().sorted((a, b) -> b.getStoreSubscriptionFeeTime().compareTo(a.getStoreSubscriptionFeeTime())).findFirst().orElse(null);
-            }
             
-            // storeRequestStatusName 설정
-            String storeRequestStatusName = null;
+            // ✅ storeRequestStatusName 설정 (직접 매핑)
+            String storeRequestStatusName = "대기";  // 기본값
             if (store.getStoreRequestStatusIndex() != null) {
-                Optional<StoreRequestStatus> status = storeRequestStatusRepository.findById(store.getStoreRequestStatusIndex());
-                if (status.isPresent()) {
-                    storeRequestStatusName = status.get().getStoreRequestStatusName();
+                switch (store.getStoreRequestStatusIndex()) {
+                    case 1:
+                        storeRequestStatusName = "대기";
+                        break;
+                    case 2:
+                        storeRequestStatusName = "승인";
+                        break;
+                    case 3:
+                        storeRequestStatusName = "거절";
+                        break;
+                    default:
+                        storeRequestStatusName = "알 수 없음";
+                        break;
                 }
             }
             
@@ -443,38 +469,12 @@ public class StoreService {
                 storeTransactionStatus = "정상";
             }
             
-            // 사업자 정보 조회 (businessMan → userTesseris → usersId(UserEntity) 경로)
-            BusinessMan businessMan = null;
-            String businessUserName = null;
-            String businessUserId = null;
-            String businessGradeName = null;
-            if (store.getBusinessManUserIndex() != null) {
-                businessMan = businessManRepository.findById(store.getBusinessManUserIndex()).orElse(null);
-                if (businessMan != null) {
-                    // businessMan의 userIndex로 UserTesseris 조회
-                    Integer businessUserIndex = null;
-                    if (businessMan.getUserIndex() != null) {
-                        businessUserIndex = businessMan.getUserIndex().getUserIndex();
-                    }
-                    if (businessUserIndex != null) {
-                        UserTesseris businessUserTesseris = userTesserisRepository.findByUserIndex(businessUserIndex).orElse(null);
-                        if (businessUserTesseris != null && businessUserTesseris.getUsersId() != null) {
-                            businessUserName = businessUserTesseris.getUsersId().getName();
-                            businessUserId = businessUserTesseris.getUsersId().getId();
-                        }
-                    }
-                    if (businessMan.getBusinessGrade() != null) {
-                        businessGradeName = businessMan.getBusinessGrade().getBusinessGradeName();
-                    }
-                }
-            }
-            
-            // UserCm 정보 조회 (초기지급 CMP, 보유 CM)
+            // ✅ UserCm 정보 조회 (가맹점 사용자 기준)
             UserCm userCm = null;
             Integer totalCM = 0;
             Integer userCmpInit = 0;
-            if (userTesseris != null && userTesseris.getUserIndex() != null) {
-                userCm = userCmRepository.findById(userTesseris.getUserIndex()).orElse(null);
+            if (storeUserTesseris != null && storeUserTesseris.getUserIndex() != null) {
+                userCm = userCmRepository.findById(storeUserTesseris.getUserIndex()).orElse(null);
                 if (userCm != null) {
                     Integer deposit = userCm.getUserCmDeposit() != null ? userCm.getUserCmDeposit() : 0;
                     Integer withdrawal = userCm.getUserCmWithdrawal() != null ? userCm.getUserCmWithdrawal() : 0;
@@ -483,13 +483,14 @@ public class StoreService {
                 }
             }
             
+            // ✅ DTO 생성 (올바른 변수명 사용)
             StoreRegisterdListDto dto = StoreRegisterdListDto.builder()
                 .businessUserId(businessUserId)
                 .businessUserName(businessUserName)
                 .businessGradeName(businessGradeName)
                 .userId(userId)
-                .userName(user != null ? user.getName() : null)
-                .userPhone(user != null ? user.getPhone() : null)
+                .userName(storeUser != null ? storeUser.getName() : null)  // ✅ storeUser 사용
+                .userPhone(storeUser != null ? storeUser.getPhone() : null)  // ✅ storeUser 사용
                 .storeBossName(store.getStoreBossName())
                 .storeCorporateName(store.getStoreCorporateName())
                 .storeName(store.getStoreName())
@@ -498,9 +499,9 @@ public class StoreService {
                 .userCmpInit(userCmpInit)
                 .totalCM(totalCM)
                 .storeCreateDate(store.getStoreCreateDate() != null ? store.getStoreCreateDate().toLocalDate().toString() : null)
-                .storeSubscriptionFeeValue(fee != null ? fee.getStoreSubscriptionFeeValue() : null)
+                .storeSubscriptionFeeValue(fee.getStoreSubscriptionFeeValue())  // ✅ 현재 fee 객체 사용
                 .franchiseFee(store.getFranchiseFee())
-                .storeSubscriptionFeeCommissionCheck(fee != null ? fee.getStoreSubscriptionFeeCommissionCheck() : null)
+                .storeSubscriptionFeeCommissionCheck(fee.getStoreSubscriptionFeeCommissionCheck())  // ✅ 현재 fee 객체 사용
                 .build();
             result.add(dto);
         }

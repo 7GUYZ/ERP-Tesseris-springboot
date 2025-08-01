@@ -80,8 +80,11 @@ public class LogoutFilter extends OncePerRequestFilter {
 
             logoutService.processLogout(refreshToken);
             
-            Cookie logoutCookie = tokenUtils.createLogoutCookie();
-            response.addCookie(logoutCookie);
+            // 모든 refresh 쿠키 삭제 (adminRefresh, userRefresh)
+            Cookie adminLogoutCookie = tokenUtils.createLogoutCookie("adminRefresh");
+            Cookie userLogoutCookie = tokenUtils.createLogoutCookie("userRefresh");
+            response.addCookie(adminLogoutCookie);
+            response.addCookie(userLogoutCookie);
 
             // cms_access_log 테이블에 로그아웃 기록 삽입하기
             // 1. 토큰에서 사용자 id 추출

@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.amazonaws.services.s3.internal.eventstreaming.Message;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jakdang.labs.api.chat.dto.AlarmCheckRequestDTO;
 import com.jakdang.labs.api.chat.dto.InvitationRequestDTO;
@@ -46,11 +47,9 @@ public class ChatController {
     private final ChatServiceClient chatServiceClient;
 
     @GetMapping("/adminlist")
-    public ResponseEntity<List<UserListDTO>> Adminlist() {
+    public ResponseEntity<ResponseDTO<?>> Adminlist() {
         try {
-            List<UserListDTO> userList = chatService.Adminlist();
-            log.info("User list: {}", userList);
-            return ResponseEntity.ok(userList);
+            return ResponseEntity.ok(ResponseDTO.createSuccessResponse("조회 성공", chatService.Adminlist()));
         } catch (Exception e) {
             log.error("Error fetching user list: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -73,17 +72,17 @@ public class ChatController {
      * search room
      */
     @GetMapping("/{userid}")
-    public ResponseEntity<ResponseDTO<List<RoomRequestDTO>>> SearchRoom(@PathVariable("userid") String userid) {
+    public ResponseEntity<ResponseDTO<?>> SearchRoom(@PathVariable("userid") String userid) {
         try {
-            ResponseDTO<List<RoomRequestDTO>> roomList = chatServiceClient.SearchRoom(userid);
+            ResponseDTO<?> roomList = chatServiceClient.SearchRoom(userid);
             log.info("SearchRoom: {}", roomList);
             return ResponseEntity.ok(roomList);
         } catch (FeignException e) {
             log.error("Feign Error: {}", e.getMessage());
-            return ResponseEntity.ok(new ResponseDTO<List<RoomRequestDTO>>(e.status(), e.getMessage(), null));
+            return ResponseEntity.ok(new ResponseDTO<>(e.status(), e.getMessage(), null));
         } catch (Exception e) {
             log.error("Error: {}", e.getMessage());
-            return ResponseEntity.ok(new ResponseDTO<List<RoomRequestDTO>>(404, e.getMessage(), null));
+            return ResponseEntity.ok(new ResponseDTO<>(404, e.getMessage(), null));
         }
     }
 
@@ -91,12 +90,24 @@ public class ChatController {
      * send message
      */
     @PostMapping("/sendmessage")
-    public ResponseEntity<String> SendMessage(@RequestPart("message") String messageRequestDTO,
-            @RequestPart(value = "files", required = false) List<MultipartFile> files) {
+    public ResponseEntity<ResponseDTO<?>> SendMessage(@RequestBody MessageRequestDTO messageRequestDTO) {
         try {
             log.info("SendMessage: {}", messageRequestDTO);
-            log.info("SendMessage: {}", files);
-            return ResponseEntity.ok(chatServiceClient.SendMessage(messageRequestDTO, files));
+            return ResponseEntity.ok(chatServiceClient.SendMessage(messageRequestDTO));
+        } catch (Exception e) {
+            log.error("Error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * 방 확인 API - 사용자 조합으로 기존 방이 있는지 확인
+     */
+    @PostMapping("/checkroom")
+    public ResponseEntity<ResponseDTO<?>> CheckRoom(@RequestBody MessageRequestDTO messageRequestDTO) {
+        try {
+            log.info("CheckRoom: {}", messageRequestDTO);
+            return ResponseEntity.ok(chatServiceClient.CheckRoom(messageRequestDTO));
         } catch (Exception e) {
             log.error("Error: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
