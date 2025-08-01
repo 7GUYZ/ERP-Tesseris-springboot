@@ -31,7 +31,7 @@ public interface ChatServiceClient {
      * search room
      */
     @GetMapping("/{userid}")
-    public ResponseDTO<List<RoomRequestDTO>> SearchRoom(@PathVariable("userid") String userid);
+    public ResponseDTO<?> SearchRoom(@PathVariable("userid") String userid);
 
     /**
      * send message
