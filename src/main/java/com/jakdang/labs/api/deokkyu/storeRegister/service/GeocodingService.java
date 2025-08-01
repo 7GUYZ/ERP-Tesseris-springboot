@@ -24,8 +24,9 @@ public class GeocodingService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    @Value("${kakao.api.key}")
-    private String KAKAO_API_KEY;
+    // @Value("${kakao.api.key}")
+    // private String KAKAO_API_KEY;
+    private static final String KAKAO_API_KEY = "ddad4c72828c1cb49b8cdf5d81c5df20";
     
     
     private static final String KAKAO_GEOCODING_URL = "https://dapi.kakao.com/v2/local/search/address.json";
@@ -36,42 +37,69 @@ public class GeocodingService {
      * @return [위도, 경도] 배열 (실패시 null)
      */
     public double[] getLatLng(String address) {
+        log.info("=== 🌐 카카오 지오코딩 API 호출 시작 ===");
+        log.info("🌐 입력 주소: '{}'", address);
+        log.info("🌐 카카오 API 키: '{}'", KAKAO_API_KEY);
+        
         try {
             if (address == null || address.trim().isEmpty()) {
-                log.warn("주소가 비어있습니다.");
+                log.warn("❌ 주소가 비어있습니다.");
                 return null;
             }
             
             String encodedAddress = URLEncoder.encode(address.trim(), StandardCharsets.UTF_8);
             String url = KAKAO_GEOCODING_URL + "?query=" + encodedAddress;
+            log.info("🌐 요청 URL: {}", url);
+            log.info("🌐 인코딩된 주소: '{}'", encodedAddress);
             
             HttpHeaders headers = new HttpHeaders();
             headers.set("Authorization", "KakaoAK " + KAKAO_API_KEY);
+            log.info("🌐 HTTP 헤더 설정: Authorization=KakaoAK {}", KAKAO_API_KEY);
             
             HttpEntity<String> entity = new HttpEntity<>(headers);
             
+            log.info("🔄 카카오 API 요청 시작");
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            log.info("🔄 카카오 API 요청 완료");
+            
+            log.info("🌐 응답 상태 코드: {}", response.getStatusCode());
+            log.info("🌐 응답 바디: {}", response.getBody());
             
             if (response.getStatusCode().is2xxSuccessful()) {
                 JsonNode rootNode = objectMapper.readTree(response.getBody());
                 JsonNode documents = rootNode.get("documents");
                 
+                log.info("🌐 documents 노드: {}", documents);
+                log.info("🌐 documents 크기: {}", documents != null ? documents.size() : "null");
+                
                 if (documents != null && documents.size() > 0) {
                     JsonNode firstResult = documents.get(0);
+                    log.info("🌐 첫 번째 결과: {}", firstResult);
+                    
                     double lat = firstResult.get("y").asDouble(); // 위도
                     double lng = firstResult.get("x").asDouble(); // 경도
                     
-                    log.info("주소 '{}' 의 좌표: 위도={}, 경도={}", address, lat, lng);
+                    log.info("✅ 지오코딩 성공 - 주소: '{}' → 위도: {}, 경도: {}", address, lat, lng);
                     return new double[]{lat, lng};
+                } else {
+                    log.warn("⚠️ documents가 비어있음 - 검색 결과 없음");
                 }
+            } else {
+                log.error("❌ API 호출 실패 - 상태 코드: {}", response.getStatusCode());
             }
             
-            log.warn("주소 '{}' 에 대한 좌표를 찾을 수 없습니다.", address);
+            log.warn("⚠️ 주소 '{}' 에 대한 좌표를 찾을 수 없습니다.", address);
             return null;
             
         } catch (Exception e) {
-            log.error("지오코딩 실패: {}", address, e);
+            log.error("❌ 지오코딩 API 호출 중 예외 발생");
+            log.error("❌ 주소: '{}'", address);
+            log.error("❌ 예외 타입: {}", e.getClass().getSimpleName());
+            log.error("❌ 예외 메시지: {}", e.getMessage());
+            log.error("❌ 예외 상세: ", e);
             return null;
+        } finally {
+            log.info("=== 🌐 카카오 지오코딩 API 호출 완료 ===");
         }
     }
     
@@ -81,10 +109,18 @@ public class GeocodingService {
      * @return [위도문자열, 경도문자열] 배열 (실패시 빈 문자열)
      */
     public String[] getLatLngAsString(String address) {
+        log.info("📍 getLatLngAsString() 호출 - 주소: '{}'", address);
+        
         double[] latLng = getLatLng(address);
+        log.info("📍 getLatLng() 결과: {}", latLng != null ? java.util.Arrays.toString(latLng) : "null");
+        
         if (latLng != null) {
-            return new String[]{String.valueOf(latLng[0]), String.valueOf(latLng[1])};
+            String[] result = new String[]{String.valueOf(latLng[0]), String.valueOf(latLng[1])};
+            log.info("📍 문자열 변환 결과: {}", java.util.Arrays.toString(result));
+            return result;
         }
+        
+        log.info("📍 latLng가 null이므로 빈 문자열 배열 반환");
         return new String[]{"", ""};
     }
 } 

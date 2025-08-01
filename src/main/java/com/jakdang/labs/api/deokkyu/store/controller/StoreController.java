@@ -9,10 +9,12 @@ import com.jakdang.labs.api.deokkyu.store.dto.StoreListDto;
 import com.jakdang.labs.api.deokkyu.store.dto.StoreListSearchDto;
 import com.jakdang.labs.api.deokkyu.store.dto.StoreRegisterdListDto;
 import com.jakdang.labs.api.deokkyu.store.dto.CustomerDto;
+
 import com.jakdang.labs.api.deokkyu.store.service.StoreService;
 
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
 
@@ -49,9 +51,5 @@ public class StoreController {
         List<StoreRegisterdListDto> stores = storeService.getFilteredRegisterdStores(filter);
         return ResponseEntity.ok(stores);
     }
-
-
-
-    
 
 }
