@@ -7,6 +7,7 @@ import com.jakdang.labs.api.auth.dto.*;
 import com.jakdang.labs.api.auth.entity.UserEntity;
 import com.jakdang.labs.api.auth.repository.AuthRepository;
 import com.jakdang.labs.api.common.ResponseDTO;
+import com.jakdang.labs.api.jungeun.service.UserTesserisLjeSvc;
 import com.jakdang.labs.security.jwt.service.TokenService;
 import com.jakdang.labs.security.jwt.utils.TokenUtils;
 import jakarta.servlet.http.HttpServletResponse;
@@ -35,6 +36,7 @@ public class AuthService {
     private final TokenService tokenService;
 //    private final FirebaseAuth firebaseAuth;
     private final TokenUtils tokenUtils;
+    private final UserTesserisLjeSvc userTesserisSvc;
 
     /**
      * 사용자 회원가입 처리
@@ -162,7 +164,16 @@ public class AuthService {
         }
 //        (String username, String role, String email, String userId)
 
-        TokenDTO tokenDTO = tokenService.createTokenPair(savedUser.getId(), savedUser.getRole().toString(), savedUser.getEmail(), savedUser.getId());
+        // userTesseris에서 user_role_index 가져오기
+        Integer user_role_index = 1; // 기본값
+        if (savedUser.getId() != null) {
+            var userTesseris = userTesserisSvc.findByUsersId(savedUser.getId());
+            if (userTesseris != null) {
+                user_role_index = userTesseris.getUserRoleIndex();
+            }
+        }
+
+        TokenDTO tokenDTO = tokenService.createTokenPair(savedUser.getId(), savedUser.getRole().toString(), savedUser.getEmail(), savedUser.getId(), user_role_index);
 
         return ResponseDTO.<TokenDTO>builder()
                 .resultCode(200)

@@ -16,6 +16,7 @@ public class AdminCreateRequestDto {
        private String adminUserPhone;      // 핸드폰 번호
        private String adminPassword;       // 비밀번호
        private String adminPasswordConfirm; // 비밀번호 확인
+       private String adminRegistrationDate; // 등록일
        
        // 관리자 권한 정보
        private Integer adminTypeIndex;     // 관리자 타입 인덱스

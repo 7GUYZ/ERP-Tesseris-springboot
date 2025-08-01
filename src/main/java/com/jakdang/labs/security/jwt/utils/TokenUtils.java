@@ -42,7 +42,8 @@ public class TokenUtils {
     public String extractRefreshToken(Cookie[] cookies) {
         return Optional.ofNullable(cookies)
                 .flatMap(cookieArray -> Arrays.stream(cookieArray)
-                        .filter(cookie -> "refresh".equals(cookie.getName()))
+                        .filter(cookie -> "adminRefresh".equals(cookie.getName()) || 
+                                         "userRefresh".equals(cookie.getName()))
                         .map(Cookie::getValue)
                         .findFirst())
                 .orElse(null);
@@ -66,7 +67,8 @@ public class TokenUtils {
             throw new JwtException("Expired Refresh Token");
         }
 
-        if (!"refresh".equals(jwtUtil.getCategory(refreshToken))) {
+        String category = jwtUtil.getCategory(refreshToken);
+        if (!"adminRefresh".equals(category) && !"userRefresh".equals(category)) {
             throw new JwtException("Invalid Token Category");
         }
     }
@@ -86,10 +88,13 @@ public class TokenUtils {
      * 로그아웃용 쿠키 생성
      * 리프레시 토큰을 무효화하기 위한 빈 쿠키를 생성
      * 
+     * @param cookieName 쿠키 이름 (adminRefresh, userRefresh)
      * @return 로그아웃용 쿠키
      */
-    public Cookie createLogoutCookie() {
-        Cookie cookie = new Cookie("refresh", null);
+    public Cookie createLogoutCookie(String cookieName) {
+        // 쿠키 이름이 null이면 기본값 "userRefresh" 사용
+        String name = cookieName != null ? cookieName : "userRefresh";
+        Cookie cookie = new Cookie(name, null);
         cookie.setMaxAge(0);
         cookie.setPath("/");
         cookie.setHttpOnly(true);
@@ -108,13 +113,14 @@ public class TokenUtils {
     /**
      * 응답에 리프레시 토큰 쿠키 추가
      * 
+     * @param user_role_index 사용자 역할 인덱스 (4: admin, 그 외: user)
      * @param response HTTP 응답
      * @param refreshToken 리프레시 토큰
      */
-    public void addRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
+    public void addRefreshTokenCookie(Integer user_role_index, HttpServletResponse response, String refreshToken) {
         // (**0712 정은 추가 및 수정 코드)
         // response.addHeader(HttpHeaders.SET_COOKIE, createRefreshCookie(refreshToken).toString());
-        ResponseCookie cookie = createRefreshCookie(refreshToken);
+        ResponseCookie cookie = createRefreshCookie(user_role_index, refreshToken);
         log.info("리프레시 토큰 쿠키 생성: domain={}, secure={}, sameSite={}", 
                 cookie.getDomain(), cookie.isSecure(), cookie.getSameSite());
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
@@ -125,13 +131,22 @@ public class TokenUtils {
      * 리프레시 토큰 쿠키 생성
      * 보안을 위해 HttpOnly, Secure, SameSite 설정을 포함
      * 
+     * @param user_role_index 사용자 역할 인덱스 (4: admin, 그 외: user)
      * @param value 쿠키 값 (리프레시 토큰)
      * @return ResponseCookie 객체
      */
-    public ResponseCookie createRefreshCookie(String value) {
-        // (**0712 정은 수정 및 추가 코드)
+    public ResponseCookie createRefreshCookie(Integer user_role_index, String value) {
 
-        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from("refresh", value)
+        // 08001 정은 수정 및 추가 - user_role_index에 따라 쿠키이름 다르게 설정
+        String cookieName = null;
+
+        if(user_role_index == 4){
+            cookieName = "adminRefresh";
+        }else{
+            cookieName = "userRefresh";
+        }
+        
+        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(cookieName, value)
                 .maxAge(Duration.ofDays(1))
                 .path("/")
                 .httpOnly(true);

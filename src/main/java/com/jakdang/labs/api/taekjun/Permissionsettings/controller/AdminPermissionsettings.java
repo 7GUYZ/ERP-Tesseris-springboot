@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -66,7 +67,7 @@ public class AdminPermissionsettings {
     }
 
     @PostMapping("/insertauthority")
-    public ResponseEntity<String> insertAuthority(@RequestBody AuthorityUpdateDTO insertDTO) {
+    public ResponseEntity<String> insertAuthority(@RequestBody AuthorityUpdateDTO insertDTO, @RequestHeader("Authorization") String authHeader) {
         // 필수 필드 검증
         if (insertDTO.getAdminTypeIndex() == null) {
             return ResponseEntity.badRequest().body("adminTypeIndex는 필수 필드입니다.");
@@ -84,7 +85,7 @@ public class AdminPermissionsettings {
             }
         }
         
-        boolean success = AdminPermissinonsettingsservice.insertAuthority(insertDTO);
+        boolean success = AdminPermissinonsettingsservice.insertAuthority(insertDTO, authHeader);
         if (success) {
             return ResponseEntity.ok("권한이 성공적으로 추가되었습니다.");
         } else {
@@ -93,9 +94,9 @@ public class AdminPermissionsettings {
     }
 
     @PostMapping("/deleteauthority")
-    public ResponseEntity<String> deleteAuthorityByPost(@RequestBody java.util.Map<String, Integer> body) {
+    public ResponseEntity<String> deleteAuthorityByPost(@RequestBody java.util.Map<String, Integer> body, @RequestHeader("Authorization") String authHeader) {
         Integer authorityTypeIndex = body.get("authorityTypeIndex");
-        boolean success = AdminPermissinonsettingsservice.deleteAuthority(authorityTypeIndex);
+        boolean success = AdminPermissinonsettingsservice.deleteAuthority(authorityTypeIndex, authHeader);
         if (success) {
             return ResponseEntity.ok("권한이 성공적으로 삭제되었습니다.");
         } else {

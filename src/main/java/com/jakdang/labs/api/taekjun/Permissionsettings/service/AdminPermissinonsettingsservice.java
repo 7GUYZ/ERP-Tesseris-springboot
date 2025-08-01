@@ -19,12 +19,15 @@ import com.jakdang.labs.entity.AuthorityType;
 import com.jakdang.labs.api.alarm.service.AlarmSvc;
 import com.jakdang.labs.api.auth.entity.UserEntity;
 import com.jakdang.labs.entity.adminType;
+import com.jakdang.labs.security.jwt.utils.JwtUtil;
 import com.jakdang.labs.entity.Program;
 import com.jakdang.labs.api.taekjun.Permissionsettings.repository.UserTesserisRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import com.jakdang.labs.api.taekjun.Permissionsettings.repository.UserRepository;
 import com.jakdang.labs.api.taekjun.adminmypage.repository.UpdateUserLogJtjRepo;
 import com.jakdang.labs.entity.UpdateUserLog;
+import com.jakdang.labs.entity.UserTesseris;
+
 import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.time.LocalDateTime;
@@ -43,6 +46,7 @@ public class AdminPermissinonsettingsservice {
     private final PasswordEncoder passwordEncoder;
     private final UpdateUserLogJtjRepo updateUserLogRepository;
     private final AlarmSvc alarmSvc;
+    private final JwtUtil jwtUtil;
 
     public AdminPermissinonsettingsservice(AdminPermissionsettingsrepository repository,
             AdminTypeRepository adminTypeRepository,
@@ -52,7 +56,8 @@ public class AdminPermissinonsettingsservice {
             @Qualifier("permissionsettingsUserRepository") UserRepository usersRepository,
             PasswordEncoder passwordEncoder,
             UpdateUserLogJtjRepo updateUserLogRepository,
-            AlarmSvc alarmSvc) {
+            AlarmSvc alarmSvc,
+            JwtUtil jwtUtil) {
         this.repository = repository;
         this.adminTypeRepository = adminTypeRepository;
         this.programRepository = programRepository;
@@ -62,6 +67,7 @@ public class AdminPermissinonsettingsservice {
         this.passwordEncoder = passwordEncoder;
         this.updateUserLogRepository = updateUserLogRepository;
         this.alarmSvc = alarmSvc;
+        this.jwtUtil = jwtUtil;
     }
 
     public List<AuthorityProgramDTO> getAuthorityPrograms(Integer adminTypeIndex) {
@@ -134,7 +140,7 @@ public class AdminPermissinonsettingsservice {
 
                 // 권한 변경 알림 전송
                 try {
-                    alarmSvc.sendAuthorityChangedAlarm(adminType.getAdminTypeName(), program.getProgramName(), "수정");
+                    alarmSvc.sendAuthorityChangedAlarm(updateDTO.getUserIndex(), adminType.getAdminTypeName(), program.getProgramName(), "수정");
                     log.info("권한 수정 알림 전송 완료: {} 등급 - {} 메뉴", adminType.getAdminTypeName(), program.getProgramName());
                 } catch (Exception e) {
                     log.error("권한 수정 알림 전송 실패: {}", e.getMessage());
@@ -183,8 +189,15 @@ public class AdminPermissinonsettingsservice {
      * 권한 추가 (중복 조합 방지)
      */
     @Transactional
-    public boolean insertAuthority(AuthorityUpdateDTO updateDTO) {
+    public boolean insertAuthority(AuthorityUpdateDTO updateDTO, String authHeader) {
         try {
+
+            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
+            String userId = jwtUtil.getUserId(token); // 토큰에서 userId 추출
+      
+            // userId로 UserTesseris 조회
+            UserTesseris user = userRepository.findByUsersId_Id(userId).orElse(null);
+
             // 필수 필드 검증
             if (updateDTO.getAdminTypeIndex() == null) {
                 log.error("adminTypeIndex가 null입니다.");
@@ -240,7 +253,7 @@ public class AdminPermissinonsettingsservice {
 
             // 권한 변경 알림 전송
             try {
-                alarmSvc.sendAuthorityChangedAlarm(adminType.getAdminTypeName(), program.getProgramName(), "추가");
+                alarmSvc.sendAuthorityChangedAlarm(user.getUserIndex(), adminType.getAdminTypeName(), program.getProgramName(), "추가");
                 log.info("권한 추가 알림 전송 완료: {} 등급 - {} 메뉴", adminType.getAdminTypeName(), program.getProgramName());
             } catch (Exception e) {
                 log.error("권한 추가 알림 전송 실패: {}", e.getMessage());
@@ -258,8 +271,13 @@ public class AdminPermissinonsettingsservice {
      * 권한 삭제 (authorityTypeIndex로 삭제)
      */
     @Transactional
-    public boolean deleteAuthority(Integer authorityTypeIndex) {
+    public boolean deleteAuthority(Integer authorityTypeIndex, String authHeader) {
         try {
+            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
+            String userId = jwtUtil.getUserId(token); // 토큰에서 userId 추출
+      
+            // userId로 UserTesseris 조회
+            UserTesseris user = userRepository.findByUsersId_Id(userId).orElse(null);
             Optional<AuthorityType> existing = repository.findById(Long.valueOf(authorityTypeIndex));
             if (existing.isEmpty()) {
                 log.warn("삭제할 권한이 존재하지 않습니다. authorityTypeIndex: {}", authorityTypeIndex);
@@ -288,7 +306,7 @@ public class AdminPermissinonsettingsservice {
 
             // 권한 변경 알림 전송
             try {
-                alarmSvc.sendAuthorityChangedAlarm(authority.getAdminTypeIndex().getAdminTypeName(), authority.getProgramIndex().getProgramName(), "삭제");
+                alarmSvc.sendAuthorityChangedAlarm(user.getUserIndex(), authority.getAdminTypeIndex().getAdminTypeName(), authority.getProgramIndex().getProgramName(), "삭제");
                 log.info("권한 삭제 알림 전송 완료: {} 등급 - {} 메뉴", authority.getAdminTypeIndex().getAdminTypeName(), authority.getProgramIndex().getProgramName());
             } catch (Exception e) {
                 log.error("권한 삭제 알림 전송 실패: {}", e.getMessage());

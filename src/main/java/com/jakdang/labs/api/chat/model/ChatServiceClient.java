@@ -40,6 +40,12 @@ public interface ChatServiceClient {
     public ResponseDTO<?> SendMessage(@RequestBody MessageRequestDTO messageRequestDTO);
 
     /**
+     * check room - 사용자 조합으로 기존 방 확인
+     */
+    @PostMapping(value = "/checkroom")
+    public ResponseDTO<?> CheckRoom(@RequestBody MessageRequestDTO messageRequestDTO);
+
+    /**
      * user invitation
      */
     @PostMapping("/{room}/invitation")

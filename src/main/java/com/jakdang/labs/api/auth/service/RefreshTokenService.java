@@ -3,6 +3,8 @@ package com.jakdang.labs.api.auth.service;
 import com.jakdang.labs.api.auth.dto.TokenDTO;
 import com.jakdang.labs.api.auth.entity.UserToken;
 import com.jakdang.labs.api.auth.repository.UserTokenRepository;
+import com.jakdang.labs.api.jungeun.dto.LoginUserTesserisDTO;
+import com.jakdang.labs.api.jungeun.service.UserTesserisLjeSvc;
 import com.jakdang.labs.security.jwt.service.TokenService;
 import com.jakdang.labs.security.jwt.utils.JwtUtil;
 import com.jakdang.labs.security.jwt.utils.TokenUtils;
@@ -27,6 +29,7 @@ public class RefreshTokenService {
     private final TokenUtils tokenUtils;
     private final TokenService tokenService;
     private final UserTokenRepository userTokenRepository;
+    private final UserTesserisLjeSvc userTesserisSvc;
 
     /**
      * 리프레시 토큰을 사용하여 새로운 액세스 토큰과 리프레시 토큰을 발급합니다.
@@ -39,6 +42,10 @@ public class RefreshTokenService {
     @Transactional
     public String refreshTokens(Cookie[] cookies, HttpServletResponse response) {
         String refreshToken = tokenUtils.extractRefreshToken(cookies);
+        // 0801 정은 수정 - user_role_index에 따라 쿠키이름 다르게 설정
+        String userId = jwtUtil.getUserId(refreshToken);
+        LoginUserTesserisDTO userTesseris = userTesserisSvc.findByUsersId(userId);
+        Integer user_role_index = userTesseris.getUserRoleIndex();
 
         if (refreshToken == null) {
             log.warn("리프레시 토큰이 제공되지 않았습니다");
@@ -53,7 +60,7 @@ public class RefreshTokenService {
             TokenDTO tokenPair = tokenService.refreshTokenPair(refreshToken);
 
             // 응답에 새 리프레시 토큰 쿠키 추가
-            tokenUtils.addRefreshTokenCookie(response, tokenPair.getRefreshToken());
+            tokenUtils.addRefreshTokenCookie(user_role_index,response, tokenPair.getRefreshToken());
 
             log.info("토큰이 성공적으로 갱신되었습니다");
             return tokenPair.getAccessToken();

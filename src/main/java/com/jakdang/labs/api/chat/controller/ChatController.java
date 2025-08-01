@@ -101,6 +101,20 @@ public class ChatController {
     }
 
     /**
+     * 방 확인 API - 사용자 조합으로 기존 방이 있는지 확인
+     */
+    @PostMapping("/checkroom")
+    public ResponseEntity<ResponseDTO<?>> CheckRoom(@RequestBody MessageRequestDTO messageRequestDTO) {
+        try {
+            log.info("CheckRoom: {}", messageRequestDTO);
+            return ResponseEntity.ok(chatServiceClient.CheckRoom(messageRequestDTO));
+        } catch (Exception e) {
+            log.error("Error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
      * 특정 채팅방에 특정 사용자 초대하기
      * 
      * @param entity
