@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
 import com.jakdang.labs.api.chat.dto.AlarmCheckRequestDTO;
 import com.jakdang.labs.api.chat.dto.InvitationRequestDTO;
+import com.jakdang.labs.api.chat.dto.MessageRequestDTO;
 import com.jakdang.labs.api.chat.dto.RoomRequestDTO;
 import com.jakdang.labs.api.common.ResponseDTO;
 import com.jakdang.labs.config.FeignConfig;
@@ -35,9 +36,14 @@ public interface ChatServiceClient {
     /**
      * send message
      */
-    @PostMapping(value = "/sendmessage", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public String SendMessage(@RequestPart("message") String messageRequestDTO,
-            @RequestPart(value = "files", required = false) List<MultipartFile> files);
+    @PostMapping(value = "/sendmessage")
+    public ResponseDTO<?> SendMessage(@RequestBody MessageRequestDTO messageRequestDTO);
+
+    /**
+     * check room - 사용자 조합으로 기존 방 확인
+     */
+    @PostMapping(value = "/checkroom")
+    public ResponseDTO<?> CheckRoom(@RequestBody MessageRequestDTO messageRequestDTO);
 
     /**
      * user invitation
