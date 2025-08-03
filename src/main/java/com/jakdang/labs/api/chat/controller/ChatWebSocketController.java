@@ -1,6 +1,7 @@
 package com.jakdang.labs.api.chat.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jakdang.labs.api.chat.dto.AdminListDTO;
 import com.jakdang.labs.api.chat.dto.AlarmCheckRequestDTO;
 import com.jakdang.labs.api.chat.dto.InvitationRequestDTO;
 import com.jakdang.labs.api.chat.dto.MessageRequestDTO;
@@ -51,7 +52,16 @@ public class ChatWebSocketController {
             // 1. 프론트에서 전송한 데이터 추출
             String userId = (String) messageData.get("user_id");
             String message = (String) messageData.get("message");
-            String roomIndex = (String) messageData.get("room_index");
+            
+            // room_index는 Integer일 수 있으므로 안전하게 처리
+            Object roomIndexObj = messageData.get("room_index");
+            String roomIndex;
+            if (roomIndexObj instanceof Integer) {
+                roomIndex = String.valueOf(roomIndexObj);
+            } else {
+                roomIndex = (String) roomIndexObj;
+            }
+            
             String roomName = (String) messageData.get("room_name");
             List<String> participants = (List<String>) messageData.get("participants");
             
@@ -67,9 +77,18 @@ public class ChatWebSocketController {
             // 3. 채팅 서비스를 통해 메시지 저장 및 방 관리
             ResponseDTO<?> response = chatServiceClient.SendMessage(messageRequestDTO);
             
-            // 4. 응답에서 room_index 추출하여 메시지 데이터에 추가
+            // 4. 응답에서 room_index와 messageindex 추출하여 메시지 데이터에 추가
             if (response != null && response.getData() != null) {
-                messageData.put("room_index", response.getData());
+                if (response.getData() instanceof Map) {
+                    Map<String, Object> responseData = (Map<String, Object>) response.getData();
+                    messageData.put("room_index", responseData.get("room_index"));
+                    messageData.put("messageindex", responseData.get("messageindex"));
+                    log.info("메시지 저장 응답: room_index={}, messageindex={}", 
+                            responseData.get("room_index"), responseData.get("messageindex"));
+                } else {
+                    // 기존 호환성을 위해 단순 값도 처리
+                    messageData.put("room_index", response.getData());
+                }
             }
             
             // 5. 메시지에 타임스탬프 추가
@@ -78,6 +97,42 @@ public class ChatWebSocketController {
             // 6. 발신자 정보 추가 (프론트에서 전송한 정보 사용)
             messageData.put("sender", userId);
             messageData.put("user_id", userId);
+            
+            // 7. 발신자 이름 정보 추가 (관리자 목록에서 조회)
+            try {
+                log.info("발신자 이름 조회 시작: userId={}", userId);
+                ResponseDTO<?> adminListResponse = chatService.Adminlist();
+                if (adminListResponse != null && adminListResponse.getData() != null) {
+                    @SuppressWarnings("unchecked")
+                    List<AdminListDTO> adminList = (List<AdminListDTO>) adminListResponse.getData();
+                    log.info("관리자 목록 조회 성공: {}명", adminList.size());
+                    
+                    boolean found = false;
+                    for (AdminListDTO admin : adminList) {
+                        String adminUserId = admin.getUserId();
+                        String adminName = admin.getName();
+                        log.debug("관리자 정보: userId={}, name={}", adminUserId, adminName);
+                        
+                        if (userId.equals(adminUserId)) {
+                            messageData.put("sender_name", adminName);
+                            log.info("발신자 이름 찾음: {} -> {}", userId, adminName);
+                            found = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!found) {
+                        log.warn("발신자 이름을 찾을 수 없음: userId={}", userId);
+                        messageData.put("sender_name", "Unknown");
+                    }
+                } else {
+                    log.warn("관리자 목록 응답이 null이거나 데이터가 없음");
+                    messageData.put("sender_name", "Unknown");
+                }
+            } catch (Exception e) {
+                log.error("발신자 이름 조회 실패: {}", e.getMessage(), e);
+                messageData.put("sender_name", "Unknown");
+            }
 
             log.info("채팅 메시지 브로드캐스트: {}", messageData);
             return messageData;
@@ -271,6 +326,21 @@ public class ChatWebSocketController {
             return ResponseEntity.ok(chatServiceClient.CheckAlram(alarmCheck));
         } catch (Exception e) {
             log.error("Error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * 1:1 채팅방 존재 여부 확인
+     */
+    @PostMapping("/checkroom")
+    public ResponseEntity<?> CheckRoom(@RequestBody MessageRequestDTO messageRequestDTO) {
+        try {
+            log.info("CheckRoom: {}", messageRequestDTO);
+            ResponseDTO<?> result = chatServiceClient.CheckRoom(messageRequestDTO);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("CheckRoom Error: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
