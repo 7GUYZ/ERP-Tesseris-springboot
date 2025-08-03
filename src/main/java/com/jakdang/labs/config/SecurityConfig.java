@@ -158,8 +158,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, GET_PUBLIC_URLS).permitAll()
                         .requestMatchers(HttpMethod.POST, POST_PUBLIC_URLS).permitAll()
                         .requestMatchers("/api/master/**").hasAnyRole("ADMIN", "TEACHER")
-                        .requestMatchers("/ws/**", "/ws/adminchat/**", "/api/ws/adminchat",
-                                "/api/springboot/ws/adminchat", "/springboot/api/ws/adminchat",
+                        .requestMatchers("/ws/**", "/ws/adminchat/**", "/api/ws/adminchat/**",
+                                "/api/springboot/ws/adminchat/**", "/springboot/api/ws/adminchat/**",
                                 "/api/ws/notifications/**", "/ws/notifications/**",
                                 "/springboot/api/ws/notifications/**", "/api/springboot/ws/notifications/**")
                         .permitAll()
