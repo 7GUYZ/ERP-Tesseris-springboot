@@ -63,7 +63,26 @@ public class ChatWebSocketController {
             }
             
             String roomName = (String) messageData.get("room_name");
-            List<String> participants = (List<String>) messageData.get("participants");
+            Object participantsObj = messageData.get("participants");
+            log.info("participants 원본 데이터: {}", participantsObj);
+            log.info("participants 타입: {}", participantsObj != null ? participantsObj.getClass().getName() : "null");
+            
+            List<String> participants;
+            if (participantsObj instanceof List) {
+                participants = (List<String>) participantsObj;
+            } else if (participantsObj instanceof String) {
+                // JSON 문자열인 경우 파싱
+                try {
+                    participants = objectMapper.readValue((String) participantsObj, List.class);
+                } catch (Exception e) {
+                    log.error("participants JSON 파싱 실패: {}", e.getMessage());
+                    participants = new ArrayList<>();
+                }
+            } else {
+                participants = new ArrayList<>();
+            }
+            
+            log.info("파싱된 participants: {}", participants);
             
             // 2. MessageRequestDTO 생성
             MessageRequestDTO messageRequestDTO = new MessageRequestDTO();
