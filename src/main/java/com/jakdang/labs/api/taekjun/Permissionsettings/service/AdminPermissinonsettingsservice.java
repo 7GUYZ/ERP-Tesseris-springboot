@@ -332,6 +332,7 @@ public class AdminPermissinonsettingsservice {
                 log.warn("userIndex 또는 password가 null입니다.");
                 return false;
             }
+            
             // userIndex로 User 엔티티 조회
             var userOpt = userRepository.findById(userIndex);
             if (userOpt.isEmpty()) {
