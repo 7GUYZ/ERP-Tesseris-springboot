@@ -37,6 +37,8 @@ public class PaymentService {
         
         try {
             log.info("결제 요청 생성 - 데이터: {}", paymentData);
+            log.info("PaymentData 상세: orderId={}, amount={}, orderName={}", 
+                    paymentData.getOrderId(), paymentData.getAmount(), paymentData.getOrderName());
             
             // 결제 요청에 필요한 기본 정보 설정
             response.put("success", true);
@@ -46,6 +48,7 @@ public class PaymentService {
             response.put("orderName", paymentData.getOrderName());
             response.put("clientKey", TOSS_CLIENT_KEY); // 클라이언트 키 반환
             
+            log.info("결제 요청 생성 성공: {}", response);
             return response;
             
         } catch (Exception e) {

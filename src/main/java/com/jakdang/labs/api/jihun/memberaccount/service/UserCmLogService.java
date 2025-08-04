@@ -13,7 +13,9 @@ import com.jakdang.labs.api.jihun.memberaccount.dto.UserCmLogSearchRequestDto;
 import com.jakdang.labs.entity.*;
 import com.jakdang.labs.api.jihun.memberaccount.repository.*;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -94,27 +96,86 @@ public class UserCmLogService {
         // 페이징 정보 생성
         Pageable pageable = PageRequest.of(page, size);
         
-        // Repository에서 페이징 처리된 데이터 조회
-        Page<UserCmLog> userCmLogPage = userCmLogRepository.findAllWithJoinsPaged(pageable);
+        try {
+            // Repository에서 페이징 처리된 데이터 조회
+            Page<UserCmLog> userCmLogPage = userCmLogRepository.findAllWithJoinsPaged(pageable);
+            
+            // Entity를 DTO로 변환
+            List<UserCmLogResponseDto> userCmLogDtos = userCmLogPage.getContent().stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+            
+            // 응답 데이터 구성
+            Map<String, Object> response = new HashMap<>();
+            response.put("content", userCmLogDtos);
+            response.put("totalElements", userCmLogPage.getTotalElements());
+            response.put("totalPages", userCmLogPage.getTotalPages());
+            response.put("currentPage", userCmLogPage.getNumber());
+            response.put("size", userCmLogPage.getSize());
+            response.put("hasNext", userCmLogPage.hasNext());
+            response.put("hasPrevious", userCmLogPage.hasPrevious());
+            
+            log.info("페이징 UserCmLog 조회 완료 - 총 {}개, 현재 페이지: {}, 조회된 데이터: {}개", 
+                    userCmLogPage.getTotalElements(), page, userCmLogDtos.size());
+            return response;
+            
+        } catch (Exception e) {
+            log.error("페이징 UserCmLog 조회 중 오류 발생", e);
+            throw e;
+        }
+    }
+
+    /**
+     * 엑셀 다운로드용 최근 3만건 UserCmLog 조회
+     * 
+     * 목적: 엑셀 다운로드 시 최근 3만건만 다운로드하도록 제한
+     * 
+     * 특징:
+     * - 최근 3만건만 조회하여 성능 최적화
+     * - userCmLogIndex DESC 정렬로 최신 데이터 우선
+     * - 엑셀 다운로드 전용 메서드
+     * 
+     * @param page 페이지 번호 (0부터 시작)
+     * @param size 페이지당 데이터 개수
+     * @return 페이징 정보와 데이터를 포함한 Map (최대 3만건)
+     */
+    public Map<String, Object> getLatestUserCmLogsForExcel(int page, int size) {
+        log.info("엑셀 다운로드용 최근 UserCmLog 조회 시작 - page: {}, size: {}", page, size);
         
-        // Entity를 DTO로 변환
-        List<UserCmLogResponseDto> userCmLogDtos = userCmLogPage.getContent().stream()
-            .map(this::convertToDto)
-            .collect(Collectors.toList());
+        // 최대 3만건으로 제한
+        int maxRecords = 30000;
+        int adjustedSize = Math.min(size, maxRecords);
         
-        // 응답 데이터 구성
-        Map<String, Object> response = new HashMap<>();
-        response.put("content", userCmLogDtos); // 실제 데이터
-        response.put("totalElements", userCmLogPage.getTotalElements()); // 전체 데이터 개수
-        response.put("totalPages", userCmLogPage.getTotalPages()); // 전체 페이지 수
-        response.put("currentPage", userCmLogPage.getNumber()); // 현재 페이지 번호
-        response.put("size", userCmLogPage.getSize()); // 페이지당 크기
-        response.put("hasNext", userCmLogPage.hasNext()); // 다음 페이지 존재 여부
-        response.put("hasPrevious", userCmLogPage.hasPrevious()); // 이전 페이지 존재 여부
+        // 페이징 정보 생성
+        Pageable pageable = PageRequest.of(page, adjustedSize);
         
-        log.info("페이징 UserCmLog 조회 완료 - 총 {}개, 현재 페이지: {}", 
-                userCmLogPage.getTotalElements(), page);
-        return response;
+        try {
+            // Repository에서 페이징 처리된 데이터 조회
+            Page<UserCmLog> userCmLogPage = userCmLogRepository.findAllWithJoinsPaged(pageable);
+            
+            // Entity를 DTO로 변환
+            List<UserCmLogResponseDto> userCmLogDtos = userCmLogPage.getContent().stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+            
+            // 응답 데이터 구성
+            Map<String, Object> response = new HashMap<>();
+            response.put("content", userCmLogDtos);
+            response.put("totalElements", Math.min(userCmLogPage.getTotalElements(), maxRecords));
+            response.put("totalPages", userCmLogPage.getTotalPages());
+            response.put("currentPage", userCmLogPage.getNumber());
+            response.put("size", userCmLogPage.getSize());
+            response.put("hasNext", userCmLogPage.hasNext());
+            response.put("hasPrevious", userCmLogPage.hasPrevious());
+            
+            log.info("엑셀 다운로드용 UserCmLog 조회 완료 - 최대 {}개 중 {}개 반환", 
+                    maxRecords, userCmLogDtos.size());
+            return response;
+            
+        } catch (Exception e) {
+            log.error("엑셀 다운로드용 UserCmLog 조회 중 오류 발생", e);
+            throw e;
+        }
     }
 
     /**
@@ -319,8 +380,12 @@ public class UserCmLogService {
             partyUserEmail = processLikeParameter(searchRequest.getUserIndexEventParty());
         }
         
-        log.info("처리된 검색 파라미터 - triggerEmail: {}, partyEmail: {}, partyName: {}", 
-                triggerUserEmail, partyUserEmail, partyUserName);
+        // 날짜 파라미터를 LocalDateTime으로 변환
+        LocalDateTime startDateTime = parseDateTime(searchRequest.getUserCmLogCreateTimeStart());
+        LocalDateTime endDateTime = parseDateTime(searchRequest.getUserCmLogCreateTimeEnd());
+        
+        log.info("처리된 검색 파라미터 - triggerEmail: {}, partyEmail: {}, partyName: {}, startDate: {}, endDate: {}", 
+                triggerUserEmail, partyUserEmail, partyUserName, startDateTime, endDateTime);
         
         // Repository에서 동적 검색 실행 (페이징 지원)
         Page<UserCmLog> userCmLogPage = userCmLogRepository.findBySearchCriteriaWithLike(
@@ -330,8 +395,8 @@ public class UserCmLogService {
             searchRequest.getUserRoleIndex(),
             searchRequest.getUserRoleIndex2(),
             searchRequest.getUserCmLogValueTypeIndex(),
-            searchRequest.getUserCmLogCreateTimeStart(),
-            searchRequest.getUserCmLogCreateTimeEnd(),
+            startDateTime,
+            endDateTime,
             searchRequest.getUserCmLogPaymentIndex(),
             searchRequest.getUserCmLogTransactionTypeIndex(),
             pageable
@@ -822,6 +887,32 @@ public class UserCmLogService {
         
         // 일반 검색어인 경우 그대로 반환 (Repository에서 LIKE 처리)
         return trimmed;
+    }
+
+    /**
+     * 날짜 문자열을 LocalDateTime으로 변환
+     * 
+     * 목적: 프론트엔드에서 전달받은 날짜 문자열을 LocalDateTime으로 변환하여 사용
+     * 
+     * 특징:
+     * - 빈 문자열이나 null일 경우 null 반환
+     * - 형식이 맞지 않으면 예외 발생
+     * - 형식: "yyyy-MM-dd HH:mm:ss"
+     * 
+     * @param dateString 변환할 날짜 문자열
+     * @return 변환된 LocalDateTime 객체 또는 null
+     */
+    private LocalDateTime parseDateTime(String dateString) {
+        if (dateString == null || dateString.trim().isEmpty()) {
+            return null;
+        }
+        
+        try {
+            return LocalDateTime.parse(dateString, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        } catch (DateTimeParseException e) {
+            log.warn("날짜 문자열 파싱 중 오류 발생 - dateString: {}, 예외: {}", dateString, e.getMessage());
+            return null;
+        }
     }
 
 

@@ -40,7 +40,7 @@ public class AuthController {
     @PostMapping("/refresh")
     @RunningTime
     public ResponseEntity<ResponseDTO<?>> refreshToken(HttpServletRequest request, HttpServletResponse response) {
-        String accessToken = refreshTokenService.refreshTokens(request.getCookies(), response);
+        String accessToken = refreshTokenService.refreshTokens(request.getCookies(), response, request);
         response.setHeader("Authorization", "Bearer " + accessToken);
         return ResponseEntity.ok().body(ResponseDTO.createSuccessResponse("리프레시 토큰 갱신완료", accessToken));
     }
