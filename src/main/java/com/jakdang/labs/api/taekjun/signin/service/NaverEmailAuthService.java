@@ -31,6 +31,15 @@ public class NaverEmailAuthService {
      */
     public String sendAuthEmail(String email, String name) {
         try {
+            // 디버깅 로그 추가
+            log.info("이메일 인증 시작 - email: {}, name: {}, fromEmail: {}", email, name, fromEmail);
+            
+            // fromEmail 검증
+            if (fromEmail == null || fromEmail.trim().isEmpty()) {
+                log.error("fromEmail이 설정되지 않았습니다. fromEmail: {}", fromEmail);
+                return null;
+            }
+            
             // 인증 코드 생성 (6자리 숫자)
             String authCode = generateAuthCode();
             
@@ -54,13 +63,14 @@ public class NaverEmailAuthService {
                 "Tesseris 팀"
             );
             
+            log.info("메일 발송 시도 - from: {}, to: {}", fromEmail, email);
             mailSender.send(message);
             
             log.info("회원가입 인증메일 발송 완료: email={}, authToken={}", email, authToken);
             return authToken;
             
         } catch (Exception e) {
-            log.error("회원가입 인증메일 발송 실패: email={}", email, e);
+            log.error("회원가입 인증메일 발송 실패: email={}, fromEmail={}", email, fromEmail, e);
             return null;
         }
     }

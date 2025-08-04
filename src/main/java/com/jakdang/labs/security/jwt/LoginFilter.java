@@ -19,6 +19,7 @@ import com.jakdang.labs.utils.jungeun.GetIpUtil;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -190,14 +191,27 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         }
 
         // 토큰 생성 및 저장
-        TokenDTO tokenPair = tokenService.createTokenPair(username, role, email, userId);
+        TokenDTO tokenPair = tokenService.createTokenPair(username, role, email, userId, user_role_index);
 
         // 응답 설정
         response.setStatus(HttpStatus.OK.value());
         response.setHeader("Authorization", "Bearer " + tokenPair.getAccessToken());
 
         log.info("로그인 성공 - 리프레시 토큰 쿠키 설정 시작");
-        tokenUtils.addRefreshTokenCookie(response, tokenPair.getRefreshToken());
+        
+        // user_role_index에 따라 해당하는 쿠키만 삭제
+        if (user_role_index == 4) {
+            // 관리자: adminRefresh만 삭제
+            Cookie adminLogoutCookie = tokenUtils.createLogoutCookie("adminRefresh");
+            response.addCookie(adminLogoutCookie);
+        } else {
+            // 일반 사용자: userRefresh만 삭제
+            Cookie userLogoutCookie = tokenUtils.createLogoutCookie("userRefresh");
+            response.addCookie(userLogoutCookie);
+        }
+        
+        // 새로운 쿠키 설정
+        tokenUtils.addRefreshTokenCookie(user_role_index, response, tokenPair.getRefreshToken()); // 0801 정은 수정 - user_role_index에 따라 쿠키이름 다르게 설정
         log.info("로그인 성공 - 리프레시 토큰 쿠키 설정 완료");
 
         // cms_access_log 테이블에 로그인 기록 삽입하기

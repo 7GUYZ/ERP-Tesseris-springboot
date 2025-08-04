@@ -14,16 +14,20 @@ import com.jakdang.labs.api.deokkyu.modal_admin.dto.StoreDetailDto;
 import com.jakdang.labs.api.deokkyu.modal_admin.dto.StoreTransactionHistoryDto;
 import com.jakdang.labs.api.deokkyu.modal_admin.dto.BusinessManDetailDto;
 import com.jakdang.labs.api.deokkyu.modal_admin.dto.BusinessManTransactionHistoryDto;
+import com.jakdang.labs.api.deokkyu.modal_admin.dto.StoreImagesPresignedDto;
 import com.jakdang.labs.api.deokkyu.modal_admin.service.ModalService;
+import com.jakdang.labs.api.deokkyu.modal_admin.service.ModalImageService;
 
 @RestController
 @RequestMapping("/api/modal")
 public class ModalController {
     
     private final ModalService modalService;
+    private final ModalImageService modalImageService;
 
-    public ModalController(ModalService modalService) {
+    public ModalController(ModalService modalService, ModalImageService modalImageService) {
         this.modalService = modalService;
+        this.modalImageService = modalImageService;
     }
     
     @GetMapping("/store/transaction-history/{userId}") // 가맹점 거래내역 조회
@@ -93,6 +97,12 @@ public class ModalController {
         } else {
             return ResponseEntity.badRequest().body("가맹점 신청 정보 수정에 실패했습니다.");
         }
+    }
+
+    @GetMapping("/store/images-with-presigned/{storeIndex}") // 가맹점 이미지 S3 Presigned URL 조회
+    public ResponseEntity<StoreImagesPresignedDto> getStoreImagesWithPresignedUrls(@PathVariable Integer storeIndex) {
+        StoreImagesPresignedDto storeImages = modalImageService.getStoreImagesWithPresignedUrls(storeIndex);
+        return ResponseEntity.ok(storeImages);
     }
 
     
