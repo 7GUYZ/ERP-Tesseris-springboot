@@ -16,7 +16,7 @@ public class UserUpdateRequestDto {
     private String userAddress;
     private String userDetailAddress;
     private String userZipCode;
-    private String userBankName;
+    private Long userBankIndex;
     private String userBankNumber;
     private String userBankHolder;
 } 

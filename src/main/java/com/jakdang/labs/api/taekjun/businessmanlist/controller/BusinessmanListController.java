@@ -58,6 +58,12 @@ public class BusinessmanListController {
         return ResponseEntity.ok(areas);
     }
 
+    @GetMapping("/banks")
+    public ResponseEntity<List<BankDTO>> getBanks() {
+        List<BankDTO> banks = businessmanListService.getBanks();
+        return ResponseEntity.ok(banks);
+    }
+
     @PostMapping("/create")
     public ResponseEntity<?> createBusinessman(@RequestBody BusinessmanCreateRequestDTO dto) {
         return businessmanListService.createBusinessman(dto);
@@ -157,5 +163,23 @@ public class BusinessmanListController {
         
         public Integer getBusinessAreaLevel() { return businessAreaLevel; }
         public void setBusinessAreaLevel(Integer businessAreaLevel) { this.businessAreaLevel = businessAreaLevel; }
+    }
+
+    public static class BankDTO {
+        private Integer userBankIndex;
+        private String userBankName;
+
+        public BankDTO() {}
+
+        public BankDTO(Integer userBankIndex, String userBankName) {
+            this.userBankIndex = userBankIndex;
+            this.userBankName = userBankName;
+        }
+
+        public Integer getUserBankIndex() { return userBankIndex; }
+        public void setUserBankIndex(Integer userBankIndex) { this.userBankIndex = userBankIndex; }
+
+        public String getUserBankName() { return userBankName; }
+        public void setUserBankName(String userBankName) { this.userBankName = userBankName; }
     }
 } 

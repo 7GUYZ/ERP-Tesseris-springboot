@@ -2,6 +2,9 @@ package com.jakdang.labs.api.taekjun.Permissionsettings.service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,21 +16,20 @@ import com.jakdang.labs.api.taekjun.Permissionsettings.repository.MenuRepository
 import com.jakdang.labs.api.taekjun.Permissionsettings.dto.AuthorityProgramDTO;
 import com.jakdang.labs.api.taekjun.Permissionsettings.dto.AuthorityUpdateDTO;
 import com.jakdang.labs.api.taekjun.Permissionsettings.dto.AuthorityUpdateByIndexDTO;
+import com.jakdang.labs.api.taekjun.Permissionsettings.dto.BulkAuthorityDTO;
+import com.jakdang.labs.api.taekjun.Permissionsettings.dto.BulkAuthorityUpdateDTO;
 import com.jakdang.labs.api.taekjun.Permissionsettings.dto.MenuDTO;
 import com.jakdang.labs.api.taekjun.Permissionsettings.dto.ProgramDTO;
 import com.jakdang.labs.entity.AuthorityType;
 import com.jakdang.labs.api.alarm.service.AlarmSvc;
 import com.jakdang.labs.api.auth.entity.UserEntity;
 import com.jakdang.labs.entity.adminType;
-import com.jakdang.labs.security.jwt.utils.JwtUtil;
 import com.jakdang.labs.entity.Program;
 import com.jakdang.labs.api.taekjun.Permissionsettings.repository.UserTesserisRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import com.jakdang.labs.api.taekjun.Permissionsettings.repository.UserRepository;
 import com.jakdang.labs.api.taekjun.adminmypage.repository.UpdateUserLogJtjRepo;
 import com.jakdang.labs.entity.UpdateUserLog;
-import com.jakdang.labs.entity.UserTesseris;
-
 import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.time.LocalDateTime;
@@ -46,7 +48,6 @@ public class AdminPermissinonsettingsservice {
     private final PasswordEncoder passwordEncoder;
     private final UpdateUserLogJtjRepo updateUserLogRepository;
     private final AlarmSvc alarmSvc;
-    private final JwtUtil jwtUtil;
 
     public AdminPermissinonsettingsservice(AdminPermissionsettingsrepository repository,
             AdminTypeRepository adminTypeRepository,
@@ -56,8 +57,7 @@ public class AdminPermissinonsettingsservice {
             @Qualifier("permissionsettingsUserRepository") UserRepository usersRepository,
             PasswordEncoder passwordEncoder,
             UpdateUserLogJtjRepo updateUserLogRepository,
-            AlarmSvc alarmSvc,
-            JwtUtil jwtUtil) {
+            AlarmSvc alarmSvc) {
         this.repository = repository;
         this.adminTypeRepository = adminTypeRepository;
         this.programRepository = programRepository;
@@ -67,7 +67,6 @@ public class AdminPermissinonsettingsservice {
         this.passwordEncoder = passwordEncoder;
         this.updateUserLogRepository = updateUserLogRepository;
         this.alarmSvc = alarmSvc;
-        this.jwtUtil = jwtUtil;
     }
 
     public List<AuthorityProgramDTO> getAuthorityPrograms(Integer adminTypeIndex) {
@@ -140,7 +139,7 @@ public class AdminPermissinonsettingsservice {
 
                 // 권한 변경 알림 전송
                 try {
-                    alarmSvc.sendAuthorityChangedAlarm(updateDTO.getUserIndex(), adminType.getAdminTypeName(), program.getProgramName(), "수정");
+                    alarmSvc.sendAuthorityChangedAlarm(updateDTO.getUserIndex() != null ? updateDTO.getUserIndex() : 0, adminType.getAdminTypeName(), program.getProgramName(), "수정");
                     log.info("권한 수정 알림 전송 완료: {} 등급 - {} 메뉴", adminType.getAdminTypeName(), program.getProgramName());
                 } catch (Exception e) {
                     log.error("권한 수정 알림 전송 실패: {}", e.getMessage());
@@ -191,13 +190,6 @@ public class AdminPermissinonsettingsservice {
     @Transactional
     public boolean insertAuthority(AuthorityUpdateDTO updateDTO, String authHeader) {
         try {
-
-            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
-            String userId = jwtUtil.getUserId(token); // 토큰에서 userId 추출
-      
-            // userId로 UserTesseris 조회
-            UserTesseris user = userRepository.findByUsersId_Id(userId).orElse(null);
-
             // 필수 필드 검증
             if (updateDTO.getAdminTypeIndex() == null) {
                 log.error("adminTypeIndex가 null입니다.");
@@ -253,7 +245,7 @@ public class AdminPermissinonsettingsservice {
 
             // 권한 변경 알림 전송
             try {
-                alarmSvc.sendAuthorityChangedAlarm(user.getUserIndex(), adminType.getAdminTypeName(), program.getProgramName(), "추가");
+                alarmSvc.sendAuthorityChangedAlarm(updateDTO.getUserIndex() != null ? updateDTO.getUserIndex() : 0, adminType.getAdminTypeName(), program.getProgramName(), "추가");
                 log.info("권한 추가 알림 전송 완료: {} 등급 - {} 메뉴", adminType.getAdminTypeName(), program.getProgramName());
             } catch (Exception e) {
                 log.error("권한 추가 알림 전송 실패: {}", e.getMessage());
@@ -273,11 +265,6 @@ public class AdminPermissinonsettingsservice {
     @Transactional
     public boolean deleteAuthority(Integer authorityTypeIndex, String authHeader) {
         try {
-            String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
-            String userId = jwtUtil.getUserId(token); // 토큰에서 userId 추출
-      
-            // userId로 UserTesseris 조회
-            UserTesseris user = userRepository.findByUsersId_Id(userId).orElse(null);
             Optional<AuthorityType> existing = repository.findById(Long.valueOf(authorityTypeIndex));
             if (existing.isEmpty()) {
                 log.warn("삭제할 권한이 존재하지 않습니다. authorityTypeIndex: {}", authorityTypeIndex);
@@ -306,7 +293,7 @@ public class AdminPermissinonsettingsservice {
 
             // 권한 변경 알림 전송
             try {
-                alarmSvc.sendAuthorityChangedAlarm(user.getUserIndex(), authority.getAdminTypeIndex().getAdminTypeName(), authority.getProgramIndex().getProgramName(), "삭제");
+                alarmSvc.sendAuthorityChangedAlarm(0, authority.getAdminTypeIndex().getAdminTypeName(), authority.getProgramIndex().getProgramName(), "삭제");
                 log.info("권한 삭제 알림 전송 완료: {} 등급 - {} 메뉴", authority.getAdminTypeIndex().getAdminTypeName(), authority.getProgramIndex().getProgramName());
             } catch (Exception e) {
                 log.error("권한 삭제 알림 전송 실패: {}", e.getMessage());
@@ -439,6 +426,259 @@ public class AdminPermissinonsettingsservice {
 
         } catch (Exception e) {
             log.error("권한 업데이트 중 오류 발생: ", e);
+            return false;
+        }
+    }
+
+    /**
+     * 권한 일괄 추가 (성능 최적화)
+     */
+    @Transactional
+    public boolean bulkInsertAuthorities(BulkAuthorityDTO bulkDTO) {
+        try {
+            if (bulkDTO.getAuthorities() == null || bulkDTO.getAuthorities().isEmpty()) {
+                log.error("권한 목록이 비어있습니다.");
+                return false;
+            }
+
+            List<AuthorityType> authoritiesToSave = new ArrayList<>();
+            
+            for (AuthorityUpdateDTO authDTO : bulkDTO.getAuthorities()) {
+                // 필수 필드 검증
+                if (authDTO.getAdminTypeIndex() == null || authDTO.getProgramIndex() == null) {
+                    log.error("adminTypeIndex 또는 programIndex가 null입니다.");
+                    continue;
+                }
+
+                // 이미 존재하는지 확인
+                var existing = repository.findByAdminTypeIndexAdminTypeIndexAndProgramIndexProgramIndex(
+                        authDTO.getAdminTypeIndex(), authDTO.getProgramIndex());
+                if (existing.isPresent()) {
+                    log.warn("이미 해당 조합의 권한이 존재합니다. adminTypeIndex: {}, programIndex: {}", 
+                            authDTO.getAdminTypeIndex(), authDTO.getProgramIndex());
+                    continue;
+                }
+
+                // 엔티티 조회
+                var adminTypeOpt = adminTypeRepository.findByAdminTypeIndex(authDTO.getAdminTypeIndex());
+                var programOpt = programRepository.findById(authDTO.getProgramIndex());
+                if (adminTypeOpt.isEmpty() || programOpt.isEmpty()) {
+                    log.error("AdminType 또는 Program이 존재하지 않습니다. adminTypeIndex: {}, programIndex: {}", 
+                            authDTO.getAdminTypeIndex(), authDTO.getProgramIndex());
+                    continue;
+                }
+
+                var adminType = adminTypeOpt.get();
+                var program = programOpt.get();
+
+                // 새 권한 생성
+                AuthorityType newAuthority = new AuthorityType();
+                newAuthority.setAdminTypeIndex(adminType);
+                newAuthority.setProgramIndex(program);
+                newAuthority.setInsertAuthority(authDTO.getInsertAuthority() != null ? authDTO.getInsertAuthority() : 1);
+                newAuthority.setDeleteAuthority(authDTO.getDeleteAuthority() != null ? authDTO.getDeleteAuthority() : 1);
+                newAuthority.setUpdateAuthority(authDTO.getUpdateAuthority() != null ? authDTO.getUpdateAuthority() : 1);
+
+                authoritiesToSave.add(newAuthority);
+            }
+
+            if (authoritiesToSave.isEmpty()) {
+                log.warn("저장할 권한이 없습니다.");
+                return false;
+            }
+
+            // 일괄 저장
+            repository.saveAll(authoritiesToSave);
+
+            // 로그 기록 (일괄 처리)
+            for (AuthorityType authority : authoritiesToSave) {
+                String afterData = String.format("(등급:%s,프로그램:%s,삽입권한:%d,삭제권한:%d,수정권한:%d)",
+                        authority.getAdminTypeIndex().getAdminTypeName(), authority.getProgramIndex().getProgramName(),
+                        authority.getInsertAuthority(), authority.getDeleteAuthority(), authority.getUpdateAuthority());
+
+                UpdateUserLog updateUserLog = new UpdateUserLog();
+                updateUserLog.setUpdateUserIndex(bulkDTO.getUserIndex() != null ? bulkDTO.getUserIndex() : 0);
+                updateUserLog.setInflictUserIndex(bulkDTO.getUserIndex() != null ? bulkDTO.getUserIndex() : 0);
+                updateUserLog.setUpdateBeforeData("(등급:신규생성)");
+                updateUserLog.setUpdateAfterData(afterData);
+                updateUserLog.setUpdateUserLogUpdateTime(LocalDateTime.now());
+                updateUserLog.setUpdateDataValue("프로그램명:권한설정 ,기능:권한일괄추가");
+
+                updateUserLogRepository.save(updateUserLog);
+
+                // 권한 변경 알림 전송
+                try {
+                    alarmSvc.sendAuthorityChangedAlarm(bulkDTO.getUserIndex() != null ? bulkDTO.getUserIndex() : 0, 
+                            authority.getAdminTypeIndex().getAdminTypeName(), 
+                            authority.getProgramIndex().getProgramName(), "일괄추가");
+                } catch (Exception e) {
+                    log.error("권한 일괄 추가 알림 전송 실패: {}", e.getMessage());
+                }
+            }
+
+            log.info("권한 일괄 추가 완료. 추가된 권한 수: {}", authoritiesToSave.size());
+            return true;
+
+        } catch (Exception e) {
+            log.error("권한 일괄 추가 중 오류 발생: ", e);
+            return false;
+        }
+    }
+
+    /**
+     * 권한 일괄 수정 (authorityTypeIndex 리스트로 수정)
+     */
+    @Transactional
+    public boolean bulkUpdateAuthorities(BulkAuthorityUpdateDTO bulkDTO) {
+        try {
+            if (bulkDTO.getAuthorities() == null || bulkDTO.getAuthorities().isEmpty()) {
+                log.error("수정할 권한 목록이 비어있습니다.");
+                return false;
+            }
+
+            List<AuthorityType> authoritiesToUpdate = new ArrayList<>();
+            Map<Integer, String> beforeDataMap = new HashMap<>();
+            
+            for (AuthorityUpdateByIndexDTO authDTO : bulkDTO.getAuthorities()) {
+                // 필수 필드 검증
+                if (authDTO.getAuthorityTypeIndex() == null) {
+                    log.error("authorityTypeIndex가 null입니다.");
+                    continue;
+                }
+
+                // authorityTypeIndex로 직접 권한 조회
+                Optional<AuthorityType> authorityOpt = repository.findById(Long.valueOf(authDTO.getAuthorityTypeIndex()));
+
+                if (authorityOpt.isEmpty()) {
+                    log.error("해당 authorityTypeIndex의 권한이 존재하지 않습니다. authorityTypeIndex: {}",
+                            authDTO.getAuthorityTypeIndex());
+                    continue;
+                }
+
+                AuthorityType authority = authorityOpt.get();
+
+                // 변경 전 데이터 저장
+                String beforeData = String.format("(등급:%s,프로그램:%s,삽입권한:%d,삭제권한:%d,수정권한:%d)",
+                        authority.getAdminTypeIndex().getAdminTypeName(), authority.getProgramIndex().getProgramName(),
+                        authority.getInsertAuthority(), authority.getDeleteAuthority(), authority.getUpdateAuthority());
+                
+                beforeDataMap.put(authDTO.getAuthorityTypeIndex(), beforeData);
+
+                // 권한 정보 업데이트
+                authority.setInsertAuthority(authDTO.getInsertAuthority() != null ? authDTO.getInsertAuthority() : authority.getInsertAuthority());
+                authority.setDeleteAuthority(authDTO.getDeleteAuthority() != null ? authDTO.getDeleteAuthority() : authority.getDeleteAuthority());
+                authority.setUpdateAuthority(authDTO.getUpdateAuthority() != null ? authDTO.getUpdateAuthority() : authority.getUpdateAuthority());
+
+                authoritiesToUpdate.add(authority);
+            }
+
+            if (authoritiesToUpdate.isEmpty()) {
+                log.warn("수정할 권한이 없습니다.");
+                return false;
+            }
+
+            // 일괄 저장
+            repository.saveAll(authoritiesToUpdate);
+
+            // 로그 기록 (일괄 처리)
+            for (AuthorityType authority : authoritiesToUpdate) {
+                String afterData = String.format("(등급:%s,프로그램:%s,삽입권한:%d,삭제권한:%d,수정권한:%d)",
+                        authority.getAdminTypeIndex().getAdminTypeName(), authority.getProgramIndex().getProgramName(),
+                        authority.getInsertAuthority(), authority.getDeleteAuthority(), authority.getUpdateAuthority());
+
+                // 해당 권한의 변경 전 데이터 가져오기
+                String beforeData = beforeDataMap.getOrDefault(authority.getAuthorityTypeIndex().intValue(), "");
+
+                UpdateUserLog updateUserLog = new UpdateUserLog();
+                updateUserLog.setUpdateUserIndex(bulkDTO.getUserIndex() != null ? bulkDTO.getUserIndex() : 0);
+                updateUserLog.setInflictUserIndex(bulkDTO.getUserIndex() != null ? bulkDTO.getUserIndex() : 0);
+                updateUserLog.setUpdateBeforeData(beforeData);
+                updateUserLog.setUpdateAfterData(afterData);
+                updateUserLog.setUpdateUserLogUpdateTime(LocalDateTime.now());
+                updateUserLog.setUpdateDataValue("프로그램명:권한설정 ,기능:권한일괄수정");
+
+                updateUserLogRepository.save(updateUserLog);
+
+                // 권한 변경 알림 전송
+                try {
+                    alarmSvc.sendAuthorityChangedAlarm(bulkDTO.getUserIndex() != null ? bulkDTO.getUserIndex() : 0, 
+                            authority.getAdminTypeIndex().getAdminTypeName(), 
+                            authority.getProgramIndex().getProgramName(), "일괄수정");
+                } catch (Exception e) {
+                    log.error("권한 일괄 수정 알림 전송 실패: {}", e.getMessage());
+                }
+            }
+
+            log.info("권한 일괄 수정 완료. 수정된 권한 수: {}", authoritiesToUpdate.size());
+            return true;
+
+        } catch (Exception e) {
+            log.error("권한 일괄 수정 중 오류 발생: ", e);
+            return false;
+        }
+    }
+
+    /**
+     * 권한 일괄 삭제 (authorityTypeIndex 리스트로 삭제)
+     */
+    @Transactional
+    public boolean bulkDeleteAuthorities(List<Integer> authorityTypeIndexes) {
+        try {
+            if (authorityTypeIndexes == null || authorityTypeIndexes.isEmpty()) {
+                log.error("삭제할 권한 인덱스 목록이 비어있습니다.");
+                return false;
+            }
+
+            List<AuthorityType> authoritiesToDelete = new ArrayList<>();
+            
+            // 삭제할 권한들 조회
+            for (Integer index : authorityTypeIndexes) {
+                Optional<AuthorityType> existing = repository.findById(Long.valueOf(index));
+                if (existing.isPresent()) {
+                    authoritiesToDelete.add(existing.get());
+                } else {
+                    log.warn("삭제할 권한이 존재하지 않습니다. authorityTypeIndex: {}", index);
+                }
+            }
+
+            if (authoritiesToDelete.isEmpty()) {
+                log.warn("삭제할 권한이 없습니다.");
+                return false;
+            }
+
+            // 삭제 전 로그 기록
+            for (AuthorityType authority : authoritiesToDelete) {
+                String beforeData = String.format("(등급:%s,프로그램:%s,삽입권한:%d,삭제권한:%d,수정권한:%d)",
+                        authority.getAdminTypeIndex().getAdminTypeName(), authority.getProgramIndex().getProgramName(),
+                        authority.getInsertAuthority(), authority.getDeleteAuthority(), authority.getUpdateAuthority());
+
+                UpdateUserLog updateUserLog = new UpdateUserLog();
+                updateUserLog.setUpdateUserIndex(0);
+                updateUserLog.setInflictUserIndex(0);
+                updateUserLog.setUpdateBeforeData(beforeData);
+                updateUserLog.setUpdateAfterData("(등급:일괄삭제됨)");
+                updateUserLog.setUpdateUserLogUpdateTime(LocalDateTime.now());
+                updateUserLog.setUpdateDataValue("프로그램명:권한설정 ,기능:권한일괄삭제");
+
+                updateUserLogRepository.save(updateUserLog);
+
+                // 권한 변경 알림 전송
+                try {
+                    alarmSvc.sendAuthorityChangedAlarm(0, authority.getAdminTypeIndex().getAdminTypeName(), 
+                            authority.getProgramIndex().getProgramName(), "일괄삭제");
+                } catch (Exception e) {
+                    log.error("권한 일괄 삭제 알림 전송 실패: {}", e.getMessage());
+                }
+            }
+
+            // 일괄 삭제
+            repository.deleteAll(authoritiesToDelete);
+
+            log.info("권한 일괄 삭제 완료. 삭제된 권한 수: {}", authoritiesToDelete.size());
+            return true;
+
+        } catch (Exception e) {
+            log.error("권한 일괄 삭제 중 오류 발생: ", e);
             return false;
         }
     }

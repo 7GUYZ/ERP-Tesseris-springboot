@@ -124,12 +124,15 @@ public class AjgMemberAssetDetailsService {
             try {
                 if (row[10] instanceof LocalDateTime) {
                     dto.setUserCreateTime((LocalDateTime) row[10]);
+                } else if (row[10] instanceof java.sql.Timestamp) {
+                    dto.setUserCreateTime(((java.sql.Timestamp) row[10]).toLocalDateTime());
                 } else if (row[10] instanceof String) {
                     dto.setUserCreateTime(LocalDateTime.parse((String) row[10], DateTimeFormatter.ISO_LOCAL_DATE_TIME));
                 } else {
                     dto.setUserCreateTime(null);
                 }
             } catch (Exception e) {
+                log.error("userCreateTime 변환 오류: {}", e.getMessage());
                 dto.setUserCreateTime(null);
             }
         } else {
