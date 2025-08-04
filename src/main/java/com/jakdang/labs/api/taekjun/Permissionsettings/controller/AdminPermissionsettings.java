@@ -21,6 +21,8 @@ import lombok.RequiredArgsConstructor;
 
 import com.jakdang.labs.api.taekjun.Permissionsettings.dto.AuthorityProgramDTO;
 import com.jakdang.labs.api.taekjun.Permissionsettings.dto.AuthorityUpdateDTO;
+import com.jakdang.labs.api.taekjun.Permissionsettings.dto.BulkAuthorityDTO;
+import com.jakdang.labs.api.taekjun.Permissionsettings.dto.BulkAuthorityUpdateDTO;
 import com.jakdang.labs.api.taekjun.Permissionsettings.dto.MenuDTO;
 import com.jakdang.labs.api.taekjun.Permissionsettings.dto.ProgramDTO;
 
@@ -90,6 +92,71 @@ public class AdminPermissionsettings {
             return ResponseEntity.ok("권한이 성공적으로 추가되었습니다.");
         } else {
             return ResponseEntity.badRequest().body("권한 추가에 실패했습니다. (이미 존재하거나 데이터 오류)");
+        }
+    }
+
+    @PostMapping("/bulk-insert-authorities")
+    public ResponseEntity<String> bulkInsertAuthorities(@RequestBody BulkAuthorityDTO bulkDTO, @RequestHeader("Authorization") String authHeader) {
+        // 필수 필드 검증
+        if (bulkDTO.getAuthorities() == null || bulkDTO.getAuthorities().isEmpty()) {
+            return ResponseEntity.badRequest().body("권한 목록이 비어있습니다.");
+        }
+        
+        // 패스워드 검증이 필요한 경우 먼저 검증 수행
+        if (bulkDTO.getUserIndex() != null && bulkDTO.getPassword() != null) {
+            boolean passwordValid = AdminPermissinonsettingsservice.validateUserPassword(
+                bulkDTO.getUserIndex(), bulkDTO.getPassword());
+            if (!passwordValid) {
+                return ResponseEntity.badRequest().body("사용자 인증에 실패했습니다. userIndex와 password를 확인해주세요.");
+            }
+        }
+        
+        boolean success = AdminPermissinonsettingsservice.bulkInsertAuthorities(bulkDTO);
+        if (success) {
+            return ResponseEntity.ok("권한이 성공적으로 일괄 추가되었습니다.");
+        } else {
+            return ResponseEntity.badRequest().body("권한 일괄 추가에 실패했습니다.");
+        }
+    }
+
+    @PostMapping("/bulk-delete-authorities")
+    public ResponseEntity<String> bulkDeleteAuthorities(@RequestBody java.util.Map<String, Object> body, @RequestHeader("Authorization") String authHeader) {
+        @SuppressWarnings("unchecked")
+        List<Integer> authorityTypeIndexes = (List<Integer>) body.get("authorityTypeIndexes");
+        
+        if (authorityTypeIndexes == null || authorityTypeIndexes.isEmpty()) {
+            return ResponseEntity.badRequest().body("삭제할 권한 인덱스 목록이 비어있습니다.");
+        }
+        
+        boolean success = AdminPermissinonsettingsservice.bulkDeleteAuthorities(authorityTypeIndexes);
+        if (success) {
+            return ResponseEntity.ok("권한이 성공적으로 일괄 삭제되었습니다.");
+        } else {
+            return ResponseEntity.badRequest().body("권한 일괄 삭제에 실패했습니다.");
+        }
+    }
+
+    @PostMapping("/bulk-update-authorities")
+    public ResponseEntity<String> bulkUpdateAuthorities(@RequestBody BulkAuthorityUpdateDTO bulkDTO, @RequestHeader("Authorization") String authHeader) {
+        // 필수 필드 검증
+        if (bulkDTO.getAuthorities() == null || bulkDTO.getAuthorities().isEmpty()) {
+            return ResponseEntity.badRequest().body("수정할 권한 목록이 비어있습니다.");
+        }
+        
+        // 패스워드 검증이 필요한 경우 먼저 검증 수행
+        if (bulkDTO.getUserIndex() != null && bulkDTO.getPassword() != null) {
+            boolean passwordValid = AdminPermissinonsettingsservice.validateUserPassword(
+                bulkDTO.getUserIndex(), bulkDTO.getPassword());
+            if (!passwordValid) {
+                return ResponseEntity.badRequest().body("사용자 인증에 실패했습니다. userIndex와 password를 확인해주세요.");
+            }
+        }
+        
+        boolean success = AdminPermissinonsettingsservice.bulkUpdateAuthorities(bulkDTO);
+        if (success) {
+            return ResponseEntity.ok("권한이 성공적으로 일괄 수정되었습니다.");
+        } else {
+            return ResponseEntity.badRequest().body("권한 일괄 수정에 실패했습니다.");
         }
     }
 

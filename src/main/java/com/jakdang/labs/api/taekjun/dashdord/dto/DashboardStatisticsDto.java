@@ -5,6 +5,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -67,4 +70,27 @@ public class DashboardStatisticsDto {
     private Long commissionRevenueTotal;    // 수수료 수익 - 전체 총량
     private Long commissionRevenueYesterday; // 수수료 수익 - 어제 총량
     private Long commissionRevenueToday;     // 수수료 수익 - 오늘 총량
+    
+    // 회원 관련 통계
+    private Long userTotal;              // 총 회원수 - 전체
+    private Long userYesterday;          // 회원수 - 어제
+    private Long userToday;              // 회원수 - 오늘 (신규 가입)
+
+    // QnA 관련 통계
+    private Long qnaTotal;           // 전체 QnA 수
+    private Long qnaAnswered;        // 답변 완료된 QnA 수
+    private Long qnaUnanswered;      // 미답변 QnA 수
+
+    // 공지사항 관련
+    private List<NoticeDto> recentNotices;
+
+    @Data
+    @Builder
+    public static class NoticeDto {
+        private Integer noticeIndex;
+        private String noticeTitle;     // notice_title
+        private String noticeDesc;      // notice_desc
+        private String createdAt;       // notice_create_time
+        private Integer userIndex;      // user_index
+    }
 } 

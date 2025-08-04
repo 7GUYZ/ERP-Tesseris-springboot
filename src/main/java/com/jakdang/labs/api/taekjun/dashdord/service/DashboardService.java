@@ -8,13 +8,20 @@ import com.jakdang.labs.api.taekjun.dashdord.repository.UserCmLogPaymentJtjRepo;
 import com.jakdang.labs.api.taekjun.dashdord.repository.UserCmJtjRepo;
 import com.jakdang.labs.api.taekjun.dashdord.repository.StoreJtjRepo;
 import com.jakdang.labs.api.taekjun.dashdord.repository.BusinessManJtjRepo;
+import com.jakdang.labs.api.taekjun.dashdord.repository.UserTesserisJtjRepo;
+import com.jakdang.labs.api.taekjun.dashdord.repository.QnaJtjRepo;
+import com.jakdang.labs.api.taekjun.dashdord.repository.NoticeJtjRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -27,6 +34,9 @@ public class DashboardService {
     private final UserCmJtjRepo userCmJtjRepo;
     private final StoreJtjRepo storeJtjRepo;
     private final BusinessManJtjRepo businessManJtjRepo;
+    private final UserTesserisJtjRepo userTesserisJtjRepo;
+    private final QnaJtjRepo qnaJtjRepo;
+    private final NoticeJtjRepo noticeJtjRepo;
     // StoreJtjRepo, BusinessManJtjRepo 등도 필요시 추가
 
     /**
@@ -77,12 +87,43 @@ public class DashboardService {
                     .businessManTotal(getBusinessManTotal())
                     .businessManYesterday(getBusinessManByDate(yesterdayStr))
                     .businessManToday(getBusinessManByDate(todayStr))
+                    // 회원 관련 통계
+                    .userTotal(getUserTotal())
+                    .userYesterday(getUserByDate(yesterday))
+                    .userToday(getUserByDate(today))
+                    // QnA 통계
+                    .qnaTotal(getQnaTotal())
+                    .qnaAnswered(getQnaAnswered())
+                    .qnaUnanswered(getQnaUnanswered())
+                    .recentNotices(getRecentNotices())
                     .build();
             log.info("대시보드 통계 조회 완료");
             return statistics;
         } catch (Exception e) {
             log.error("대시보드 통계 조회 중 오류 발생", e);
-            throw new RuntimeException("대시보드 통계 조회 중 오류가 발생했습니다.", e);
+            log.error("에러 상세 정보: {}", e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("대시보드 통계 조회 중 오류가 발생했습니다: " + e.getMessage(), e);
+        }
+    }
+
+    private List<DashboardStatisticsDto.NoticeDto> getRecentNotices() {
+        try {
+            return noticeJtjRepo.findRecentNotices(PageRequest.of(0, 5))
+                .stream()
+                .map(notice -> DashboardStatisticsDto.NoticeDto.builder()
+                    .noticeIndex(notice.getNoticeIndex())
+                    .noticeTitle(notice.getNoticeTitle())
+                    .noticeDesc(notice.getNoticeDesc())
+                    .createdAt(notice.getNoticeCreateTime() != null 
+                        ? notice.getNoticeCreateTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                        : "")
+                    .userIndex(notice.getUserIndex())
+                    .build())
+                .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("Error getting recent notices: {}", e.getMessage());
+            return new ArrayList<>();
         }
     }
 
@@ -151,5 +192,46 @@ public class DashboardService {
     }
     private Long getBusinessManByDate(String date) {
         return businessManJtjRepo.countBusinessManByDate(date);
+    }
+    
+    // 회원 관련 메서드
+    private Long getUserTotal() {
+        return userTesserisJtjRepo.countUserTotal();
+    }
+    private Long getUserByDate(LocalDate date) {
+        try {
+            return userTesserisJtjRepo.countUserByDate(date);
+        } catch (Exception e) {
+            log.error("Error getting user count for date {}: {}", date, e.getMessage());
+            e.printStackTrace();
+            return 0L;
+        }
+    }
+
+    private Long getQnaTotal() {
+        try {
+            return qnaJtjRepo.countTotal();
+        } catch (Exception e) {
+            log.error("Error getting total QnA count: {}", e.getMessage());
+            return 0L;
+        }
+    }
+
+    private Long getQnaAnswered() {
+        try {
+            return qnaJtjRepo.countAnswered();
+        } catch (Exception e) {
+            log.error("Error getting answered QnA count: {}", e.getMessage());
+            return 0L;
+        }
+    }
+
+    private Long getQnaUnanswered() {
+        try {
+            return qnaJtjRepo.countUnanswered();
+        } catch (Exception e) {
+            log.error("Error getting unanswered QnA count: {}", e.getMessage());
+            return 0L;
+        }
     }
 } 

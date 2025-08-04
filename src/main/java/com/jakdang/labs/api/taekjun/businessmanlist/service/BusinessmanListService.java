@@ -690,12 +690,22 @@ public class BusinessmanListService {
     
     // 사업자 지역 목록 조회
     public List<BusinessmanListController.BusinessAreaDTO> getBusinessAreas() {
-        List<BusinessArea> businessAreas = businessAreaJtjRepo.findAll();
-        return businessAreas.stream()
-                .map(ba -> new BusinessmanListController.BusinessAreaDTO(
-                        ba.getBusinessAreaIndex(),
-                        ba.getBusinessAreaName(),
-                        ba.getBusinessAreaLevel()
+        List<BusinessArea> areas = businessAreaJtjRepo.findAll();
+        return areas.stream()
+                .map(area -> new BusinessmanListController.BusinessAreaDTO(
+                        area.getBusinessAreaIndex(),
+                        area.getBusinessAreaName(),
+                        area.getBusinessAreaLevel()
+                ))
+                .collect(Collectors.toList());
+    }
+
+    public List<BusinessmanListController.BankDTO> getBanks() {
+        List<UserBank> banks = userBankJtjRepo.findAll();
+        return banks.stream()
+                .map(bank -> new BusinessmanListController.BankDTO(
+                        bank.getUserBankIndex(),
+                        bank.getUserBankName()
                 ))
                 .collect(Collectors.toList());
     }
