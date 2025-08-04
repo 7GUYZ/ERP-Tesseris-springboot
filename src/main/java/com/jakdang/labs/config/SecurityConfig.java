@@ -47,20 +47,21 @@ public class SecurityConfig {
 
     // 상수로 public URL 패턴 정의
     public static final String[] PUBLIC_URLS = {
-            "/api/auth/signUp",
-            "/api/auth/refresh",
-            "/api/auth/join-sns",
-            "/api/auth/join-sns2",
-            "/refresh",
-            "/api/public/**",
-            "/oauth2/authorization/**",
-            "/oauth/callback",
-            "/login/oauth2/code/**",
-            "/ws/**", "/ws/chat/**",
-            "/api/channel/all",
-            "/api/channel/active",
-            "/api/signin/**",
-            "/api/address/**",
+        "/api/auth/signUp",
+        "/api/auth/refresh",
+        "/api/auth/join-sns",
+        "/api/auth/join-sns2",
+        "/refresh",
+        "/api/public/**",
+        "/oauth2/authorization/**",
+        "/oauth/callback", 
+        "/login/oauth2/code/**",
+        "/ws/**", "/ws/chat/**",
+        "/api/channel/all",
+        "/api/channel/active",
+        "/api/signin/**",
+        "/api/address/**",
+        "/api/passwordfind/**"  
     };
     // .requestMatchers("/ws/**").permitAll()
     public static final String[] SWAGGER_URLS = {
