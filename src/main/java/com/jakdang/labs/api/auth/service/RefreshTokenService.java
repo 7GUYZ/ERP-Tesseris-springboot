@@ -10,6 +10,7 @@ import com.jakdang.labs.security.jwt.utils.JwtUtil;
 import com.jakdang.labs.security.jwt.utils.TokenUtils;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,10 +38,11 @@ public class RefreshTokenService {
      *
      * @param cookies 요청에서 전달된 쿠키 배열
      * @param response HTTP 응답 객체
+     * @param request HTTP 요청 객체 (User-Type 헤더 확인용)
      * @return 새로 발급된 액세스 토큰, 새 토큰이 발급되지 않았다면 null
      */
     @Transactional
-    public String refreshTokens(Cookie[] cookies, HttpServletResponse response) {
+    public String refreshTokens(Cookie[] cookies, HttpServletResponse response, HttpServletRequest request) {
         String refreshToken = tokenUtils.extractRefreshToken(cookies, null);
         
         if (refreshToken == null) {
