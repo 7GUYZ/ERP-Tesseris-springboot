@@ -16,7 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/user")
+@RequestMapping("/api")
 @Slf4j
 @RequiredArgsConstructor
 public class StoreRegisterController {
@@ -70,6 +70,7 @@ public class StoreRegisterController {
     @PostMapping("/payment/create")
     public ResponseEntity<Map<String, Object>> createPaymentRequest(@RequestBody PaymentCreateRequestDto paymentData) {
         try {
+            log.info("=== StoreRegisterController.createPaymentRequest 진입 ===");
             log.info("결제 요청 생성: {}", paymentData);
             Map<String, Object> result = paymentService.createPaymentRequest(paymentData);
             return ResponseEntity.ok(result);
