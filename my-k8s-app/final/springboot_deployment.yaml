@@ -23,6 +23,8 @@ spec:
           env:
             - name: TZ                 # ★ 타임존 설정 추가
               value: "Asia/Seoul"
+            - name: JAVA_OPTS
+              value: "-Duser.timezone=Asia/Seoul"
             - name: DB_URL
               valueFrom:
                 secretKeyRef:
@@ -118,3 +120,13 @@ spec:
                 secretKeyRef:
                   name: erp-tesseris-secret
                   key: TOSS_SECRET_KEY
+          volumeMounts:
+            - name: timezone-volume
+              mountPath: /etc/localtime
+              subPath: zoneinfo/Asia/Seoul
+              readOnly: true
+      volumes:
+        - name: timezone-volume
+          hostPath:
+            path: /usr/share/zoneinfo
+            type: Directory
