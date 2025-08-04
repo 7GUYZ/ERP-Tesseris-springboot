@@ -29,6 +29,7 @@ import java.util.Map;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.multipart.MultipartFile;
+import java.util.stream.Collectors;
 
 @Component
 @RestController
@@ -64,28 +65,26 @@ public class ChatWebSocketController {
             String userId = (String) messageData.get("user_id");
             String message = (String) messageData.get("message");
 
-            // 파일업로드
+            // 파일 업로드는 HTTP 방식으로 처리하므로 WebSocket에서는 파일 정보만 전달받음
             Object filesObj = messageData.get("files");
-            // 파일 목록
-            List<MultipartFile> files = new ArrayList<>();
-            // 업로드된 파일 목록
             List<String> uploadFiles = new ArrayList<>();
 
             if (filesObj != null && filesObj instanceof List) {
-                for (MultipartFile file : files) {
-                    files.add(file);
-                    // s3 업로드
-                    try {
-                        String folder = "chat-files/" + roomId;
-                        String fileKey = s3FileUploadService.uploadFile(file, folder);
-                        uploadFiles.add(fileKey);
-                        log.info("파일 업로드 성공: {}", fileKey);
-                    } catch (Exception e) {
-                        log.error("파일 업로드 실패: {}", e.getMessage());
-                        e.printStackTrace();
+                @SuppressWarnings("unchecked")
+                List<Object> filesList = (List<Object>) filesObj;
+                
+                for (Object fileObj : filesList) {
+                    if (fileObj instanceof Map) {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> fileData = (Map<String, Object>) fileObj;
+                        
+                        // HTTP 업로드에서 이미 S3 URL이 전달됨
+                        String fileUrl = (String) fileData.get("url");
+                        if (fileUrl != null) {
+                            uploadFiles.add(fileUrl);
+                        }
                     }
                 }
-                messageRequestDTO.setUploadFiles(uploadFiles);
             }
 
             // room_index는 Integer일 수 있으므로 안전하게 처리
@@ -125,6 +124,7 @@ public class ChatWebSocketController {
             messageRequestDTO.setRoom_name(roomName);
             messageRequestDTO.setParticipants(participants != null ? participants : new ArrayList<>());
             messageRequestDTO.setTimestamp(null);
+            messageRequestDTO.setUploadFiles(uploadFiles);
 
             // 3. 채팅 서비스를 통해 메시지 저장 및 방 관리
             log.info("채팅 서비스 호출 시작: {}", messageRequestDTO);
@@ -223,6 +223,7 @@ public class ChatWebSocketController {
                         }
 
                         // admin 구독자들에게도 알림 (채팅방 목록 업데이트용)
+                        log.info("📡 admin 구독자들에게 새 방 생성 알림: /queue/admin");
                         messagingTemplate.convertAndSend("/queue/admin", newRoomMessage);
 
                         log.info("새 채팅방 생성 WebSocket 알림 전송 완료: {}", newRoomMessage);
@@ -243,6 +244,26 @@ public class ChatWebSocketController {
             messageData.put("message_type", "chat");
             messageData.put("room_id", roomId);
             messageData.put("room_index", roomIndex);
+            
+            // 8. 파일 정보 추가 (DB에서 조회한 파일 정보)
+            if (!uploadFiles.isEmpty()) {
+                try {
+                    // 채팅 서비스에서 파일 정보 조회
+                    List<Map<String, Object>> fileInfoList = new ArrayList<>();
+                    for (String fileUrl : uploadFiles) {
+                        Map<String, Object> fileInfo = new HashMap<>();
+                        fileInfo.put("url", fileUrl);
+                        fileInfo.put("name", extractFileNameFromUrl(fileUrl));
+                        fileInfo.put("type", extractFileTypeFromUrl(fileUrl));
+                        fileInfo.put("size", 0); // S3에서 직접 조회하지 않으므로 0으로 설정
+                        fileInfoList.add(fileInfo);
+                    }
+                    messageData.put("files", fileInfoList);
+                    log.info("📁 파일 정보 추가: {}", fileInfoList);
+                } catch (Exception e) {
+                    log.error("파일 정보 추가 실패: {}", e.getMessage());
+                }
+            }
 
             // 7. 발신자 이름 정보 추가 (관리자 목록에서 조회)
             try {
@@ -286,8 +307,11 @@ public class ChatWebSocketController {
             log.info("최종 브로드캐스트 데이터 확인:");
             log.info("- roomId: {}", roomId);
             log.info("- user_id: {}", messageData.get("user_id"));
+            log.info("- sender_name: {}", messageData.get("sender_name"));
+            log.info("- message: {}", messageData.get("message"));
             log.info("- messageindex: {}", messageData.get("messageindex"));
             log.info("- tempMessageIndex: {}", messageData.get("tempMessageIndex"));
+            log.info("- files: {}", messageData.get("files"));
             log.info("- 전체 응답: {}", messageData);
             log.info("- 브로드캐스트 대상: /queue/{}", roomId);
             log.info("=== 브로드캐스트 전송 시작 ===");
@@ -598,6 +622,147 @@ public class ChatWebSocketController {
                     "timestamp", System.currentTimeMillis(),
                     "success", false);
             return errorEvent;
+        }
+    }
+
+    // HTTP 파일 업로드 엔드포인트
+    @PostMapping("/upload-files")
+    public ResponseEntity<?> uploadFiles(
+            @RequestParam("room_index") String roomIndex,
+            @RequestParam("user_id") String userId,
+            @RequestParam("message") String message,
+            @RequestParam("files") MultipartFile[] files) {
+        
+        try {
+            List<Map<String, Object>> uploadedFiles = new ArrayList<>();
+            
+            for (MultipartFile file : files) {
+                if (!file.isEmpty()) {
+                    // S3 업로드
+                    String folder = "chat-files/" + roomIndex;
+                    String fileKey = s3FileUploadService.uploadFile(file, folder);
+                    
+                    // 업로드된 파일 정보 생성
+                    Map<String, Object> uploadedFile = new HashMap<>();
+                    uploadedFile.put("name", file.getOriginalFilename());
+                    uploadedFile.put("type", file.getContentType());
+                    uploadedFile.put("size", file.getSize());
+                    uploadedFile.put("url", fileKey);
+                    uploadedFiles.add(uploadedFile);
+                    
+                    log.info("파일 업로드 성공: {} -> {}", file.getOriginalFilename(), fileKey);
+                }
+            }
+            
+            // 메시지 저장 및 WebSocket 브로드캐스트
+            MessageRequestDTO messageRequest = new MessageRequestDTO();
+            messageRequest.setRoom_index(roomIndex);
+            messageRequest.setUser_id(userId);
+            messageRequest.setMessage(message);
+            // 파일 정보를 엔티티 구조에 맞게 전송
+            List<String> fileUrls = uploadedFiles.stream()
+                .map(file -> (String) file.get("url"))
+                .collect(Collectors.toList());
+            messageRequest.setUploadFiles(fileUrls);
+            
+            // 채팅 서비스로 메시지 저장 및 브로드캐스트
+            ResponseDTO<?> response = chatServiceClient.SendMessage(messageRequest);
+            
+            // WebSocket으로 메시지 브로드캐스트
+            if (response != null && response.getData() != null) {
+                Map<String, Object> messageData = new HashMap<>();
+                messageData.put("type", "chat");
+                messageData.put("message", message);
+                messageData.put("user_id", userId);
+                messageData.put("sender", userId);
+                messageData.put("room_index", roomIndex);
+                messageData.put("timestamp", System.currentTimeMillis());
+                messageData.put("files", uploadedFiles);
+                
+                // 발신자 이름 정보 추가
+                try {
+                    ResponseDTO<?> adminListResponse = chatService.Adminlist();
+                    if (adminListResponse != null && adminListResponse.getData() != null) {
+                        @SuppressWarnings("unchecked")
+                        List<AdminListDTO> adminList = (List<AdminListDTO>) adminListResponse.getData();
+                        
+                        boolean found = false;
+                        for (AdminListDTO admin : adminList) {
+                            String adminUserId = admin.getUserId();
+                            String adminName = admin.getName();
+                            
+                            if (userId.equals(adminUserId)) {
+                                messageData.put("sender_name", adminName);
+                                found = true;
+                                break;
+                            }
+                        }
+                        
+                        if (!found) {
+                            messageData.put("sender_name", "Unknown");
+                        }
+                    } else {
+                        messageData.put("sender_name", "Unknown");
+                    }
+                } catch (Exception e) {
+                    log.error("발신자 이름 조회 실패: {}", e.getMessage());
+                    messageData.put("sender_name", "Unknown");
+                }
+                
+                // 해당 방의 모든 구독자에게 브로드캐스트
+                log.info("📡 WebSocket 브로드캐스트: /queue/{} -> {}", roomIndex, messageData);
+                log.info("📁 파일 정보 확인: files={}", messageData.get("files"));
+                messagingTemplate.convertAndSend("/queue/" + roomIndex, messageData);
+            }
+            
+            // 응답 데이터
+            Map<String, Object> responseData = new HashMap<>();
+            responseData.put("messageIndex", System.currentTimeMillis());
+            responseData.put("files", uploadedFiles);
+            
+            return ResponseEntity.ok(responseData);
+            
+        } catch (Exception e) {
+            log.error("파일 업로드 실패", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "파일 업로드 중 오류가 발생했습니다."));
+        }
+    }
+    
+    /**
+     * S3 URL에서 파일명 추출
+     */
+    private String extractFileNameFromUrl(String fileUrl) {
+        try {
+            String[] parts = fileUrl.split("/");
+            String fileNameWithExtension = parts[parts.length - 1];
+            // UUID와 타임스탬프 제거하고 원본 파일명만 추출
+            if (fileNameWithExtension.contains("_")) {
+                String[] nameParts = fileNameWithExtension.split("_");
+                if (nameParts.length >= 3) {
+                    // 원본 파일명이 있는 경우 (예: chat-files/1/20241201_123456_uuid.jpg)
+                    return nameParts[nameParts.length - 1];
+                }
+            }
+            return fileNameWithExtension;
+        } catch (Exception e) {
+            log.warn("파일명 추출 실패: {}", fileUrl);
+            return "unknown_file";
+        }
+    }
+    
+    /**
+     * S3 URL에서 파일 타입 추출
+     */
+    private String extractFileTypeFromUrl(String fileUrl) {
+        try {
+            if (fileUrl.contains(".")) {
+                return fileUrl.substring(fileUrl.lastIndexOf(".") + 1).toLowerCase();
+            }
+            return "unknown";
+        } catch (Exception e) {
+            log.warn("파일 타입 추출 실패: {}", fileUrl);
+            return "unknown";
         }
     }
 
