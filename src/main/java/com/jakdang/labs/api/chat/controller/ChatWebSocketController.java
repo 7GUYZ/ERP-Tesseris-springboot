@@ -59,6 +59,8 @@ public class ChatWebSocketController {
         log.info("=== 채팅 메시지 수신 시작 ===");
         log.info("채팅 메시지 수신: {}", messageData);
         log.info("roomId: {}", roomId);
+        log.info("메시지 데이터 크기: {} bytes", messageData.toString().length());
+        log.info("메시지 데이터 키들: {}", messageData.keySet());
 
         try {
             // 1. 프론트에서 전송한 데이터 추출
@@ -263,6 +265,10 @@ public class ChatWebSocketController {
                 } catch (Exception e) {
                     log.error("파일 정보 추가 실패: {}", e.getMessage());
                 }
+            } else {
+                // 파일이 없는 경우 빈 배열로 설정
+                messageData.put("files", new ArrayList<>());
+                log.info("📁 파일 없음 - 빈 배열 설정");
             }
 
             // 7. 발신자 이름 정보 추가 (관리자 목록에서 조회)
