@@ -126,6 +126,59 @@ public class UserCmLogService {
     }
 
     /**
+     * 엑셀 다운로드용 최근 3만건 UserCmLog 조회
+     * 
+     * 목적: 엑셀 다운로드 시 최근 3만건만 다운로드하도록 제한
+     * 
+     * 특징:
+     * - 최근 3만건만 조회하여 성능 최적화
+     * - userCmLogIndex DESC 정렬로 최신 데이터 우선
+     * - 엑셀 다운로드 전용 메서드
+     * 
+     * @param page 페이지 번호 (0부터 시작)
+     * @param size 페이지당 데이터 개수
+     * @return 페이징 정보와 데이터를 포함한 Map (최대 3만건)
+     */
+    public Map<String, Object> getLatestUserCmLogsForExcel(int page, int size) {
+        log.info("엑셀 다운로드용 최근 UserCmLog 조회 시작 - page: {}, size: {}", page, size);
+        
+        // 최대 3만건으로 제한
+        int maxRecords = 30000;
+        int adjustedSize = Math.min(size, maxRecords);
+        
+        // 페이징 정보 생성
+        Pageable pageable = PageRequest.of(page, adjustedSize);
+        
+        try {
+            // Repository에서 페이징 처리된 데이터 조회
+            Page<UserCmLog> userCmLogPage = userCmLogRepository.findAllWithJoinsPaged(pageable);
+            
+            // Entity를 DTO로 변환
+            List<UserCmLogResponseDto> userCmLogDtos = userCmLogPage.getContent().stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+            
+            // 응답 데이터 구성
+            Map<String, Object> response = new HashMap<>();
+            response.put("content", userCmLogDtos);
+            response.put("totalElements", Math.min(userCmLogPage.getTotalElements(), maxRecords));
+            response.put("totalPages", userCmLogPage.getTotalPages());
+            response.put("currentPage", userCmLogPage.getNumber());
+            response.put("size", userCmLogPage.getSize());
+            response.put("hasNext", userCmLogPage.hasNext());
+            response.put("hasPrevious", userCmLogPage.hasPrevious());
+            
+            log.info("엑셀 다운로드용 UserCmLog 조회 완료 - 최대 {}개 중 {}개 반환", 
+                    maxRecords, userCmLogDtos.size());
+            return response;
+            
+        } catch (Exception e) {
+            log.error("엑셀 다운로드용 UserCmLog 조회 중 오류 발생", e);
+            throw e;
+        }
+    }
+
+    /**
      * 특정 사용자의 페이징 처리된 UserCmLog 조회
      * 
      * 목적: 사용자별 무한 스크롤 구현
