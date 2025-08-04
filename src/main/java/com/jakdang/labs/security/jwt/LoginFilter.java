@@ -181,6 +181,8 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         // Admin일시 admin 테이블 가기 위한 작업
         Integer user_index = userTesseris.getUserIndex();
 
+        log.info("로그인 사용자 정보 - user_role_index: {}, user_index: {}", user_role_index, user_index);
+
         // 2. (**0715 정은 추가) Admin일 경우 admin_type_index까지 받기
         Integer admin_type_index = null;
         String admin_type_name = null;
@@ -188,27 +190,18 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         if (admin != null) {
             admin_type_index = admin.getAdminTypeIndex();
             admin_type_name = admin.getAdminTypeName();
+            log.info("관리자 정보 - admin_type_index: {}, admin_type_name: {}", admin_type_index, admin_type_name);
         }
 
         // 토큰 생성 및 저장
         TokenDTO tokenPair = tokenService.createTokenPair(username, role, email, userId, user_role_index);
+        log.info("토큰 생성 완료 - user_role_index: {}", user_role_index);
 
         // 응답 설정
         response.setStatus(HttpStatus.OK.value());
         response.setHeader("Authorization", "Bearer " + tokenPair.getAccessToken());
 
         log.info("로그인 성공 - 리프레시 토큰 쿠키 설정 시작");
-        
-        // user_role_index에 따라 해당하는 쿠키만 삭제
-        if (user_role_index == 4) {
-            // 관리자: adminRefresh만 삭제
-            Cookie adminLogoutCookie = tokenUtils.createLogoutCookie("adminRefresh");
-            response.addCookie(adminLogoutCookie);
-        } else {
-            // 일반 사용자: userRefresh만 삭제
-            Cookie userLogoutCookie = tokenUtils.createLogoutCookie("userRefresh");
-            response.addCookie(userLogoutCookie);
-        }
         
         // 새로운 쿠키 설정
         tokenUtils.addRefreshTokenCookie(user_role_index, response, tokenPair.getRefreshToken()); // 0801 정은 수정 - user_role_index에 따라 쿠키이름 다르게 설정

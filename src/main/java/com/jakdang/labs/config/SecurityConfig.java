@@ -16,6 +16,7 @@ import com.jakdang.labs.security.jwt.service.TokenService;
 import com.jakdang.labs.security.jwt.utils.JwtUtil;
 import com.jakdang.labs.security.jwt.utils.TokenUtils;
 import com.jakdang.labs.api.auth.service.RefreshTokenService;
+import com.jakdang.labs.api.auth.repository.UserTokenRepository;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -93,6 +94,7 @@ public class SecurityConfig {
     private final AdminLjeSvc adminSvc;
     private final CmsAccessLogLjeSvc cmsLogSvc;
     private final RefreshTokenService refreshTokenService;
+    private final UserTokenRepository userTokenRepository;
 
     // private final CustomOAuth2UserService customOAuth2UserService;
     // private final OAuth2AuthenticationSuccessHandler
@@ -168,11 +170,8 @@ public class SecurityConfig {
 
         // 필터 설정
         http
-                .addFilterBefore(new JWTFilter(jwtUtil, tokenUtils, refreshTokenService),
-                        UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(
-                        new LogoutFilter(logoutService, tokenUtils, objectMapper, jwtUtil, userTesserisSvc, cmsLogSvc),
-                        JWTFilter.class)
+                .addFilterBefore(new JWTFilter(jwtUtil, tokenUtils, refreshTokenService), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new LogoutFilter(logoutService, tokenUtils, objectMapper, jwtUtil, userTesserisSvc, cmsLogSvc, userTokenRepository), JWTFilter.class)
                 // (**0715 정은 수정...service 호출하려고 LoginFilter에 생성자 추가했더니 이것도 수정해야된대용..)
                 .addFilterAt(new LoginFilter(authenticationManager, tokenService, tokenUtils, objectMapper,
                         userTesserisSvc, adminSvc, cmsLogSvc), UsernamePasswordAuthenticationFilter.class);
@@ -193,7 +192,8 @@ public class SecurityConfig {
                 "Accept",
                 "Origin",
                 "Access-Control-Request-Method",
-                "Access-Control-Request-Headers"));
+                "Access-Control-Request-Headers",
+                "User-Type"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
         configuration.setExposedHeaders(Arrays.asList(

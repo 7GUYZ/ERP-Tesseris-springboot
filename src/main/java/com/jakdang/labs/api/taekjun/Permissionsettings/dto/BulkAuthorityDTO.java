@@ -9,4 +9,4 @@ public class BulkAuthorityDTO {
     private List<AuthorityUpdateDTO> authorities;
     private Integer userIndex;
     private String password;
-} 
+}
