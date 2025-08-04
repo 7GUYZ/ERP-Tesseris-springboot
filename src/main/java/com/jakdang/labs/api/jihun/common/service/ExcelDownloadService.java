@@ -60,8 +60,13 @@ public class ExcelDownloadService {
     public Map<String, Object> getMemberAccountExcelData(int page, int size) {
         log.info("회원 자산 내역 엑셀 다운로드 데이터 조회 시작 (기존 서비스 사용) - page: {}, size: {}", page, size);
         
-        // 🆕 기존 memberaccount 서비스를 사용하여 실제 이메일 데이터 조회
-        Map<String, Object> searchResult = userCmLogService.getAllUserCmLogsPaged(page, size);
+        // 🆕 최근 3만건만 다운로드하도록 수정
+        // 전체 데이터가 3만건을 초과하는 경우, 최근 3만건만 가져오기
+        int maxRecords = 30000;
+        int adjustedSize = Math.min(size, maxRecords);
+        
+        // 🆕 엑셀 다운로드 전용 메서드 사용 (최근 3만건 제한)
+        Map<String, Object> searchResult = userCmLogService.getLatestUserCmLogsForExcel(page, adjustedSize);
         
         // 기존 서비스에서 받은 데이터를 엑셀 형식으로 변환
         List<Map<String, Object>> content = ((List<UserCmLogResponseDto>) searchResult.get("content")).stream()
@@ -93,7 +98,7 @@ public class ExcelDownloadService {
         result.put("hasNext", searchResult.get("hasNext"));
         result.put("hasPrevious", searchResult.get("hasPrevious"));
         
-        log.info("회원 자산 내역 엑셀 다운로드 데이터 조회 완료 (기존 서비스 사용) - 총 {}개 중 {}개 반환", 
+        log.info("회원 자산 내역 엑셀 다운로드 데이터 조회 완료 (기존 서비스 사용) - 총 {}개 중 {}개 반환 (최근 3만건 제한)", 
                 searchResult.get("totalElements"), content.size());
         return result;
     }
@@ -114,8 +119,13 @@ public class ExcelDownloadService {
     public Map<String, Object> getMemberAssetDetailsExcelData(int page, int size) {
         log.info("회원 자산 현황 엑셀 다운로드 데이터 조회 시작 (최적화 버전) - page: {}, size: {}", page, size);
         
+        // 🆕 최근 3만건만 다운로드하도록 수정
+        // 전체 데이터가 3만건을 초과하는 경우, 최근 3만건만 가져오기
+        int maxRecords = 30000;
+        int adjustedSize = Math.min(size, maxRecords);
+        
         // 페이징 정보 생성
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, adjustedSize);
         
         // 🆕 최적화된 쿼리로 데이터 조회
         Page<Object[]> rawDataPage = excelDownloadRepository.findMemberAssetDetailsExcelDataOptimized(pageable);
@@ -151,15 +161,15 @@ public class ExcelDownloadService {
         // 페이징 정보와 함께 반환
         Map<String, Object> result = new HashMap<>();
         result.put("content", content);
-        result.put("totalElements", rawDataPage.getTotalElements());
+        result.put("totalElements", Math.min(rawDataPage.getTotalElements(), maxRecords));
         result.put("totalPages", rawDataPage.getTotalPages());
         result.put("currentPage", rawDataPage.getNumber());
         result.put("size", rawDataPage.getSize());
         result.put("hasNext", rawDataPage.hasNext());
         result.put("hasPrevious", rawDataPage.hasPrevious());
         
-        log.info("회원 자산 현황 엑셀 다운로드 데이터 조회 완료 (최적화 버전) - 총 {}개 중 {}개 반환", 
-                rawDataPage.getTotalElements(), content.size());
+        log.info("회원 자산 현황 엑셀 다운로드 데이터 조회 완료 (최적화 버전) - 최대 {}개 중 {}개 반환 (최근 3만건 제한)", 
+                maxRecords, content.size());
         return result;
     }
 
