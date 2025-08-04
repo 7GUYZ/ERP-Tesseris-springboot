@@ -148,23 +148,34 @@ public class UserLogController {
     }
 
     /**
-     * 모든 CM 로그 조회 (디버깅용)
+     * 사용자별 CM 로그 조회 (페이징)
+     * 
+     * @param userIndex 사용자 인덱스
+     * @param page 페이지 번호 (기본값: 0)
+     * @param size 페이지당 데이터 개수 (기본값: 20)
+     * @param year 연도 (선택)
+     * @param month 월 (선택)
+     * @return 페이징된 CM 로그 목록
      */
-    @GetMapping("/debug/all")
+    @GetMapping("/{userIndex}/all")
     public ResponseEntity<ResponseDTO<Map<String, Object>>> getAllLogs(
+            @PathVariable("userIndex") Integer userIndex,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month) {
         
-        log.info("모든 CM 로그 조회 - page: {}, size: {}", page, size);
+        log.info("전체 CM 로그 조회 - userIndex: {}, page: {}, size: {}, year: {}, month: {}", 
+                userIndex, page, size, year, month);
         
         try {
-            Map<String, Object> result = userLogService.getAllLogs(page, size);
-            return ResponseEntity.ok(ResponseDTO.createSuccessResponse("모든 CM 로그 조회 성공", result));
+            Map<String, Object> result = userLogService.getAllLogs(userIndex, page, size, year, month);
+            return ResponseEntity.ok(ResponseDTO.createSuccessResponse("전체 CM 로그 조회 성공", result));
         } catch (Exception e) {
-            log.error("모든 CM 로그 조회 실패 - error: {}", e.getMessage(), e);
+            log.error("전체 CM 로그 조회 실패 - userIndex: {}, error: {}", userIndex, e.getMessage(), e);
             return ResponseEntity.badRequest().body(ResponseDTO.<Map<String, Object>>builder()
                 .resultCode(400)
-                .resultMessage("모든 CM 로그 조회 실패")
+                .resultMessage("전체 CM 로그 조회 실패")
                 .build());
         }
     }
@@ -175,18 +186,23 @@ public class UserLogController {
      * @param userIndex 사용자 인덱스
      * @param page 페이지 번호 (기본값: 0)
      * @param size 페이지당 데이터 개수 (기본값: 20)
+     * @param year 연도 (선택)
+     * @param month 월 (선택)
      * @return 내가 쓴 금액 내역
      */
     @GetMapping("/{userIndex}/spent")
     public ResponseEntity<ResponseDTO<Map<String, Object>>> getSpentLogs(
             @PathVariable("userIndex") Integer userIndex,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month) {
         
-        log.info("내가 쓴 금액 조회 - userIndex: {}, page: {}, size: {}", userIndex, page, size);
+        log.info("내가 쓴 금액 조회 - userIndex: {}, page: {}, size: {}, year: {}, month: {}", 
+                userIndex, page, size, year, month);
         
         try {
-            Map<String, Object> result = userLogService.getSpentLogs(userIndex, page, size);
+            Map<String, Object> result = userLogService.getSpentLogs(userIndex, page, size, year, month);
             return ResponseEntity.ok(ResponseDTO.createSuccessResponse("내가 쓴 금액 조회 성공", result));
         } catch (Exception e) {
             log.error("내가 쓴 금액 조회 실패 - userIndex: {}, error: {}", userIndex, e.getMessage(), e);
@@ -203,80 +219,29 @@ public class UserLogController {
      * @param userIndex 사용자 인덱스
      * @param page 페이지 번호 (기본값: 0)
      * @param size 페이지당 데이터 개수 (기본값: 20)
+     * @param year 연도 (선택)
+     * @param month 월 (선택)
      * @return 내가 받은 금액 내역
      */
     @GetMapping("/{userIndex}/received")
     public ResponseEntity<ResponseDTO<Map<String, Object>>> getReceivedLogs(
             @PathVariable("userIndex") Integer userIndex,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month) {
         
-        log.info("내가 받은 금액 조회 - userIndex: {}, page: {}, size: {}", userIndex, page, size);
+        log.info("내가 받은 금액 조회 - userIndex: {}, page: {}, size: {}, year: {}, month: {}", 
+                userIndex, page, size, year, month);
         
         try {
-            Map<String, Object> result = userLogService.getReceivedLogs(userIndex, page, size);
+            Map<String, Object> result = userLogService.getReceivedLogs(userIndex, page, size, year, month);
             return ResponseEntity.ok(ResponseDTO.createSuccessResponse("내가 받은 금액 조회 성공", result));
         } catch (Exception e) {
             log.error("내가 받은 금액 조회 실패 - userIndex: {}, error: {}", userIndex, e.getMessage(), e);
             return ResponseEntity.badRequest().body(ResponseDTO.<Map<String, Object>>builder()
                 .resultCode(400)
                 .resultMessage("내가 받은 금액 조회 실패")
-                .build());
-        }
-    }
-
-    /**
-     * 수입 거래 조회 (돈이 들어오는 거래)
-     * 
-     * @param userIndex 사용자 인덱스
-     * @param page 페이지 번호 (기본값: 0)
-     * @param size 페이지당 데이터 개수 (기본값: 20)
-     * @return 수입 거래 내역
-     */
-    @GetMapping("/{userIndex}/income")
-    public ResponseEntity<ResponseDTO<Map<String, Object>>> getIncomeLogs(
-            @PathVariable("userIndex") Integer userIndex,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        
-        log.info("수입 거래 조회 - userIndex: {}, page: {}, size: {}", userIndex, page, size);
-        
-        try {
-            Map<String, Object> result = userLogService.getIncomeLogs(userIndex, page, size);
-            return ResponseEntity.ok(ResponseDTO.createSuccessResponse("수입 거래 조회 성공", result));
-        } catch (Exception e) {
-            log.error("수입 거래 조회 실패 - userIndex: {}, error: {}", userIndex, e.getMessage(), e);
-            return ResponseEntity.badRequest().body(ResponseDTO.<Map<String, Object>>builder()
-                .resultCode(400)
-                .resultMessage("수입 거래 조회 실패")
-                .build());
-        }
-    }
-
-    /**
-     * 지출 거래 조회 (돈이 빠져나가는 거래)
-     * 
-     * @param userIndex 사용자 인덱스
-     * @param page 페이지 번호 (기본값: 0)
-     * @param size 페이지당 데이터 개수 (기본값: 20)
-     * @return 지출 거래 내역
-     */
-    @GetMapping("/{userIndex}/expense")
-    public ResponseEntity<ResponseDTO<Map<String, Object>>> getExpenseLogs(
-            @PathVariable("userIndex") Integer userIndex,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        
-        log.info("지출 거래 조회 - userIndex: {}, page: {}, size: {}", userIndex, page, size);
-        
-        try {
-            Map<String, Object> result = userLogService.getExpenseLogs(userIndex, page, size);
-            return ResponseEntity.ok(ResponseDTO.createSuccessResponse("지출 거래 조회 성공", result));
-        } catch (Exception e) {
-            log.error("지출 거래 조회 실패 - userIndex: {}, error: {}", userIndex, e.getMessage(), e);
-            return ResponseEntity.badRequest().body(ResponseDTO.<Map<String, Object>>builder()
-                .resultCode(400)
-                .resultMessage("지출 거래 조회 실패")
                 .build());
         }
     }
