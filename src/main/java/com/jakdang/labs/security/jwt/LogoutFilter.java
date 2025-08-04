@@ -111,6 +111,19 @@ public class LogoutFilter extends OncePerRequestFilter {
                                 Cookie userLogoutCookie = tokenUtils.createLogoutCookie("userRefresh");
                                 response.addCookie(userLogoutCookie);
                             }
+                            
+                            // cms_access_log 기록
+                            try {
+                                String clientIp = GetIpUtil.getClientIp(request);
+                                LoginoutCmsAccessLogDTO logDTO = LoginoutCmsAccessLogDTO.builder()
+                                        .cmsAccessLogUserIndex(userDTO.getUserIndex())
+                                        .cmsAccessUserValue("로그아웃")
+                                        .cmsAccessUserIp(clientIp)
+                                        .build();
+                                cmsLogSvc.saveLog(logDTO);
+                            } catch (Exception e) {
+                                log.warn("로그 저장 실패: {}", e.getMessage());
+                            }
                         } else {
                             log.warn("사용자 정보를 찾을 수 없음 - userId: {}", userToken.getUserId());
                             // 토큰 무효화 후 모든 쿠키 삭제
@@ -140,61 +153,100 @@ public class LogoutFilter extends OncePerRequestFilter {
                 // 토큰이 null이면 두 토큰이 모두 존재하는 경우
                 log.warn("두 토큰이 모두 존재하거나 토큰이 없음 - DB에서 확인");
                 
+                // 요청 헤더에서 User-Type 확인
+                String userType = request.getHeader("User-Type");
+                log.info("요청 헤더 User-Type: {}", userType);
+                
                 // 모든 쿠키에서 토큰을 찾아서 DB에서 확인
                 Cookie[] allCookies = request.getCookies();
+                UserToken adminToken = null;
+                UserToken userToken = null;
+                String adminTokenValue = null;
+                String userTokenValue = null;
+                
                 if (allCookies != null) {
                     for (Cookie cookie : allCookies) {
-                        if ("adminRefresh".equals(cookie.getName()) || "userRefresh".equals(cookie.getName())) {
+                        if ("adminRefresh".equals(cookie.getName())) {
                             String tokenValue = cookie.getValue();
                             if (tokenValue != null) {
-                                // DB에서 해당 토큰 확인
-                                UserToken userToken = userTokenRepository.findByRefreshToken(tokenValue)
-                                        .orElse(null);
-                                
-                                if (userToken != null) {
-                                    log.info("DB에서 토큰 확인 성공 - userId: {}", userToken.getUserId());
-                                    
-                                    // 사용자 정보 조회
-                                    LoginUserTesserisDTO userDTO = userSvc.findByUsersId(userToken.getUserId());
-                                    
-                                    if (userDTO != null) {
-                                        Integer user_role_index = userDTO.getUserRoleIndex();
-                                        log.info("사용자 역할 인덱스: {}", user_role_index);
-                                        
-                                        // 토큰 무효화
-                                        logoutService.processLogout(tokenValue);
-                                        
-                                        // 올바른 쿠키 삭제
-                                        if (user_role_index != null && user_role_index == 4) {
-                                            log.info("관리자 로그아웃 - adminRefresh 쿠키 삭제");
-                                            Cookie adminLogoutCookie = tokenUtils.createLogoutCookie("adminRefresh");
-                                            response.addCookie(adminLogoutCookie);
-                                        } else {
-                                            log.info("일반 사용자 로그아웃 - userRefresh 쿠키 삭제");
-                                            Cookie userLogoutCookie = tokenUtils.createLogoutCookie("userRefresh");
-                                            response.addCookie(userLogoutCookie);
-                                        }
-                                        
-                                        // cms_access_log 기록
-                                        try {
-                                            String clientIp = GetIpUtil.getClientIp(request);
-                                            LoginoutCmsAccessLogDTO logDTO = LoginoutCmsAccessLogDTO.builder()
-                                                    .cmsAccessLogUserIndex(userDTO.getUserIndex())
-                                                    .cmsAccessUserValue("로그아웃")
-                                                    .cmsAccessUserIp(clientIp)
-                                                    .build();
-                                            cmsLogSvc.saveLog(logDTO);
-                                        } catch (Exception e) {
-                                            log.warn("로그 저장 실패: {}", e.getMessage());
-                                        }
-                                        
-                                        sendSuccessResponse(response);
-                                        log.info("로그아웃 처리 완료");
-                                        return;
-                                    }
+                                UserToken foundToken = userTokenRepository.findByRefreshToken(tokenValue).orElse(null);
+                                if (foundToken != null) {
+                                    adminToken = foundToken;
+                                    adminTokenValue = tokenValue;
+                                    log.info("adminRefresh 토큰 발견 - userId: {}", foundToken.getUserId());
+                                }
+                            }
+                        } else if ("userRefresh".equals(cookie.getName())) {
+                            String tokenValue = cookie.getValue();
+                            if (tokenValue != null) {
+                                UserToken foundToken = userTokenRepository.findByRefreshToken(tokenValue).orElse(null);
+                                if (foundToken != null) {
+                                    userToken = foundToken;
+                                    userTokenValue = tokenValue;
+                                    log.info("userRefresh 토큰 발견 - userId: {}", foundToken.getUserId());
                                 }
                             }
                         }
+                    }
+                }
+                
+                // User-Type 헤더에 따라 해당 토큰 선택
+                UserToken requestUserToken = null;
+                String requestTokenValue = null;
+                
+                if ("admin".equals(userType) && adminToken != null) {
+                    requestUserToken = adminToken;
+                    requestTokenValue = adminTokenValue;
+                    log.info("관리자 로그아웃 요청 - adminToken 선택 - userId: {}", requestUserToken.getUserId());
+                } else if ("user".equals(userType) && userToken != null) {
+                    requestUserToken = userToken;
+                    requestTokenValue = userTokenValue;
+                    log.info("사용자 로그아웃 요청 - userToken 선택 - userId: {}", requestUserToken.getUserId());
+                } else {
+                    log.warn("User-Type 헤더와 일치하는 토큰을 찾을 수 없음 - userType: {}, adminToken: {}, userToken: {}", 
+                            userType, adminToken != null, userToken != null);
+                }
+                
+                if (requestUserToken != null) {
+                    log.info("요청 사용자 토큰 발견 - userId: {}", requestUserToken.getUserId());
+                    
+                    // 사용자 정보 조회
+                    LoginUserTesserisDTO userDTO = userSvc.findByUsersId(requestUserToken.getUserId());
+                    
+                    if (userDTO != null) {
+                        Integer user_role_index = userDTO.getUserRoleIndex();
+                        log.info("사용자 역할 인덱스: {}", user_role_index);
+                        
+                        // 토큰 무효화
+                        logoutService.processLogout(requestTokenValue);
+                        
+                        // 올바른 쿠키 삭제
+                        if (user_role_index != null && user_role_index == 4) {
+                            log.info("관리자 로그아웃 - adminRefresh 쿠키 삭제");
+                            Cookie adminLogoutCookie = tokenUtils.createLogoutCookie("adminRefresh");
+                            response.addCookie(adminLogoutCookie);
+                        } else {
+                            log.info("일반 사용자 로그아웃 - userRefresh 쿠키 삭제");
+                            Cookie userLogoutCookie = tokenUtils.createLogoutCookie("userRefresh");
+                            response.addCookie(userLogoutCookie);
+                        }
+                        
+                        // cms_access_log 기록
+                        try {
+                            String clientIp = GetIpUtil.getClientIp(request);
+                            LoginoutCmsAccessLogDTO logDTO = LoginoutCmsAccessLogDTO.builder()
+                                    .cmsAccessLogUserIndex(userDTO.getUserIndex())
+                                    .cmsAccessUserValue("로그아웃")
+                                    .cmsAccessUserIp(clientIp)
+                                    .build();
+                            cmsLogSvc.saveLog(logDTO);
+                        } catch (Exception e) {
+                            log.warn("로그 저장 실패: {}", e.getMessage());
+                        }
+                        
+                        sendSuccessResponse(response);
+                        log.info("로그아웃 처리 완료");
+                        return;
                     }
                 }
                 

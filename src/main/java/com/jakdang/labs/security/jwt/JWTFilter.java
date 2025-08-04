@@ -117,7 +117,7 @@ public class JWTFilter extends OncePerRequestFilter {
         
         try {
             // 리프레시 토큰으로 새로운 액세스 토큰 발급
-            String newAccessToken = refreshTokenService.refreshTokens(request.getCookies(), response);
+            String newAccessToken = refreshTokenService.refreshTokens(request.getCookies(), response, request);
             
             if (newAccessToken != null) {
                 // 새로운 토큰으로 인증 객체 생성
