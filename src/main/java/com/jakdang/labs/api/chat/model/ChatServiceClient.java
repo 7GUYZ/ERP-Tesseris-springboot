@@ -24,9 +24,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @FeignClient(name = "chat-service", url = "${chat-service.url}", configuration = FeignConfig.FeignErrorDecoder.class)
 @Tag(name = "채팅 FeignClient", description = "채팅 관련 API")
 public interface ChatServiceClient {
-    @GetMapping("/hello")
-    public String hello();
-
     /**
      * search room
      */

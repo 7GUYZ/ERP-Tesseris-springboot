@@ -21,7 +21,7 @@ public class AjgMemberAssetDetailsController {
     @GetMapping
     public ResponseEntity<Page<MemberAssetDetailsResponseDto>> getMemberAssetDetails(
             @RequestParam(name = "page", defaultValue = "0") Integer page,
-            @RequestParam(name = "size", defaultValue = "50000") Integer size) {
+            @RequestParam(name = "size", defaultValue = "25") Integer size) {
         
         // 최대 크기 제한 (메모리 보호)
         int maxSize = 100000;
@@ -29,8 +29,8 @@ public class AjgMemberAssetDetailsController {
             size = maxSize;
         }
         
-        // 요청된 크기 우선 사용, 기본값 50000
-        int actualSize = size != null && size > 0 ? size : 50000;
+        // 요청된 크기 우선 사용, 기본값 25
+        int actualSize = size != null && size > 0 ? size : 25;
         MemberAssetDetailsSearchDto.PaginationInfo paginationInfo = new MemberAssetDetailsSearchDto.PaginationInfo(page, actualSize);
         MemberAssetDetailsSearchDto searchDto = new MemberAssetDetailsSearchDto(null, paginationInfo);
         
@@ -52,7 +52,7 @@ public class AjgMemberAssetDetailsController {
             @RequestParam(required = false) String userPhone,
             @RequestParam(required = false) Integer userRoleIndex,
             @RequestParam(defaultValue = "0") Integer page,
-            @RequestParam(defaultValue = "50000") Integer size) {
+            @RequestParam(defaultValue = "25") Integer size) {
         
         // 최대 크기 제한 (메모리 보호)
         int maxSize = 100000;
@@ -60,8 +60,8 @@ public class AjgMemberAssetDetailsController {
             size = maxSize;
         }
         
-        // 요청된 크기 우선 사용, 기본값 50000
-        int actualSize = size != null && size > 0 ? size : 50000;
+        // 요청된 크기 우선 사용, 기본값 25
+        int actualSize = size != null && size > 0 ? size : 25;
         MemberAssetDetailsSearchDto.SearchCriteria searchCriteria = new MemberAssetDetailsSearchDto.SearchCriteria(userEmail, userName, userPhone, userRoleIndex);
         MemberAssetDetailsSearchDto.PaginationInfo paginationInfo = new MemberAssetDetailsSearchDto.PaginationInfo(page, actualSize);
         MemberAssetDetailsSearchDto searchDto = new MemberAssetDetailsSearchDto(searchCriteria, paginationInfo);
