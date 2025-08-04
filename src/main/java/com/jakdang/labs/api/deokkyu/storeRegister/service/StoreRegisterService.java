@@ -993,14 +993,22 @@ public class StoreRegisterService {
         try {
             log.info("🖼️ StoreImage 테이블 저장 시작: type={}, url={}", imageType, imageUrl);
             
+            // S3 도메인 부분 제거하여 상대 경로만 저장
+            String s3BaseUrl = "https://ict-erp-project.s3.ap-northeast-2.amazonaws.com/";
+            String relativePath = imageUrl;
+            if (imageUrl != null && imageUrl.startsWith(s3BaseUrl)) {
+                relativePath = imageUrl.substring(s3BaseUrl.length());
+                log.info("🔗 S3 도메인 제거: {} -> {}", imageUrl, relativePath);
+            }
+            
             StoreImage storeImage = new StoreImage();
             storeImage.setStoreUserIndex(store);
-            storeImage.setStoreImage(imageUrl);
+            storeImage.setStoreImage(relativePath);  // 상대 경로만 저장
             storeImage.setStoreMainImageStatus(imageType);
             
             StoreImage savedStoreImage = storeImageRepository.save(storeImage);
-            log.info("✅ StoreImage 테이블 저장 완료: imageIndex={}, type={}", 
-                    savedStoreImage.getStoreImageIndex(), imageType);
+            log.info("✅ StoreImage 테이블 저장 완료: imageIndex={}, type={}, relativePath={}", 
+                    savedStoreImage.getStoreImageIndex(), imageType, relativePath);
             
         } catch (Exception e) {
             log.error("❌ StoreImage 테이블 저장 실패: type={}, url={}", imageType, imageUrl);

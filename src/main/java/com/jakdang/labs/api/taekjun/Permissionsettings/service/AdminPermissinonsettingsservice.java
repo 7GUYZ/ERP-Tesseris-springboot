@@ -20,6 +20,7 @@ import com.jakdang.labs.api.taekjun.Permissionsettings.dto.BulkAuthorityDTO;
 import com.jakdang.labs.api.taekjun.Permissionsettings.dto.BulkAuthorityUpdateDTO;
 import com.jakdang.labs.api.taekjun.Permissionsettings.dto.MenuDTO;
 import com.jakdang.labs.api.taekjun.Permissionsettings.dto.ProgramDTO;
+import com.jakdang.labs.api.taekjun.admintypeinsert.repository.AdminTypeInsertRepository;
 import com.jakdang.labs.entity.AuthorityType;
 import com.jakdang.labs.api.alarm.service.AlarmSvc;
 import com.jakdang.labs.api.auth.entity.UserEntity;
@@ -39,6 +40,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 public class AdminPermissinonsettingsservice {
+
+    private final AdminTypeInsertRepository adminTypeInsertRepository;
     private final AdminPermissionsettingsrepository repository;
     private final AdminTypeRepository adminTypeRepository;
     private final ProgramRepository programRepository;
@@ -57,7 +60,7 @@ public class AdminPermissinonsettingsservice {
             @Qualifier("permissionsettingsUserRepository") UserRepository usersRepository,
             PasswordEncoder passwordEncoder,
             UpdateUserLogJtjRepo updateUserLogRepository,
-            AlarmSvc alarmSvc) {
+            AlarmSvc alarmSvc, AdminTypeInsertRepository adminTypeInsertRepository) {
         this.repository = repository;
         this.adminTypeRepository = adminTypeRepository;
         this.programRepository = programRepository;
@@ -67,6 +70,7 @@ public class AdminPermissinonsettingsservice {
         this.passwordEncoder = passwordEncoder;
         this.updateUserLogRepository = updateUserLogRepository;
         this.alarmSvc = alarmSvc;
+        this.adminTypeInsertRepository = adminTypeInsertRepository;
     }
 
     public List<AuthorityProgramDTO> getAuthorityPrograms(Integer adminTypeIndex) {
@@ -316,7 +320,7 @@ public class AdminPermissinonsettingsservice {
     }
 
     public List<adminType> getAdminType() {
-        return adminTypeRepository.findAll();
+        return adminTypeInsertRepository.findAllByOrderByAdminTypeOrderAsc();
     }
 
     /**

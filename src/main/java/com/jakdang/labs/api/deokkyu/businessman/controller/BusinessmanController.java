@@ -9,6 +9,7 @@ import com.jakdang.labs.api.deokkyu.businessman.dto.BusinessmanListDto;
 import com.jakdang.labs.api.deokkyu.businessman.dto.BusinessmanSearchDto;
 import com.jakdang.labs.api.deokkyu.businessman.dto.OrgChartDto;
 import com.jakdang.labs.api.deokkyu.businessman.service.BusinessmanService;
+import com.jakdang.labs.entity.BusinessGrade;
 
 @RestController
 @RequestMapping("/api/businessman")
@@ -30,5 +31,11 @@ public class BusinessmanController {
     public ResponseEntity<List<OrgChartDto>> getOrgChart() {
         List<OrgChartDto> orgChartList = businessmanService.getOrgChartListDtos();
         return ResponseEntity.ok(orgChartList);
+    }
+    
+    @GetMapping("/business-grades") // 사업자 등급 조회
+    public ResponseEntity<List<BusinessGrade>> getBusinessGrades() {
+        List<BusinessGrade> businessGrades = businessmanService.getAllBusinessGrades();
+        return ResponseEntity.ok(businessGrades);
     }
 }

@@ -10,19 +10,19 @@ import com.jakdang.labs.api.deokkyu.businessman.repository.TemporaryStoreMasterh
 import com.jakdang.labs.api.deokkyu.businessman.repository.TemporaryStoreDetailhdkRepo;
 import com.jakdang.labs.api.deokkyu.businessman.repository.StoreBusinessmanhdkRepo;
 import com.jakdang.labs.api.deokkyu.businessman.repository.BusinessManBusinessmanhdkRepo;
+import com.jakdang.labs.api.deokkyu.store.repository.BusinessGradehdkRepo;
 import com.jakdang.labs.entity.TemporaryStoreMaster;
 import com.jakdang.labs.entity.TemporaryStoreDetail;
 import com.jakdang.labs.entity.Store;
 import com.jakdang.labs.entity.UserTesseris;
 import com.jakdang.labs.entity.BusinessMan;
+import com.jakdang.labs.entity.BusinessGrade;
 import com.jakdang.labs.api.auth.entity.UserEntity;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Map;
-import java.util.HashMap;
 
 @RequiredArgsConstructor
 @Service
@@ -32,6 +32,7 @@ public class BusinessmanService {
     private final TemporaryStoreDetailhdkRepo temporaryStoreDetailRepository;
     private final StoreBusinessmanhdkRepo storeRepository;
     private final BusinessManBusinessmanhdkRepo businessmanRepository;
+    private final BusinessGradehdkRepo businessGradeRepository;
     
     public List<BusinessmanListDto> getAllowanceListDtos(BusinessmanSearchDto filter) {
         try {
@@ -341,5 +342,24 @@ public class BusinessmanService {
         }
         
         return totalSubordinateStores;
+    }
+    
+    /**
+     * 모든 사업자 등급을 business_grade_level 순으로 정렬하여 조회
+     */
+    public List<BusinessGrade> getAllBusinessGrades() {
+        try {
+            System.out.println("=== BusinessmanService.getAllBusinessGrades 시작 ===");
+            
+            List<BusinessGrade> businessGrades = businessGradeRepository.findAllOrderByLevel();
+            
+            System.out.println("=== BusinessmanService.getAllBusinessGrades 완료, 총 " + businessGrades.size() + "개 조회 ===");
+            return businessGrades;
+            
+        } catch (Exception e) {
+            System.err.println("=== BusinessmanService.getAllBusinessGrades 에러 발생 ===");
+            e.printStackTrace();
+            throw e;
+        }
     }
 }
