@@ -41,12 +41,8 @@ public class RefreshTokenService {
      */
     @Transactional
     public String refreshTokens(Cookie[] cookies, HttpServletResponse response) {
-        String refreshToken = tokenUtils.extractRefreshToken(cookies);
-        // 0801 정은 수정 - user_role_index에 따라 쿠키이름 다르게 설정
-        String userId = jwtUtil.getUserId(refreshToken);
-        LoginUserTesserisDTO userTesseris = userTesserisSvc.findByUsersId(userId);
-        Integer user_role_index = userTesseris.getUserRoleIndex();
-
+        String refreshToken = tokenUtils.extractRefreshToken(cookies, null);
+        
         if (refreshToken == null) {
             log.warn("리프레시 토큰이 제공되지 않았습니다");
             return null;
@@ -55,12 +51,27 @@ public class RefreshTokenService {
         try {
             // 리프레시 토큰 검증
             tokenUtils.validateRefreshToken(refreshToken);
+            
+            // DB에서 토큰 확인 및 사용자 정보 조회
+            UserToken userToken = userTokenRepository.findByRefreshToken(refreshToken)
+                    .orElse(null);
+            
+            if (userToken == null) {
+                log.warn("DB에서 토큰을 찾을 수 없습니다");
+                return null;
+            }
+            
+            // 사용자 정보 조회하여 user_role_index 확인
+            LoginUserTesserisDTO userTesseris = userTesserisSvc.findByUsersId(userToken.getUserId());
+            Integer user_role_index = userTesseris.getUserRoleIndex();
+            
+            log.info("토큰 갱신 - userId: {}, user_role_index: {}", userToken.getUserId(), user_role_index);
 
             // 새 토큰 쌍 생성
             TokenDTO tokenPair = tokenService.refreshTokenPair(refreshToken);
 
             // user_role_index에 따라 해당하는 쿠키만 삭제
-            if (user_role_index == 4) {
+            if (user_role_index != null && user_role_index == 4) {
                 // 관리자: adminRefresh만 삭제
                 Cookie adminLogoutCookie = tokenUtils.createLogoutCookie("adminRefresh");
                 response.addCookie(adminLogoutCookie);

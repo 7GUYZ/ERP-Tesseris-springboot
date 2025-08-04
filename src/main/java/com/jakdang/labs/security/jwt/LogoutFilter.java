@@ -25,6 +25,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Map;
+import com.jakdang.labs.api.auth.entity.UserToken;
+import com.jakdang.labs.api.auth.repository.UserTokenRepository;
 
 /**
  * 로그아웃 처리 필터
@@ -41,6 +43,7 @@ public class LogoutFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil; // 정은 추가 - 토큰 추출
     private final UserTesserisLjeSvc userSvc; // 정은 추가 - user_index를 얻기 위함
     private final CmsAccessLogLjeSvc cmsLogSvc; // 정은 추가 - cms_access_log 데이터 저장 위함
+    private final UserTokenRepository userTokenRepository; // 정은 추가 - 토큰 조회를 위함
 
     /**
      * 필터 내부 처리 로직
@@ -75,56 +78,132 @@ public class LogoutFilter extends OncePerRequestFilter {
                 log.warn("요청에 쿠키가 없습니다");
             }
 
-            String refreshToken = tokenUtils.extractRefreshToken(request.getCookies());
+            // 1. 쿠키에서 토큰 추출 (기존 방식)
+            String refreshToken = tokenUtils.extractRefreshToken(request.getCookies(), null);
             log.info("추출된 리프레시 토큰: {}", refreshToken != null ? "존재함" : "null");
 
-            logoutService.processLogout(refreshToken);
-            
-            // 토큰에서 user_role_index 추출하여 해당하는 쿠키만 삭제
             if (refreshToken != null) {
-                // 토큰에서 사용자 id 추출
-                String id = jwtUtil.getUserId(refreshToken);
-                // userTesseris에서 user_role_index 추출
-                LoginUserTesserisDTO userDTO = userSvc.findByUsersId(id);
-                Integer user_role_index = userDTO.getUserRoleIndex();
-                
-                if (user_role_index == 4) {
-                    // 관리자: adminRefresh만 삭제
+                try {
+                    // 2. 데이터베이스에서 해당 토큰 조회
+                    UserToken userToken = userTokenRepository.findByRefreshToken(refreshToken)
+                            .orElse(null);
+                    
+                    if (userToken != null) {
+                        log.info("데이터베이스에서 토큰 조회 성공 - userId: {}", userToken.getUserId());
+                        
+                        // 3. 사용자 정보 조회하여 user_role_index 확인
+                        LoginUserTesserisDTO userDTO = userSvc.findByUsersId(userToken.getUserId());
+                        
+                        if (userDTO != null) {
+                            Integer user_role_index = userDTO.getUserRoleIndex();
+                            log.info("사용자 역할 인덱스: {}", user_role_index);
+                            
+                            // 4. 토큰 무효화
+                            logoutService.processLogout(refreshToken);
+                            
+                            // 5. user_role_index에 따라 올바른 쿠키 삭제
+                            if (user_role_index != null && user_role_index == 4) {
+                                log.info("관리자 로그아웃 - adminRefresh 쿠키 삭제");
+                                Cookie adminLogoutCookie = tokenUtils.createLogoutCookie("adminRefresh");
+                                response.addCookie(adminLogoutCookie);
+                            } else {
+                                log.info("일반 사용자 로그아웃 - userRefresh 쿠키 삭제");
+                                Cookie userLogoutCookie = tokenUtils.createLogoutCookie("userRefresh");
+                                response.addCookie(userLogoutCookie);
+                            }
+                        } else {
+                            log.warn("사용자 정보를 찾을 수 없음 - userId: {}", userToken.getUserId());
+                            // 토큰 무효화 후 모든 쿠키 삭제
+                            logoutService.processLogout(refreshToken);
+                            Cookie adminLogoutCookie = tokenUtils.createLogoutCookie("adminRefresh");
+                            Cookie userLogoutCookie = tokenUtils.createLogoutCookie("userRefresh");
+                            response.addCookie(adminLogoutCookie);
+                            response.addCookie(userLogoutCookie);
+                        }
+                    } else {
+                        log.warn("데이터베이스에서 토큰을 찾을 수 없음");
+                        // 토큰이 DB에 없으면 모든 쿠키 삭제
+                        Cookie adminLogoutCookie = tokenUtils.createLogoutCookie("adminRefresh");
+                        Cookie userLogoutCookie = tokenUtils.createLogoutCookie("userRefresh");
+                        response.addCookie(adminLogoutCookie);
+                        response.addCookie(userLogoutCookie);
+                    }
+                } catch (Exception e) {
+                    log.error("로그아웃 처리 중 오류 발생: {}", e.getMessage());
+                    // 오류 발생 시 모든 쿠키 삭제
                     Cookie adminLogoutCookie = tokenUtils.createLogoutCookie("adminRefresh");
-                    response.addCookie(adminLogoutCookie);
-                } else {
-                    // 일반 사용자: userRefresh만 삭제
                     Cookie userLogoutCookie = tokenUtils.createLogoutCookie("userRefresh");
+                    response.addCookie(adminLogoutCookie);
                     response.addCookie(userLogoutCookie);
                 }
             } else {
-                // 토큰이 없는 경우 모든 쿠키 삭제
+                // 토큰이 null이면 두 토큰이 모두 존재하는 경우
+                log.warn("두 토큰이 모두 존재하거나 토큰이 없음 - DB에서 확인");
+                
+                // 모든 쿠키에서 토큰을 찾아서 DB에서 확인
+                Cookie[] allCookies = request.getCookies();
+                if (allCookies != null) {
+                    for (Cookie cookie : allCookies) {
+                        if ("adminRefresh".equals(cookie.getName()) || "userRefresh".equals(cookie.getName())) {
+                            String tokenValue = cookie.getValue();
+                            if (tokenValue != null) {
+                                // DB에서 해당 토큰 확인
+                                UserToken userToken = userTokenRepository.findByRefreshToken(tokenValue)
+                                        .orElse(null);
+                                
+                                if (userToken != null) {
+                                    log.info("DB에서 토큰 확인 성공 - userId: {}", userToken.getUserId());
+                                    
+                                    // 사용자 정보 조회
+                                    LoginUserTesserisDTO userDTO = userSvc.findByUsersId(userToken.getUserId());
+                                    
+                                    if (userDTO != null) {
+                                        Integer user_role_index = userDTO.getUserRoleIndex();
+                                        log.info("사용자 역할 인덱스: {}", user_role_index);
+                                        
+                                        // 토큰 무효화
+                                        logoutService.processLogout(tokenValue);
+                                        
+                                        // 올바른 쿠키 삭제
+                                        if (user_role_index != null && user_role_index == 4) {
+                                            log.info("관리자 로그아웃 - adminRefresh 쿠키 삭제");
+                                            Cookie adminLogoutCookie = tokenUtils.createLogoutCookie("adminRefresh");
+                                            response.addCookie(adminLogoutCookie);
+                                        } else {
+                                            log.info("일반 사용자 로그아웃 - userRefresh 쿠키 삭제");
+                                            Cookie userLogoutCookie = tokenUtils.createLogoutCookie("userRefresh");
+                                            response.addCookie(userLogoutCookie);
+                                        }
+                                        
+                                        // cms_access_log 기록
+                                        try {
+                                            String clientIp = GetIpUtil.getClientIp(request);
+                                            LoginoutCmsAccessLogDTO logDTO = LoginoutCmsAccessLogDTO.builder()
+                                                    .cmsAccessLogUserIndex(userDTO.getUserIndex())
+                                                    .cmsAccessUserValue("로그아웃")
+                                                    .cmsAccessUserIp(clientIp)
+                                                    .build();
+                                            cmsLogSvc.saveLog(logDTO);
+                                        } catch (Exception e) {
+                                            log.warn("로그 저장 실패: {}", e.getMessage());
+                                        }
+                                        
+                                        sendSuccessResponse(response);
+                                        log.info("로그아웃 처리 완료");
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // 모든 토큰이 DB에 없거나 확인할 수 없는 경우 모든 쿠키 삭제
+                log.warn("유효한 토큰을 찾을 수 없음 - 모든 쿠키 삭제");
                 Cookie adminLogoutCookie = tokenUtils.createLogoutCookie("adminRefresh");
                 Cookie userLogoutCookie = tokenUtils.createLogoutCookie("userRefresh");
                 response.addCookie(adminLogoutCookie);
                 response.addCookie(userLogoutCookie);
-            }
-
-            // cms_access_log 테이블에 로그아웃 기록 삽입하기
-            // 1. 토큰에서 사용자 id 추출
-            String id = jwtUtil.getUserId(refreshToken);
-            // 2. 서비스 사용하여 user_index 추출
-            LoginUserTesserisDTO userDTO = userSvc.findByUsersId(id);
-            Integer user_index = userDTO.getUserIndex();
-            // 3. Client ip 받아오기 - 만든 util 사용하기
-            String clientIp = GetIpUtil.getClientIp(request);
-
-            // 4. DTO에 담기
-            LoginoutCmsAccessLogDTO logDTO = LoginoutCmsAccessLogDTO.builder()
-                                .cmsAccessLogUserIndex(user_index)
-                                .cmsAccessUserValue("로그아웃")
-                                .cmsAccessUserIp(clientIp)
-                                .build();
-            // 5. 로그 저장 (로그인 실패로 이어지지 않게!)
-            try {
-                cmsLogSvc.saveLog(logDTO);
-            } catch (Exception e) {
-                log.warn("로그 저장 실패: {}", e.getMessage());
             }
 
 
