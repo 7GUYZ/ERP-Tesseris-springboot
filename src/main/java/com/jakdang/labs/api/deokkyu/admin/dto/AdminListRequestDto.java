@@ -10,6 +10,7 @@ import java.time.LocalDate;
 @Builder
 public class AdminListRequestDto {
     
+
     // 1. 사업자 ID 필터 (users.email LIKE 검색)
     private String adminUserEmail;
     

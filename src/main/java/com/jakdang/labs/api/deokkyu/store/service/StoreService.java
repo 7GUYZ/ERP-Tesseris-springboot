@@ -265,6 +265,19 @@ public class StoreService {
                         .businessUserName(businessUserName)
                         .build();
             })
+            .sorted((dto1, dto2) -> {
+                // storeCreateDate가 최근인 것이 위로 오도록 내림차순 정렬
+                if (dto1.getStoreCreateDate() == null && dto2.getStoreCreateDate() == null) {
+                    return 0;
+                }
+                if (dto1.getStoreCreateDate() == null) {
+                    return 1; // null은 뒤로
+                }
+                if (dto2.getStoreCreateDate() == null) {
+                    return -1; // null은 뒤로
+                }
+                return dto2.getStoreCreateDate().compareTo(dto1.getStoreCreateDate()); // 내림차순
+            })
             .collect(Collectors.toList());
     }
 
@@ -503,8 +516,24 @@ public class StoreService {
                 .franchiseFee(store.getFranchiseFee())
                 .storeSubscriptionFeeCommissionCheck(fee.getStoreSubscriptionFeeCommissionCheck())  // ✅ 현재 fee 객체 사용
                 .build();
+                
             result.add(dto);
         }
+        
+        // storeCreateDate가 최근인 것이 위로 오도록 내림차순 정렬
+        result.sort((dto1, dto2) -> {
+            if (dto1.getStoreCreateDate() == null && dto2.getStoreCreateDate() == null) {
+                return 0;
+            }
+            if (dto1.getStoreCreateDate() == null) {
+                return 1; // null은 뒤로
+            }
+            if (dto2.getStoreCreateDate() == null) {
+                return -1; // null은 뒤로
+            }
+            return dto2.getStoreCreateDate().compareTo(dto1.getStoreCreateDate()); // 내림차순
+        });
+        
         return result;
     }
 

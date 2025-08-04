@@ -8,6 +8,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Builder
 public class AdminListResponseDto {
+
+    private String adminUserIndex;
     
     // 1. 사업자 ID (users.email)
     private String adminUserEmail;
@@ -27,8 +29,9 @@ public class AdminListResponseDto {
     /**
      * JPQL Constructor Expression용 생성자
      */
-    public AdminListResponseDto(String adminUserEmail, String adminUserName, String adminUserPhone, 
+    public AdminListResponseDto(String adminUserIndex, String adminUserEmail, String adminUserName, String adminUserPhone, 
                                String adminTypeName, LocalDateTime adminRegistrationDate) {
+        this.adminUserIndex = adminUserIndex;
         this.adminUserEmail = adminUserEmail;
         this.adminUserName = adminUserName;
         this.adminUserPhone = adminUserPhone;
