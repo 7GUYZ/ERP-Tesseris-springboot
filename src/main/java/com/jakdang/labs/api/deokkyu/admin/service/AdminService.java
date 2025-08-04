@@ -8,6 +8,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.jakdang.labs.api.deokkyu.admin.dto.AdminListRequestDto;
 import com.jakdang.labs.api.deokkyu.admin.dto.AdminListResponseDto;
 import com.jakdang.labs.api.deokkyu.admin.dto.AdminCreateRequestDto;
+import com.jakdang.labs.api.deokkyu.admin.dto.AdminDetailResponseDto;
+import com.jakdang.labs.api.deokkyu.admin.dto.AdminUpdateRequestDto;
 import com.jakdang.labs.api.deokkyu.admin.repository.AdminhdkRepository;
 import com.jakdang.labs.entity.Admin;
 import com.jakdang.labs.entity.UserTesseris;
@@ -67,8 +69,9 @@ public class AdminService {
             log.info("=== AdminList 조회 결과 ===");
             log.info("조회된 관리자 수: {}", result.size());
             for (AdminListResponseDto dto : result) {
-                log.info("관리자: {} - 등록시간: {} (타입: {})", 
+                log.info("관리자: {} (userIndex: {}) - 등록시간: {} (타입: {})", 
                     dto.getAdminUserEmail(), 
+                    dto.getAdminUserIndex(),
                     dto.getAdminRegistrationDate(), 
                     dto.getAdminRegistrationDate() != null ? dto.getAdminRegistrationDate().getClass().getSimpleName() : "null");
             }
@@ -321,6 +324,163 @@ public class AdminService {
             }
         } catch (Exception e) {
             log.error("성별 데이터 초기화 중 오류 발생: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 관리자 상세정보 조회
+     */
+    public AdminDetailResponseDto getAdminDetail(Integer userIndex) {
+        try {
+            log.info("관리자 상세정보 조회 시작: userIndex={}", userIndex);
+            
+            // 1. UserTesseris 조회
+            Optional<UserTesseris> userTesserisOpt = userTesserisRepository.findById(userIndex);
+            if (userTesserisOpt.isEmpty()) {
+                log.warn("UserTesseris를 찾을 수 없습니다: userIndex={}", userIndex);
+                return null;
+            }
+            UserTesseris userTesseris = userTesserisOpt.get();
+            
+            // 2. UserEntity 조회
+            UserEntity userEntity = userTesseris.getUsersId();
+            if (userEntity == null) {
+                log.warn("UserEntity를 찾을 수 없습니다: userIndex={}", userIndex);
+                return null;
+            }
+            
+            // 3. Admin 조회
+            Optional<Admin> adminOpt = adminRepository.findAll().stream()
+                .filter(admin -> admin.getUserIndex() != null && 
+                        admin.getUserIndex().getUserIndex().equals(userIndex))
+                .findFirst();
+            
+            if (adminOpt.isEmpty()) {
+                log.warn("Admin을 찾을 수 없습니다: userIndex={}", userIndex);
+                return null;
+            }
+            Admin admin = adminOpt.get();
+            
+            // 4. 성별 조회
+            String genderName = "";
+            if (userTesseris.getUserGender() != null) {
+                genderName = userTesseris.getUserGender().getUserGenderName();
+            }
+            
+            // 5. 관리자 타입명 조회
+            String adminTypeName = "";
+            if (admin.getAdminTypeIndex() != null) {
+                adminTypeName = admin.getAdminTypeIndex().getAdminTypeName();
+            }
+            
+            // 6. DTO 생성 및 반환
+            AdminDetailResponseDto responseDto = AdminDetailResponseDto.builder()
+                .adminUserIndex(userIndex)
+                .adminUserEmail(userEntity.getEmail())
+                .adminUserName(userEntity.getName())
+                .adminUserPhone(userEntity.getPhone())
+                .adminUserBirthday(userTesseris.getUserBirthday())
+                .adminUserGender(genderName)
+                .adminAddress(userTesseris.getUserAddress())
+                .adminDetailAddress(userTesseris.getUserDetailAddress())
+                .adminTypeName(adminTypeName)
+                .adminRegistrationDate(admin.getAdminRegistrationDate())
+                .build();
+            
+            log.info("관리자 상세정보 조회 완료: {}", userEntity.getEmail());
+            return responseDto;
+            
+        } catch (Exception e) {
+            log.error("관리자 상세정보 조회 중 오류 발생: userIndex={}", userIndex, e);
+            throw new RuntimeException("관리자 상세정보 조회에 실패했습니다.", e);
+        }
+    }
+
+    /**
+     * 관리자 정보 수정
+     */
+    @Transactional
+    public boolean updateAdmin(Integer userIndex, AdminUpdateRequestDto updateDto, String authHeader) {
+        try {
+            log.info("관리자 정보 수정 시작: userIndex={}", userIndex);
+            
+            // 1. UserTesseris 조회
+            Optional<UserTesseris> userTesserisOpt = userTesserisRepository.findById(userIndex);
+            if (userTesserisOpt.isEmpty()) {
+                log.error("UserTesseris를 찾을 수 없습니다: userIndex={}", userIndex);
+                return false;
+            }
+            UserTesseris userTesseris = userTesserisOpt.get();
+            
+            // 2. UserEntity 조회
+            UserEntity userEntity = userTesseris.getUsersId();
+            if (userEntity == null) {
+                log.error("UserEntity를 찾을 수 없습니다: userIndex={}", userIndex);
+                return false;
+            }
+            
+            // 3. UserEntity 업데이트 (이름, 핸드폰번호)
+            if (updateDto.getAdminUserName() != null && !updateDto.getAdminUserName().trim().isEmpty()) {
+                userEntity.setName(updateDto.getAdminUserName());
+                log.info("이름 업데이트: {} -> {}", userEntity.getName(), updateDto.getAdminUserName());
+            }
+            
+            if (updateDto.getAdminUserPhone() != null && !updateDto.getAdminUserPhone().trim().isEmpty()) {
+                userEntity.setPhone(updateDto.getAdminUserPhone());
+                log.info("핸드폰번호 업데이트: {}", updateDto.getAdminUserPhone());
+            }
+            
+            // 4. UserTesseris 업데이트 (생년월일, 성별, 주소)
+            if (updateDto.getAdminUserBirthday() != null && !updateDto.getAdminUserBirthday().trim().isEmpty()) {
+                try {
+                    java.time.LocalDate birthday = java.time.LocalDate.parse(updateDto.getAdminUserBirthday());
+                    userTesseris.setUserBirthday(birthday);
+                    log.info("생년월일 업데이트: {}", updateDto.getAdminUserBirthday());
+                } catch (Exception e) {
+                    log.error("생년월일 파싱 오류: {}", updateDto.getAdminUserBirthday(), e);
+                }
+            }
+            
+            // 성별 업데이트
+            if (updateDto.getAdminUserGender() != null && !updateDto.getAdminUserGender().trim().isEmpty()) {
+                try {
+                    // 성별명으로 UserGender 조회
+                    Optional<UserGender> genderOpt = userGenderRepository.findAll().stream()
+                        .filter(gender -> gender.getUserGenderName().equals(updateDto.getAdminUserGender()))
+                        .findFirst();
+                    
+                    if (genderOpt.isPresent()) {
+                        userTesseris.setUserGender(genderOpt.get());
+                        log.info("성별 업데이트: {}", updateDto.getAdminUserGender());
+                    } else {
+                        log.warn("존재하지 않는 성별명: {}", updateDto.getAdminUserGender());
+                    }
+                } catch (Exception e) {
+                    log.error("성별 업데이트 중 오류: {}", e.getMessage());
+                }
+            }
+            
+            // 주소 업데이트
+            if (updateDto.getAdminAddress() != null) {
+                userTesseris.setUserAddress(updateDto.getAdminAddress());
+                log.info("주소 업데이트: {}", updateDto.getAdminAddress());
+            }
+            
+            if (updateDto.getAdminDetailAddress() != null) {
+                userTesseris.setUserDetailAddress(updateDto.getAdminDetailAddress());
+                log.info("상세주소 업데이트: {}", updateDto.getAdminDetailAddress());
+            }
+            
+            // 5. 저장
+            userRepository.save(userEntity);
+            userTesserisRepository.save(userTesseris);
+            
+            log.info("관리자 정보 수정 완료: userIndex={}", userIndex);
+            return true;
+            
+        } catch (Exception e) {
+            log.error("관리자 정보 수정 중 오류 발생: userIndex={}", userIndex, e);
+            throw new RuntimeException("관리자 정보 수정에 실패했습니다: " + e.getMessage(), e);
         }
     }
 } 
