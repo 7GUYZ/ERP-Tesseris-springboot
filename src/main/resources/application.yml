@@ -49,8 +49,6 @@ spring:
     #JWT 임시 셋팅
   jwt:
     refresh:
-      cookie:
-        name: refresh
       expired:
         604800000  # 7일 (기존 24시간에서 증가)
         # expired: 15000  # 정은 테스트용 15초

@@ -68,10 +68,6 @@ public class BannerService {
             System.out.println("userIndex: " + userIndex);
             System.out.println("file: " + (file != null ? file.getOriginalFilename() : "null"));
             
-            if (file == null || file.isEmpty()) {
-                throw new RuntimeException("업로드된 파일이 없습니다.");
-            }
-            
             Banner banner = bannerRepository.findById(bannerIndex)
                 .orElseThrow(() -> new RuntimeException("Banner not found with index: " + bannerIndex));
             
@@ -80,26 +76,33 @@ public class BannerService {
             System.out.println("  - bannerPhoto: " + banner.getBannerPhoto());
             System.out.println("  - bannerCreateTime: " + banner.getBannerCreateTime());
             
-            // 기존 파일 삭제
-            if (banner.getBannerPhoto() != null) {
-                try {
-                    s3ImageService.deleteImage(banner.getBannerPhoto());
-                    System.out.println("기존 S3 파일 삭제 완료: " + banner.getBannerPhoto());
-                } catch (Exception e) {
-                    System.err.println("기존 S3 파일 삭제 실패: " + e.getMessage());
-                    // 기존 파일 삭제 실패해도 계속 진행
+            String fileKey = banner.getBannerPhoto(); // 기본값은 기존 이미지
+            
+            // 파일이 있는 경우에만 파일 업로드 처리
+            if (file != null && !file.isEmpty()) {
+                // 기존 파일 삭제
+                if (banner.getBannerPhoto() != null) {
+                    try {
+                        s3ImageService.deleteImage(banner.getBannerPhoto());
+                        System.out.println("기존 S3 파일 삭제 완료: " + banner.getBannerPhoto());
+                    } catch (Exception e) {
+                        System.err.println("기존 S3 파일 삭제 실패: " + e.getMessage());
+                        // 기존 파일 삭제 실패해도 계속 진행
+                    }
                 }
+                
+                // 새 파일 업로드
+                fileKey = s3ImageService.uploadImage(file, "banner");
+                System.out.println("새 S3 파일 업로드 완료: " + fileKey);
+            } else {
+                System.out.println("새로운 파일이 없으므로 기존 이미지를 유지합니다.");
             }
             
-            // 새 파일 업로드
-            String fileKey = s3ImageService.uploadImage(file, "banner");
-            System.out.println("새 S3 파일 업로드 완료: " + fileKey);
-            
-            // 등록일 업데이트 (수정 시점으로)
+            // 등록일 업데이트 (수정 시점으로) - 항상 실행
             LocalDateTime newCreateTime = LocalDateTime.now();
             System.out.println("등록일 업데이트: " + newCreateTime);
             
-            // 직접 SQL 업데이트로 DB에 반영
+            // 직접 SQL 업데이트로 DB에 반영 - 항상 실행
             int updateResult = bannerRepository.updateBannerPhotoAndCreateTime(bannerIndex, fileKey, newCreateTime);
             System.out.println("DB 업데이트 결과: " + updateResult + "행이 업데이트됨");
             
