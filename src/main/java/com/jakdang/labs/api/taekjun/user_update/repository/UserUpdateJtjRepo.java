@@ -23,23 +23,22 @@ public class UserUpdateJtjRepo {
     public UserInfoDto findUserInfoByUserIndex(Long userIndex) {
         String sql = """
             SELECT 
-                ue.name as user_name,
-                ue.phone as user_phone,
-                ue.email as user_email,
-                ut.user_address,
-                ut.user_detail_address,
-                ut.user_zone_code as user_zip_code,
-                ub.user_bank_name as user_bank_name,
-                ut.user_bank_number as user_bank_number,
-                ut.user_bank_holder as user_bank_holder
+                COALESCE(ue.name, '') as user_name,
+                COALESCE(ue.phone, '') as user_phone,
+                COALESCE(ue.email, '') as user_email,
+                COALESCE(ut.user_address, '') as user_address,
+                COALESCE(ut.user_detail_address, '') as user_detail_address,
+                COALESCE(ut.user_zone_code, '') as user_zip_code,
+                ut.user_bank_index as user_bank_index,
+                COALESCE(ut.user_bank_number, '') as user_bank_number,
+                COALESCE(ut.user_bank_holder, '') as user_bank_holder
             FROM user_tesseris ut
             INNER JOIN users ue ON ut.users_id = ue.id
-            LEFT JOIN user_bank ub ON ut.user_bank_index = ub.user_bank_index
             WHERE ut.user_index = ?
         """;
 
         try {
-            return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> 
+            UserInfoDto result = jdbcTemplate.queryForObject(sql, (rs, rowNum) -> 
                 UserInfoDto.builder()
                     .userName(rs.getString("user_name"))
                     .userPhone(rs.getString("user_phone"))
@@ -47,10 +46,24 @@ public class UserUpdateJtjRepo {
                     .userAddress(rs.getString("user_address"))
                     .userDetailAddress(rs.getString("user_detail_address"))
                     .userZipCode(rs.getString("user_zip_code"))
-                    .userBankName(rs.getString("user_bank_name"))
+                    .userBankIndex(rs.getLong("user_bank_index"))
                     .userBankNumber(rs.getString("user_bank_number"))
                     .userBankHolder(rs.getString("user_bank_holder"))
                     .build(), userIndex);
+            
+            // 이메일이 없으면 기본값 설정
+            if (result != null && (result.getUserEmail() == null || result.getUserEmail().isEmpty())) {
+                log.warn("사용자 {}의 이메일이 없습니다. 기본값을 설정합니다.", userIndex);
+                result.setUserEmail("이메일을 입력해주세요");
+            }
+            
+            // 은행 정보 로그
+            if (result != null) {
+                log.info("사용자 {} 은행 정보: bankIndex={}, bankNumber={}, bankHolder={}", 
+                    userIndex, result.getUserBankIndex(), result.getUserBankNumber(), result.getUserBankHolder());
+            }
+            
+            return result;
         } catch (Exception e) {
             log.error("사용자 정보 조회 중 오류: {}", e.getMessage());
             return null;
@@ -100,12 +113,14 @@ public class UserUpdateJtjRepo {
             String bankSql = """
                 UPDATE user_tesseris 
                 SET 
+                    user_bank_index = ?,
                     user_bank_number = ?,
                     user_bank_holder = ?
                 WHERE user_index = ?
             """;
 
             bankUpdated = jdbcTemplate.update(bankSql,
+                requestDto.getUserBankIndex(),
                 requestDto.getUserBankNumber(),
                 requestDto.getUserBankHolder(),
                 userIndex);

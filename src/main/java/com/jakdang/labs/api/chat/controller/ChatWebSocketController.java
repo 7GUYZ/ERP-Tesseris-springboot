@@ -9,6 +9,8 @@ import com.jakdang.labs.api.chat.dto.RoomRequestDTO;
 import com.jakdang.labs.api.chat.model.ChatServiceClient;
 import com.jakdang.labs.api.chat.service.ChatService;
 import com.jakdang.labs.api.common.ResponseDTO;
+import com.jakdang.labs.api.deokkyu.storeRegister.service.S3FileUploadService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -24,6 +26,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.multipart.MultipartFile;
 
 @Component
 @RestController
@@ -35,6 +40,7 @@ public class ChatWebSocketController {
     private final ChatService chatService;
     private final ChatServiceClient chatServiceClient;
     private final ObjectMapper objectMapper;
+    private final S3FileUploadService s3FileUploadService;
     private final SimpMessagingTemplate messagingTemplate;
 
     // ==================== WebSocket STOMP 메시지 처리 ====================
@@ -47,13 +53,40 @@ public class ChatWebSocketController {
     @MessageMapping("/adminchat.sendMessage/{roomId}")
     @SendTo("/queue/{roomId}")
     public Map<String, Object> sendMessage(@PathVariable String roomId, @Payload Map<String, Object> messageData) {
-
+        // 2. MessageRequestDTO 생성
+        MessageRequestDTO messageRequestDTO = new MessageRequestDTO();
+        log.info("=== 채팅 메시지 수신 시작 ===");
         log.info("채팅 메시지 수신: {}", messageData);
+        log.info("roomId: {}", roomId);
 
         try {
             // 1. 프론트에서 전송한 데이터 추출
             String userId = (String) messageData.get("user_id");
             String message = (String) messageData.get("message");
+
+            // 파일업로드
+            Object filesObj = messageData.get("files");
+            // 파일 목록
+            List<MultipartFile> files = new ArrayList<>();
+            // 업로드된 파일 목록
+            List<String> uploadFiles = new ArrayList<>();
+
+            if (filesObj != null && filesObj instanceof List) {
+                for (MultipartFile file : files) {
+                    files.add(file);
+                    // s3 업로드
+                    try {
+                        String folder = "chat-files/" + roomId;
+                        String fileKey = s3FileUploadService.uploadFile(file, folder);
+                        uploadFiles.add(fileKey);
+                        log.info("파일 업로드 성공: {}", fileKey);
+                    } catch (Exception e) {
+                        log.error("파일 업로드 실패: {}", e.getMessage());
+                        e.printStackTrace();
+                    }
+                }
+                messageRequestDTO.setUploadFiles(uploadFiles);
+            }
 
             // room_index는 Integer일 수 있으므로 안전하게 처리
             Object roomIndexObj = messageData.get("room_index");
@@ -86,8 +119,6 @@ public class ChatWebSocketController {
 
             log.info("파싱된 participants: {}", participants);
 
-            // 2. MessageRequestDTO 생성
-            MessageRequestDTO messageRequestDTO = new MessageRequestDTO();
             messageRequestDTO.setUser_id(userId);
             messageRequestDTO.setMessage(message);
             messageRequestDTO.setRoom_index(roomIndex);
@@ -96,19 +127,45 @@ public class ChatWebSocketController {
             messageRequestDTO.setTimestamp(null);
 
             // 3. 채팅 서비스를 통해 메시지 저장 및 방 관리
+            log.info("채팅 서비스 호출 시작: {}", messageRequestDTO);
             ResponseDTO<?> response = chatServiceClient.SendMessage(messageRequestDTO);
+            log.info("채팅 서비스 응답: {}", response);
 
             // 4. 응답에서 room_index와 messageindex 추출하여 메시지 데이터에 추가
             if (response != null && response.getData() != null) {
+                log.info("응답 데이터 존재: {}", response.getData());
                 if (response.getData() instanceof Map) {
                     Map<String, Object> responseData = (Map<String, Object>) response.getData();
                     messageData.put("room_index", responseData.get("room_index"));
                     messageData.put("messageindex", responseData.get("messageindex"));
-                    log.info("메시지 저장 응답: room_index={}, messageindex={}",
+
+                    log.info("Map 응답에서 추출: room_index={}, messageindex={}",
                             responseData.get("room_index"), responseData.get("messageindex"));
+
+                    // 임시 messageindex가 있으면 응답에 포함
+                    String tempMessageIndex = (String) messageData.get("tempMessageIndex");
+                    if (tempMessageIndex != null) {
+                        messageData.put("tempMessageIndex", tempMessageIndex);
+                        log.info("임시 messageindex 포함: {}", tempMessageIndex);
+                    } else {
+                        log.warn("임시 messageindex가 없음");
+                    }
+
+                    log.info("메시지 저장 응답: room_index={}, messageindex={}, tempMessageIndex={}",
+                            responseData.get("room_index"), responseData.get("messageindex"), tempMessageIndex);
                 } else {
                     // 기존 호환성을 위해 단순 값도 처리
                     messageData.put("room_index", response.getData());
+                    log.info("단순 값 응답에서 추출: room_index={}", response.getData());
+
+                    // 임시 messageindex가 있으면 응답에 포함
+                    String tempMessageIndex = (String) messageData.get("tempMessageIndex");
+                    if (tempMessageIndex != null) {
+                        messageData.put("tempMessageIndex", tempMessageIndex);
+                        log.info("임시 messageindex 포함: {}", tempMessageIndex);
+                    } else {
+                        log.warn("임시 messageindex가 없음");
+                    }
                 }
 
                 // 4-1. 새 채팅방 생성 시 WebSocket으로 모든 참가자에게 알림
@@ -224,6 +281,23 @@ public class ChatWebSocketController {
             }
 
             log.info("채팅 메시지 브로드캐스트: {}", messageData);
+
+            // 브로드캐스트 전송 전 최종 확인
+            log.info("최종 브로드캐스트 데이터 확인:");
+            log.info("- roomId: {}", roomId);
+            log.info("- user_id: {}", messageData.get("user_id"));
+            log.info("- messageindex: {}", messageData.get("messageindex"));
+            log.info("- tempMessageIndex: {}", messageData.get("tempMessageIndex"));
+            log.info("- 전체 응답: {}", messageData);
+            log.info("- 브로드캐스트 대상: /queue/{}", roomId);
+            log.info("=== 브로드캐스트 전송 시작 ===");
+
+            // 응답 데이터의 모든 키를 확인
+            log.info("응답 데이터의 모든 키:");
+            for (String key : messageData.keySet()) {
+                log.info("  - {}: {}", key, messageData.get(key));
+            }
+
             return messageData;
 
         } catch (Exception e) {
@@ -432,4 +506,99 @@ public class ChatWebSocketController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
+    /**
+     * 메세지 삭제
+     */
+    @DeleteMapping("/{room_index}/{message_index}")
+    public ResponseEntity<?> DeleteMessage(@PathVariable("room_index") String room_index,
+            @PathVariable("message_index") String message_index) {
+        try {
+            log.info("DeleteMessage: room_index={}, message_index={}", room_index, message_index);
+            return ResponseEntity.ok(chatServiceClient.DeleteMessage(room_index, message_index));
+        } catch (Exception e) {
+            log.error("Error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * 메시지 삭제 처리 (WebSocket)
+     * 클라이언트에서 /app/adminchat.deleteMessage/{roomId}로 전송
+     * 해당 방의 모든 구독자에게 삭제 이벤트 브로드캐스트
+     */
+    @MessageMapping("/adminchat.deleteMessage/{roomId}")
+    @SendTo("/queue/{roomId}")
+    public Map<String, Object> deleteMessage(@PathVariable String roomId, @Payload Map<String, Object> deleteData) {
+
+        log.info("메시지 삭제 요청 수신: {}", deleteData);
+
+        try {
+            // 1. 프론트에서 전송한 데이터 추출
+            Object messageIndexObj = deleteData.get("messageIndex");
+            String messageIndex;
+            if (messageIndexObj == null) {
+                log.error("messageIndex가 null입니다.");
+                throw new IllegalArgumentException("messageIndex가 null입니다.");
+            } else if (messageIndexObj instanceof Integer) {
+                messageIndex = String.valueOf(messageIndexObj);
+                log.info("messageIndex를 Integer에서 String으로 변환: {} -> {}", messageIndexObj, messageIndex);
+            } else {
+                messageIndex = (String) messageIndexObj;
+                log.info("messageIndex String 타입: {}", messageIndex);
+            }
+
+            Object roomIdObj = deleteData.get("roomId");
+            String roomIdFromData;
+            if (roomIdObj == null) {
+                log.error("roomId가 null입니다.");
+                throw new IllegalArgumentException("roomId가 null입니다.");
+            } else if (roomIdObj instanceof Integer) {
+                roomIdFromData = String.valueOf(roomIdObj);
+                log.info("roomId를 Integer에서 String으로 변환: {} -> {}", roomIdObj, roomIdFromData);
+            } else {
+                roomIdFromData = (String) roomIdObj;
+                log.info("roomId String 타입: {}", roomIdFromData);
+            }
+
+            log.info("메시지 삭제 처리: roomId={}, messageIndex={}", roomIdFromData, messageIndex);
+
+            // 2. 백엔드에서 메시지 삭제 처리
+            ResponseDTO<?> deleteResult = chatServiceClient.DeleteMessage(roomIdFromData, messageIndex);
+
+            if (deleteResult.getResultCode() == 200) {
+                // 3. 삭제 성공 시 모든 구독자에게 삭제 이벤트 브로드캐스트
+                Map<String, Object> deleteEvent = Map.of(
+                        "type", "DELETE_MESSAGE",
+                        "messageIndex", messageIndex,
+                        "roomId", roomIdFromData,
+                        "timestamp", System.currentTimeMillis(),
+                        "success", true);
+
+                log.info("메시지 삭제 성공 및 브로드캐스트: messageIndex={}", messageIndex);
+                return deleteEvent;
+            } else {
+                // 4. 삭제 실패 시 에러 응답
+                Map<String, Object> errorEvent = Map.of(
+                        "type", "DELETE_MESSAGE_ERROR",
+                        "messageIndex", messageIndex,
+                        "error", deleteResult.getResultMessage(),
+                        "timestamp", System.currentTimeMillis(),
+                        "success", false);
+
+                log.error("메시지 삭제 실패: messageIndex={}, error={}", messageIndex, deleteResult.getResultMessage());
+                return errorEvent;
+            }
+
+        } catch (Exception e) {
+            log.error("메시지 삭제 처리 중 오류 발생: {}", e.getMessage());
+            Map<String, Object> errorEvent = Map.of(
+                    "type", "DELETE_MESSAGE_ERROR",
+                    "error", "메시지 삭제 처리 중 오류가 발생했습니다.",
+                    "timestamp", System.currentTimeMillis(),
+                    "success", false);
+            return errorEvent;
+        }
+    }
+
 }
