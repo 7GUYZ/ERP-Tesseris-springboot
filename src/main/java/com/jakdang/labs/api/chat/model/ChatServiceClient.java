@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -76,4 +77,10 @@ public interface ChatServiceClient {
      */
     @PutMapping("/{room}/leave/{userid}")
     public ResponseDTO<?> Leave(@PathVariable("room") String room, @PathVariable("userid") String userid);
+
+    /**
+     * 메세지 삭제
+     */
+    @DeleteMapping("/{room_index}/{message_index}")
+    public ResponseDTO<?> DeleteMessage(@PathVariable("room_index") String room_index, @PathVariable("message_index") String message_index);
 }
