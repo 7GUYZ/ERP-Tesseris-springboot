@@ -99,8 +99,24 @@ public class AdminPermissionsettings {
     }
 
     @PostMapping("/deleteauthority")
-    public ResponseEntity<String> deleteAuthorityByPost(@RequestBody java.util.Map<String, Integer> body, @RequestHeader("Authorization") String authHeader) {
-        Integer authorityTypeIndex = body.get("authorityTypeIndex");
+    public ResponseEntity<String> deleteAuthorityByPost(@RequestBody java.util.Map<String, Object> body, @RequestHeader("Authorization") String authHeader) {
+        Integer authorityTypeIndex = (Integer) body.get("authorityTypeIndex");
+        Integer userIndex = (Integer) body.get("userIndex");
+        String password = (String) body.get("password");
+        
+        // 필수 필드 검증
+        if (authorityTypeIndex == null) {
+            return ResponseEntity.badRequest().body("authorityTypeIndex는 필수 필드입니다.");
+        }
+        
+        // 패스워드 검증이 필요한 경우 먼저 검증 수행
+        if (userIndex != null && password != null) {
+            boolean passwordValid = AdminPermissinonsettingsservice.validateUserPassword(userIndex, password);
+            if (!passwordValid) {
+                return ResponseEntity.badRequest().body("사용자 인증에 실패했습니다. userIndex와 password를 확인해주세요.");
+            }
+        }
+        
         boolean success = AdminPermissinonsettingsservice.deleteAuthority(authorityTypeIndex, authHeader);
         if (success) {
             return ResponseEntity.ok("권한이 성공적으로 삭제되었습니다.");
@@ -201,6 +217,48 @@ public class AdminPermissionsettings {
             }
         } catch (Exception e) {
             log.error("권한 일괄 수정 중 예외 발생: ", e);
+            return ResponseEntity.internalServerError().body("서버 내부 오류가 발생했습니다: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/bulk-delete-authorities")
+    public ResponseEntity<String> bulkDeleteAuthorities(@RequestBody java.util.Map<String, Object> body, @RequestHeader("Authorization") String authHeader) {
+        try {
+            @SuppressWarnings("unchecked")
+            List<Integer> authorityTypeIndexes = (List<Integer>) body.get("authorityTypeIndexes");
+            Integer userIndex = (Integer) body.get("userIndex");
+            String password = (String) body.get("password");
+            
+            log.info("권한 일괄 삭제 요청 받음 - userIndex: {}, authorityTypeIndexes 수: {}", 
+                userIndex, authorityTypeIndexes != null ? authorityTypeIndexes.size() : 0);
+            
+            // 필수 필드 검증
+            if (authorityTypeIndexes == null || authorityTypeIndexes.isEmpty()) {
+                log.warn("삭제할 권한 목록이 비어있습니다.");
+                return ResponseEntity.badRequest().body("삭제할 권한 목록이 비어있습니다.");
+            }
+            
+            // 패스워드 검증이 필요한 경우 먼저 검증 수행
+            if (userIndex != null && password != null) {
+                log.info("비밀번호 검증 시작 - userIndex: {}", userIndex);
+                boolean passwordValid = AdminPermissinonsettingsservice.validateUserPassword(userIndex, password);
+                if (!passwordValid) {
+                    log.warn("사용자 인증 실패 - userIndex: {}", userIndex);
+                    return ResponseEntity.badRequest().body("사용자 인증에 실패했습니다. userIndex와 password를 확인해주세요.");
+                }
+                log.info("비밀번호 검증 성공 - userIndex: {}", userIndex);
+            }
+            
+            boolean success = AdminPermissinonsettingsservice.bulkDeleteAuthorities(authorityTypeIndexes);
+            if (success) {
+                log.info("권한 일괄 삭제 성공");
+                return ResponseEntity.ok("권한이 성공적으로 일괄 삭제되었습니다.");
+            } else {
+                log.warn("권한 일괄 삭제 실패");
+                return ResponseEntity.badRequest().body("권한 일괄 삭제에 실패했습니다.");
+            }
+        } catch (Exception e) {
+            log.error("권한 일괄 삭제 중 예외 발생: ", e);
             return ResponseEntity.internalServerError().body("서버 내부 오류가 발생했습니다: " + e.getMessage());
         }
     }

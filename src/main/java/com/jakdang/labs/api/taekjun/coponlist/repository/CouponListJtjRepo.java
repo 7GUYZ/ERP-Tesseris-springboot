@@ -14,9 +14,9 @@ import java.util.List;
 public interface CouponListJtjRepo extends JpaRepository<Coupon, Integer> {
     
     /**
-     * 내가 받은 쿠폰 리스트 조회
+     * 내가 받은 쿠폰 리스트 조회 (상태 3: 보내기완료만)
      */
-    @Query("SELECT c FROM Coupon c WHERE c.providedUser.userIndex = :userIndex ORDER BY c.couponIssuanceTime DESC")
+    @Query("SELECT c FROM Coupon c WHERE c.providedUser.userIndex = :userIndex AND c.couponIssuanceStatusIndex = 3 ORDER BY c.couponIssuanceTime DESC")
     List<Coupon> findMyCoupons(@Param("userIndex") Integer userIndex);
     
     /**

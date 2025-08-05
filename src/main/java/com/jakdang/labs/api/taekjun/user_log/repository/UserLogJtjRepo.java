@@ -39,13 +39,23 @@ public interface UserLogJtjRepo extends JpaRepository<UserCmLog, Integer> {
     Page<UserCmLog> findByUserIndex(@Param("userIndex") Integer userIndex, Pageable pageable);
 
     /**
-     * 사용자별 CM 로그 조회 (페이징 + 월별 필터)
+     * 사용자별 CM 로그 조회 (디버깅용 - 모든 로그)
+     */
+    @Query(value = """
+        SELECT ucl FROM UserCmLog ucl 
+        WHERE ucl.userCmLogValueTypeIndex = 2
+        ORDER BY ucl.userCmLogCreateTime DESC
+        """)
+    Page<UserCmLog> findAllLogs(Pageable pageable);
+
+    /**
+     * 사용자별 월별 CM 로그 조회
      * 
      * @param userIndex 사용자 인덱스
      * @param year 년도
      * @param month 월
      * @param pageable 페이징 정보
-     * @return 페이징된 CM 로그 목록
+     * @return 해당 월의 CM 로그 목록
      */
     @Query(value = """
         SELECT ucl FROM UserCmLog ucl 
@@ -58,21 +68,11 @@ public interface UserLogJtjRepo extends JpaRepository<UserCmLog, Integer> {
         """)
     Page<UserCmLog> findByUserIndexAndMonth(@Param("userIndex") Integer userIndex, 
                                            @Param("year") int year, 
-                                           @Param("month") int month, 
+                                           @Param("month") int month,
                                            Pageable pageable);
 
     /**
-     * 사용자별 CM 로그 조회 (디버깅용 - 모든 로그)
-     */
-    @Query(value = """
-        SELECT ucl FROM UserCmLog ucl 
-        WHERE ucl.userCmLogValueTypeIndex = 2
-        ORDER BY ucl.userCmLogCreateTime DESC
-        """)
-    Page<UserCmLog> findAllLogs(Pageable pageable);
-
-    /**
-     * 사용자별 월별 CM 로그 조회
+     * 사용자별 월별 CM 로그 조회 (페이징 없음)
      * 
      * @param userIndex 사용자 인덱스
      * @param year 년도
@@ -130,30 +130,6 @@ public interface UserLogJtjRepo extends JpaRepository<UserCmLog, Integer> {
     Page<UserCmLog> findSpentLogs(@Param("userIndex") Integer userIndex, Pageable pageable);
 
     /**
-     * 내가 쓴 금액 조회 (월별 필터 포함)
-     * 
-     * @param userIndex 사용자 인덱스
-     * @param year 년도
-     * @param month 월
-     * @param pageable 페이징 정보
-     * @return 내가 쓴 금액 로그 목록
-     */
-    @Query(value = """
-        SELECT ucl FROM UserCmLog ucl 
-        WHERE ucl.userIndexEventTrigger IS NOT NULL 
-        AND ucl.userIndexEventTrigger.userIndex = :userIndex
-        AND ucl.userCmLogValueTypeIndex = 2
-        AND ucl.userCmLogValue < 0
-        AND YEAR(ucl.userCmLogCreateTime) = :year 
-        AND MONTH(ucl.userCmLogCreateTime) = :month
-        ORDER BY ucl.userCmLogCreateTime DESC
-        """)
-    Page<UserCmLog> findSpentLogsByMonth(@Param("userIndex") Integer userIndex, 
-                                         @Param("year") int year, 
-                                         @Param("month") int month, 
-                                         Pageable pageable);
-
-    /**
      * 내가 받은 금액 조회 (user_index_event_party가 내 IDX이고 양수인 경우)
      * 
      * @param userIndex 사용자 인덱스
@@ -169,30 +145,6 @@ public interface UserLogJtjRepo extends JpaRepository<UserCmLog, Integer> {
         ORDER BY ucl.userCmLogCreateTime DESC
         """)
     Page<UserCmLog> findReceivedLogs(@Param("userIndex") Integer userIndex, Pageable pageable);
-
-    /**
-     * 내가 받은 금액 조회 (월별 필터 포함)
-     * 
-     * @param userIndex 사용자 인덱스
-     * @param year 년도
-     * @param month 월
-     * @param pageable 페이징 정보
-     * @return 내가 받은 금액 로그 목록
-     */
-    @Query(value = """
-        SELECT ucl FROM UserCmLog ucl 
-        WHERE ucl.userIndexEventParty IS NOT NULL 
-        AND ucl.userIndexEventParty.userIndex = :userIndex
-        AND ucl.userCmLogValueTypeIndex = 2
-        AND ucl.userCmLogValue > 0
-        AND YEAR(ucl.userCmLogCreateTime) = :year 
-        AND MONTH(ucl.userCmLogCreateTime) = :month
-        ORDER BY ucl.userCmLogCreateTime DESC
-        """)
-    Page<UserCmLog> findReceivedLogsByMonth(@Param("userIndex") Integer userIndex, 
-                                            @Param("year") int year, 
-                                            @Param("month") int month, 
-                                            Pageable pageable);
 
     /**
      * 돈이 들어오는 거래 조회 (수입) - 양수 값
@@ -269,4 +221,52 @@ public interface UserLogJtjRepo extends JpaRepository<UserCmLog, Integer> {
     Integer getMonthlyUsedAmount(@Param("userIndex") Integer userIndex,
                                 @Param("year") int year,
                                 @Param("month") int month);
+
+    /**
+     * 사용자별 월별 지출 로그 조회 (페이징)
+     * 
+     * @param userIndex 사용자 인덱스
+     * @param year 년도
+     * @param month 월
+     * @param pageable 페이징 정보
+     * @return 해당 월의 지출 로그 목록
+     */
+    @Query(value = """
+        SELECT ucl FROM UserCmLog ucl 
+        WHERE ((ucl.userIndexEventTrigger IS NOT NULL AND ucl.userIndexEventTrigger.userIndex = :userIndex)
+        OR (ucl.userIndexEventParty IS NOT NULL AND ucl.userIndexEventParty.userIndex = :userIndex))
+        AND ucl.userCmLogValueTypeIndex = 2
+        AND ucl.userCmLogValue < 0
+        AND YEAR(ucl.userCmLogCreateTime) = :year 
+        AND MONTH(ucl.userCmLogCreateTime) = :month
+        ORDER BY ucl.userCmLogCreateTime DESC
+        """)
+    Page<UserCmLog> findSpentLogsByMonth(@Param("userIndex") Integer userIndex,
+                                         @Param("year") int year,
+                                         @Param("month") int month,
+                                         Pageable pageable);
+
+    /**
+     * 사용자별 월별 수입 로그 조회 (페이징)
+     * 
+     * @param userIndex 사용자 인덱스
+     * @param year 년도
+     * @param month 월
+     * @param pageable 페이징 정보
+     * @return 해당 월의 수입 로그 목록
+     */
+    @Query(value = """
+        SELECT ucl FROM UserCmLog ucl 
+        WHERE ((ucl.userIndexEventTrigger IS NOT NULL AND ucl.userIndexEventTrigger.userIndex = :userIndex)
+        OR (ucl.userIndexEventParty IS NOT NULL AND ucl.userIndexEventParty.userIndex = :userIndex))
+        AND ucl.userCmLogValueTypeIndex = 2
+        AND ucl.userCmLogValue > 0
+        AND YEAR(ucl.userCmLogCreateTime) = :year 
+        AND MONTH(ucl.userCmLogCreateTime) = :month
+        ORDER BY ucl.userCmLogCreateTime DESC
+        """)
+    Page<UserCmLog> findReceivedLogsByMonth(@Param("userIndex") Integer userIndex,
+                                            @Param("year") int year,
+                                            @Param("month") int month,
+                                            Pageable pageable);
 } 
