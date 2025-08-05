@@ -63,12 +63,14 @@ public class CustomerManagementController {
      */
     @GetMapping("/my-customers")
     public ResponseEntity<Map<String, Object>> getMyCustomers(
-            @RequestParam String storeUserIndex) {
+            @RequestParam String storeUserIndex,
+            @RequestParam(required = false) String member,
+            @RequestParam(required = false) String phone) {
         
-        log.info("내 가맹점 고객 목록 조회 요청 - storeUserIndex: {}", storeUserIndex);
+        log.info("내 가맹점 고객 목록 조회 요청 - storeUserIndex: {}, member: {}, phone: {}", storeUserIndex, member, phone);
         
         try {
-            List<Map<String, Object>> customers = customerManagementService.getMyCustomers(storeUserIndex);
+            List<Map<String, Object>> customers = customerManagementService.getMyCustomers(storeUserIndex, member, phone);
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
