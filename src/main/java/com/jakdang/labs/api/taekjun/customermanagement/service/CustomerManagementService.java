@@ -273,7 +273,7 @@ public class CustomerManagementService {
                 coupon.setProvidedUser(providedUser.get()); // 수령자 (고객)
                 coupon.setCouponPrice(couponPrice); // 쿠폰 금액
                 coupon.setCouponLimit(couponLimit); // 사용 제한
-                coupon.setCouponIssuanceStatusIndex(1); // 발급 상태 (1: 발급됨)
+                coupon.setCouponIssuanceStatusIndex(3); // 발급 상태 (3: 보내기완료)
                 coupon.setCouponProvidedStatusIndex(1); // 제공 상태 (1: 제공됨)
                 coupon.setCouponName(couponName); // 쿠폰명
                 coupon.setCouponIssuanceTime(LocalDateTime.now()); // 발급 시간
