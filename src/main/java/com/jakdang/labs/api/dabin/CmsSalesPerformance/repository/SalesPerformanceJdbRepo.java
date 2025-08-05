@@ -23,7 +23,7 @@ public interface SalesPerformanceJdbRepo extends JpaRepository<com.jakdang.labs.
             s.storeName,
             srs.storeRequestStatusName,
             CASE WHEN s.storeTransactionStatus = true THEN '정상' ELSE '정지' END,
-            CASE WHEN uc.userCmpInit / 2 < s.storeSaveValue THEN 'CM락ON' ELSE 'CM락OFF' END,
+            CASE WHEN uc.userCmpInit / 2 < s.storeSaveValue THEN 'TS락ON' ELSE 'TS락OFF' END,
             CASE WHEN uc.userCmpDeposit + uc.userCmpWithdrawal > uc.userCmpInit * 2 THEN '판매락 ON' ELSE '판매락 OFF' END,
             s.storeRegistrationDate
         )

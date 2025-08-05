@@ -79,7 +79,7 @@ public class CouponListService {
         dto.put("providedUserIndex", coupon.getProvidedUser() != null ? coupon.getProvidedUser().getUserIndex() : null);
         // 날짜 포맷 추가
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-        dto.put("issuanceDateStr", coupon.getCouponIssuanceTime() != null ? coupon.getCouponIssuanceTime().format(formatter) : "");
+        dto.put("issuanceDateStr", coupon.getCouponProvidedTime() != null ? coupon.getCouponProvidedTime().format(formatter) : "");
         dto.put("limitDateStr", coupon.getCouponLimitTime() != null ? coupon.getCouponLimitTime().format(formatter) : "");
         // 가맹점 정보 추가
         String storeName = "";
