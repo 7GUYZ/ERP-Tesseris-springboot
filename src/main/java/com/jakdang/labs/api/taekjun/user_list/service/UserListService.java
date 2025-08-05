@@ -10,7 +10,6 @@ import com.jakdang.labs.entity.UserGender;
 import com.jakdang.labs.entity.UserBank;
 import com.jakdang.labs.entity.SuggestionUser;
 import com.jakdang.labs.api.taekjun.signin.repository.SuggestionUserRepository;
-import com.jakdang.labs.api.jihun.common.config.ExcelDownloadConfig;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -26,7 +25,6 @@ import java.nio.charset.StandardCharsets;
 public class UserListService {
     private final UserListJtjRepo userListJtjRepo;
     private final SuggestionUserRepository suggestionUserRepository;
-    private final ExcelDownloadConfig.ExcelDownloadProperties excelDownloadProperties;
 
     public List<UserListResponseDTO> getUserList() {
         List<Object[]> rawList = userListJtjRepo.findUserListRaw();
@@ -122,7 +120,19 @@ public class UserListService {
         dto.setRecommenderName((String) row[11]);
         dto.setRecommenderEmail((String) row[12]);
         dto.setSuggestionJoinDate(row[13] != null ? row[13].toString() : null);
-        dto.setCmBalance(row[14] != null ? Integer.parseInt(row[14].toString()) : 0);
+        
+        // CM 잔액 안전한 파싱
+        Integer cmBalance = 0;
+        if (row[14] != null) {
+            try {
+                cmBalance = Integer.parseInt(row[14].toString());
+            } catch (NumberFormatException e) {
+                System.out.println("CM 잔액 파싱 오류: " + row[14] + ", 기본값 0으로 설정");
+                cmBalance = 0;
+            }
+        }
+        dto.setCmBalance(cmBalance);
+        
         dto.setRegistrationDate(row[15] != null ? row[15].toString() : null);
         
         // 주소 매핑 수정 - user_zone_code(row[16])는 제외하고 실제 주소만 사용
@@ -172,6 +182,11 @@ public class UserListService {
         
         System.out.println("사용자 목록 크기: " + userList.size());
         
+        if (userList == null || userList.isEmpty()) {
+            System.out.println("사용자 목록이 비어있습니다.");
+            return new byte[0];
+        }
+        
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
              OutputStreamWriter writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
             
@@ -190,29 +205,47 @@ public class UserListService {
             writer.write(String.join(",", headers));
             writer.write("\n");
             
-            // 데이터 작성 (ExcelDownloadConfig의 배치 크기 적용)
-            int batchSize = excelDownloadProperties.getBatchSize();
+            // 데이터 작성 (기본 배치 크기 사용)
+            int batchSize = 1000;
             int processedCount = 0;
             
             for (int i = 0; i < userList.size(); i++) {
                 UserListResponseDTO user = userList.get(i);
+                
+                // null 체크 및 안전한 값 변환
+                String name = user.getName() != null ? user.getName() : "";
+                String email = user.getEmail() != null ? user.getEmail() : "";
+                String phone = user.getPhone() != null ? user.getPhone() : "";
+                String nickname = user.getNickname() != null ? user.getNickname() : "";
+                String birthday = user.getBirthday() != null ? user.getBirthday() : "";
+                String gender = user.getGender() != null ? user.getGender() : "";
+                String userRole = user.getUserRole() != null ? user.getUserRole() : "";
+                String bankName = user.getBankName() != null ? user.getBankName() : "";
+                String bankNumber = user.getBankNumber() != null ? user.getBankNumber() : "";
+                String bankHolder = user.getBankHolder() != null ? user.getBankHolder() : "";
+                String recommenderName = user.getRecommenderName() != null ? user.getRecommenderName() : "";
+                String recommenderEmail = user.getRecommenderEmail() != null ? user.getRecommenderEmail() : "";
+                String suggestionJoinDate = user.getSuggestionJoinDate() != null ? user.getSuggestionJoinDate() : "";
+                String cmBalance = user.getCmBalance() != null ? user.getCmBalance().toString() : "0";
+                String registrationDate = user.getRegistrationDate() != null ? user.getRegistrationDate() : "";
+                
                 String[] rowData = {
                     escapeCsvField(String.valueOf(i + 1)), // 행 번호 (1부터 시작)
-                    escapeCsvField(user.getName()),
-                    escapeCsvField(user.getEmail()),
-                    escapeCsvField(user.getPhone()),
-                    escapeCsvField(user.getNickname()),
-                    escapeCsvField(user.getBirthday()),
-                    escapeCsvField(user.getGender()),
-                    escapeCsvField(user.getUserRole()),
-                    escapeCsvField(user.getBankName()),
-                    escapeCsvField(user.getBankNumber()),
-                    escapeCsvField(user.getBankHolder()),
-                    escapeCsvField(user.getRecommenderName()),
-                    escapeCsvField(user.getRecommenderEmail()),
-                    escapeCsvField(user.getSuggestionJoinDate()),
-                    escapeCsvField(user.getCmBalance() != null ? user.getCmBalance().toString() : "0"),
-                    escapeCsvField(user.getRegistrationDate())
+                    escapeCsvField(name),
+                    escapeCsvField(email),
+                    escapeCsvField(phone),
+                    escapeCsvField(nickname),
+                    escapeCsvField(birthday),
+                    escapeCsvField(gender),
+                    escapeCsvField(userRole),
+                    escapeCsvField(bankName),
+                    escapeCsvField(bankNumber),
+                    escapeCsvField(bankHolder),
+                    escapeCsvField(recommenderName),
+                    escapeCsvField(recommenderEmail),
+                    escapeCsvField(suggestionJoinDate),
+                    escapeCsvField(cmBalance),
+                    escapeCsvField(registrationDate)
                 };
                 
                 writer.write(String.join(",", rowData));
