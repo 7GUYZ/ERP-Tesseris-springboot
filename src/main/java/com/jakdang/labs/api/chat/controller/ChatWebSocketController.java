@@ -427,10 +427,36 @@ public class ChatWebSocketController {
          String userId = (String) enterMessage.get("user_id");
          log.info("채팅방 명시적 입장: roomId={}, user={}", roomId, userId);
          
-         // 입장 알림 메시지 브로드캐스트
+         // 사용자 이름 조회
+         String userName = "알 수 없음";
+         try {
+             ResponseDTO<?> adminResponse = chatService.Adminlist();
+             if (adminResponse.getData() != null) {
+                 @SuppressWarnings("unchecked")
+                 List<AdminListDTO> adminList = (List<AdminListDTO>) adminResponse.getData();
+                 log.info("관리자 목록 조회: {}명", adminList.size());
+                 
+                 for (AdminListDTO admin : adminList) {
+                     log.debug("관리자 정보: userId={}, name={}", admin.getUserId(), admin.getName());
+                     if (userId.equals(admin.getUserId())) {
+                         userName = admin.getName();
+                         log.info("사용자 이름 찾음: {} -> {}", userId, userName);
+                         break;
+                     }
+                 }
+                 
+                 if ("알 수 없음".equals(userName)) {
+                     log.warn("사용자 이름을 찾을 수 없음: userId={}", userId);
+                 }
+             }
+         } catch (Exception e) {
+             log.error("사용자 이름 조회 실패: {}", e.getMessage());
+         }
+         
+         // 입장 알림 메시지 브로드캐스트 (사용자 이름 사용)
          Map<String, Object> systemMessage = Map.of(
                  "type", "system",
-                 "message", userId + "님이 입장했습니다.",
+                 "message", userName + "님이 입장했습니다.",
                  "timestamp", System.currentTimeMillis(),
                  "roomId", roomId,
                  "userId", userId,
@@ -451,10 +477,36 @@ public class ChatWebSocketController {
 
         log.info("채팅방 퇴장: roomId={}, user={}, type={}", roomId, userId, messageType);
 
-        // 퇴장 메시지 브로드캐스트
+        // 사용자 이름 조회
+        String userName = "알 수 없음";
+        try {
+            ResponseDTO<?> adminResponse = chatService.Adminlist();
+            if (adminResponse.getData() != null) {
+                @SuppressWarnings("unchecked")
+                List<AdminListDTO> adminList = (List<AdminListDTO>) adminResponse.getData();
+                log.info("관리자 목록 조회: {}명", adminList.size());
+                
+                for (AdminListDTO admin : adminList) {
+                    log.debug("관리자 정보: userId={}, name={}", admin.getUserId(), admin.getName());
+                    if (userId.equals(admin.getUserId())) {
+                        userName = admin.getName();
+                        log.info("사용자 이름 찾음: {} -> {}", userId, userName);
+                        break;
+                    }
+                }
+                
+                if ("알 수 없음".equals(userName)) {
+                    log.warn("사용자 이름을 찾을 수 없음: userId={}", userId);
+                }
+            }
+        } catch (Exception e) {
+            log.error("사용자 이름 조회 실패: {}", e.getMessage());
+        }
+
+        // 퇴장 메시지 브로드캐스트 (사용자 이름 사용)
         Map<String, Object> systemMessage = Map.of(
                 "type", "system",
-                "message", userId + "님이 퇴장했습니다.",
+                "message", userName + "님이 퇴장했습니다.",
                 "timestamp", System.currentTimeMillis(),
                 "roomId", roomId,
                 "userId", userId,
