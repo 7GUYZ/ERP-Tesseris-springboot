@@ -738,7 +738,7 @@ public class ChatWebSocketController {
                 // 3. 삭제 성공 시 모든 구독자에게 삭제 이벤트 브로드캐스트
                 Map<String, Object> deleteEvent = Map.of(
                         "type", "DELETE_MESSAGE",
-                        "messageIndex", messageIndex,
+                        "messageindex", messageIndex,
                         "roomId", roomIdFromData,
                         "timestamp", System.currentTimeMillis(),
                         "success", true);
@@ -749,7 +749,7 @@ public class ChatWebSocketController {
                 // 4. 삭제 실패 시 에러 응답
                 Map<String, Object> errorEvent = Map.of(
                         "type", "DELETE_MESSAGE_ERROR",
-                        "messageIndex", messageIndex,
+                        "messageindex", messageIndex,
                         "error", deleteResult.getResultMessage(),
                         "timestamp", System.currentTimeMillis(),
                         "success", false);
