@@ -26,6 +26,8 @@ import com.jakdang.labs.api.jihun.charge.repository.AjgUserCmLogPayment;
 import com.jakdang.labs.api.jihun.charge.repository.AjgUserCmLogTransactionType;
 import com.jakdang.labs.api.jihun.charge.repository.AjgUserCmLogValueType;
 import com.jakdang.labs.api.jihun.charge.repository.AjgUserTesseris;
+import com.jakdang.labs.api.jihun.charge.repository.AjgTemporaryRegularMaster;
+import com.jakdang.labs.api.jihun.charge.repository.AjgTemporaryRegularDetail;
 import com.jakdang.labs.entity.RegularPayment;
 import com.jakdang.labs.entity.SuggestionUser;
 import com.jakdang.labs.entity.UserCm;
@@ -34,6 +36,8 @@ import com.jakdang.labs.entity.UserCmLogPayment;
 import com.jakdang.labs.entity.UserCmLogTransactionType;
 import com.jakdang.labs.entity.UserCmLogValueType;
 import com.jakdang.labs.entity.UserTesseris;
+import com.jakdang.labs.entity.TemporaryRegularMaster;
+import com.jakdang.labs.entity.TemporaryRegularDetail;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -52,6 +56,8 @@ public class ChageService {
     private final AjgUserCmLogPayment ajgUserCmLogPayment;
     private final AjgUserCmLogTransactionType ajgUserCmLogTransactionType;
     private final AjgUserCmLogValueType ajgUserCmLogValueType;
+    private final AjgTemporaryRegularMaster ajgTemporaryRegularMaster;
+    private final AjgTemporaryRegularDetail ajgTemporaryRegularDetail;
 
     /**
      * 결제 확인
@@ -220,7 +226,17 @@ public class ChageService {
                 UserTesseris referralUserTesseris = ajgUserTesseris.findById(referralUserIndex).orElse(null);
                 log.info("추천인 UserTesseris 조회 결과: {}", referralUserTesseris != null ? "성공" : "실패");
                 if (referralUserTesseris != null) {
-                    // 5. 추천인 UserCm 업데이트 (amount만큼 +)
+                    // 5. 추천인 혜택 계산
+                    double benefitRate = calculateBenefitRate(referralUserTesseris.getUserRoleIndex());
+                    double originalCashValue = amount * benefitRate;
+                    double taxRate = 0.033;
+                    double taxAmount = originalCashValue * taxRate;
+                    double finalCashValue = originalCashValue - taxAmount;
+                    
+                    log.info("추천인 혜택 계산: 등급={}, 원금={}, 세금={}, 최종지급액={}", 
+                            referralUserTesseris.getUserRoleIndex(), originalCashValue, taxAmount, finalCashValue);
+
+                    // 6. 추천인 UserCm 업데이트 (계산된 금액만큼 +)
                     UserCm referralUserCm = ajgUserCm.findById(referralUserIndex)
                             .orElseThrow(() -> new RuntimeException("추천인 UserCm 정보를 찾을 수 없습니다: " + referralUserIndex));
 
@@ -228,15 +244,15 @@ public class ChageService {
                     Integer referralCurrentDeposit = referralUserCm.getUserCmDeposit() != null
                             ? referralUserCm.getUserCmDeposit()
                             : 0;
-                    Integer referralNewDeposit = referralCurrentDeposit + amount;
+                    Integer referralNewDeposit = referralCurrentDeposit + (int) finalCashValue;
                     referralUserCm.setUserCmDeposit(referralNewDeposit);
                     // 나머지 필드들은 기존 값 그대로 유지 (userCmWithdrawal, userCmIndex 등)
 
                     UserCm savedReferralUserCm = ajgUserCm.save(referralUserCm);
-                    log.info("추천인 UserCm 업데이트 완료: userIndex={}, 기존={}, 새={}",
-                            referralUserIndex, referralCurrentDeposit, referralNewDeposit);
+                    log.info("추천인 UserCm 업데이트 완료: userIndex={}, 기존={}, 새={}, 지급액={}",
+                            referralUserIndex, referralCurrentDeposit, referralNewDeposit, (int) finalCashValue);
 
-                    // 6. 추천인 UserCmLog 생성 (발생자=충전한사람, 받는사람=추천인)
+                    // 7. 추천인 UserCmLog 생성 (발생자=충전한사람, 받는사람=추천인)
                     UserCmLog referralUserCmLog = new UserCmLog();
                     referralUserCmLog.setUserCmLogPaymentIndex(paymentType.getUserCmLogPaymentIndex());
                     referralUserCmLog.setUserCmpLogPaymentIndex(null);
@@ -245,7 +261,7 @@ public class ChageService {
                     referralUserCmLog.setUserCmLogValueTypeIndex(valueType.getUserCmLogValueTypeIndex());
                     referralUserCmLog.setUserIndexEventTrigger(userTesseris); // 발생자 = 충전한사람
                     referralUserCmLog.setUserIndexEventParty(referralUserTesseris); // 받는사람 = 추천인
-                    referralUserCmLog.setUserCmLogValue(amount);
+                    referralUserCmLog.setUserCmLogValue((int) finalCashValue); // 계산된 금액
                     referralUserCmLog.setUserCmLogReason("추천인 CM충전");
                     referralUserCmLog.setUserCmLogCreateTime(approvedTime);
                     referralUserCmLog.setUserCmLogTransactionCancel(null);
@@ -253,6 +269,10 @@ public class ChageService {
 
                     UserCmLog savedReferralUserCmLog = ajgUserCmLog.save(referralUserCmLog);
                     log.info("추천인 UserCmLog 생성 완료: {}", savedReferralUserCmLog.getUserCmLogIndex());
+
+                    // 8. 추천인 혜택 계산 및 임시 테이블 저장
+                    calculateAndSaveReferralBenefit(userTesseris, referralUserTesseris, amount, approvedTime, 
+                            originalCashValue, taxAmount, finalCashValue,paymentKey);
                 } else {
                     log.warn("추천인 UserTesseris 정보가 없음: {}", referralUserIndex);
                 }
@@ -268,4 +288,107 @@ public class ChageService {
         }
     }
 
+    /**
+     * 추천인 혜택 계산 및 임시 테이블 저장
+     */
+    private void calculateAndSaveReferralBenefit(UserTesseris userTesseris, UserTesseris referralUserTesseris, 
+                                                Integer amount, LocalDateTime approvedTime,
+                                                double originalCashValue, double taxAmount, double finalCashValue,String paymentKey) {
+        try {
+            log.info("추천인 혜택 임시 테이블 저장 시작: 충전자={}, 추천인={}, 충전금액={}", 
+                    userTesseris.getUserIndex(), referralUserTesseris.getUserIndex(), amount);
+
+            // 추천인의 user_role_index 조회
+            Integer referralUserRoleIndex = referralUserTesseris.getUserRoleIndex();
+            log.info("추천인 등급: {}", referralUserRoleIndex);
+
+            // 등급별 설명 설정
+            String description = "";
+            switch (referralUserRoleIndex) {
+                case 1: // 일반
+                case 7: // 정회원
+                case 8: // 모범회원
+                case 9: // VIP회원
+                case 10: // 프리미엄회원
+                    description = "CM충전";
+                    break;
+                case 3: // 가맹점
+                    description = "가맹점_결제_추천인혜택";
+                    break;
+                case 4: // 관리자
+                    description = "관리자_결제_추천인혜택";
+                    break;
+                default:
+                    log.warn("알 수 없는 추천인 등급: {}", referralUserRoleIndex);
+                    return;
+            }
+
+            log.info("추천인 혜택 계산: 원금={}, 세금={}, 최종지급액={}", 
+                    originalCashValue, taxAmount, finalCashValue);
+
+            // 1. Temporary_Regular_Master 저장
+            TemporaryRegularMaster master = new TemporaryRegularMaster();
+            master.setStoreUserIndex(userTesseris); // 충전한 사람
+            master.setTemporaryStoreMasterTransactionName(paymentKey);
+            master.setTemporaryStoreMasterChargeTime(approvedTime);
+            master.setTemporaryStoreMasterDistributionTime(null);
+            master.setTemporaryStoreMasterDistributionStatus("n");
+            master.setTemporaryStoreCmValue((int) amount);
+            master.setTemporaryStoreCashValue((int) amount);
+            master.setTemporaryStoreFeeValue((int) taxAmount);
+
+            TemporaryRegularMaster savedMaster = ajgTemporaryRegularMaster.save(master);
+            log.info("Temporary_Regular_Master 저장 완료: {}", savedMaster.getTemporaryStoreMasterIndex());
+
+            // 2. Temporary_Regular_Detail 저장
+            TemporaryRegularDetail detail = new TemporaryRegularDetail();
+            detail.setUserIndex(referralUserTesseris); // 추천인
+            detail.setOriginalCashValue((int) originalCashValue);
+            detail.setTax("0.033"); // 세금 비율 고정
+            detail.setAccount(null);
+            detail.setTemporaryRegularCashValue(finalCashValue);
+            detail.setPaymentStatus("지급");
+            detail.setDescription(description);
+            detail.setTemporaryRegularMasterIndex(savedMaster.getTemporaryStoreMasterIndex());
+
+            TemporaryRegularDetail savedDetail = ajgTemporaryRegularDetail.save(detail);
+            log.info("Temporary_Regular_Detail 저장 완료: {}", savedDetail.getTemporaryStoreDetailIndex());
+
+            log.info("추천인 혜택 임시 테이블 저장 완료: 추천인={}, 지급액={}", 
+                    referralUserTesseris.getUserIndex(), finalCashValue);
+
+        } catch (Exception e) {
+            log.error("추천인 혜택 임시 테이블 저장 중 오류 발생: {}", e.getMessage(), e);
+            throw new RuntimeException("추천인 혜택 임시 테이블 저장 실패", e);
+        }
+    }
+
+    /**
+     * 추천인 혜택 비율 계산
+     * 
+     * @param roleIndex 추천인 등급
+     * @return 혜택 비율
+     */
+    private double calculateBenefitRate(Integer roleIndex) {
+        switch (roleIndex) {
+            case 1: // 일반
+                return 0.20;
+            case 7: // 정회원
+            case 8: // 모범회원
+            case 9: // VIP회원
+            case 10: // 프리미엄회원
+                return 0.20; // 20% 지급
+            case 3: // 가맹점
+                return 0.20; // 20% 지급
+            case 4: // 관리자
+                return 1.0; // 100% 지급
+            case 2: // 사업자
+            case 5: // 특판부
+            case 6: // 가맹점 서브
+                return 0.0; // 혜택 없음
+            default:
+                log.warn("알 수 없는 추천인 등급: {}", roleIndex);
+                return 0.0; // 기본값
+        }
+    }
 }

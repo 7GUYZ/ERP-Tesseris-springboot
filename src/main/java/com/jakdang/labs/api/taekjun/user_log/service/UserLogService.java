@@ -101,13 +101,20 @@ public class UserLogService {
     }
 
     /**
-     * 모든 CM 로그 조회 (디버깅용)
+     * 사용자별 CM 로그 조회 (페이징)
      */
-    public Map<String, Object> getAllLogs(int page, int size) {
-        log.info("모든 CM 로그 조회 - page: {}, size: {}", page, size);
+    public Map<String, Object> getAllLogs(Integer userIndex, int page, int size, Integer year, Integer month) {
+        log.info("전체 CM 로그 조회 - userIndex: {}, page: {}, size: {}, year: {}, month: {}", 
+                userIndex, page, size, year, month);
         
         PageRequest pageRequest = PageRequest.of(page, size);
-        Page<UserCmLog> userCmLogPage = userLogRepository.findAllLogs(pageRequest);
+        Page<UserCmLog> userCmLogPage;
+        
+        if (year != null && month != null) {
+            userCmLogPage = userLogRepository.findByUserIndexAndMonth(userIndex, year, month, pageRequest);
+        } else {
+            userCmLogPage = userLogRepository.findByUserIndex(userIndex, pageRequest);
+        }
         
         List<UserLogResponseDTO> userLogDtos = userCmLogPage.getContent().stream()
                 .map(this::convertToDto)
@@ -122,7 +129,7 @@ public class UserLogService {
         response.put("hasNext", userCmLogPage.hasNext());
         response.put("hasPrevious", userCmLogPage.hasPrevious());
         
-        log.info("모든 CM 로그 조회 완료 - 총 {}개", userCmLogPage.getTotalElements());
+        log.info("전체 CM 로그 조회 완료 - 총 {}개", userCmLogPage.getTotalElements());
         return response;
     }
 
@@ -184,11 +191,18 @@ public class UserLogService {
     /**
      * 내가 쓴 금액 조회
      */
-    public Map<String, Object> getSpentLogs(Integer userIndex, int page, int size) {
-        log.info("내가 쓴 금액 조회 - userIndex: {}, page: {}, size: {}", userIndex, page, size);
+    public Map<String, Object> getSpentLogs(Integer userIndex, int page, int size, Integer year, Integer month) {
+        log.info("내가 쓴 금액 조회 - userIndex: {}, page: {}, size: {}, year: {}, month: {}", 
+                userIndex, page, size, year, month);
         
         PageRequest pageRequest = PageRequest.of(page, size);
-        Page<UserCmLog> userCmLogPage = userLogRepository.findSpentLogs(userIndex, pageRequest);
+        Page<UserCmLog> userCmLogPage;
+        
+        if (year != null && month != null) {
+            userCmLogPage = userLogRepository.findSpentLogsByMonth(userIndex, year, month, pageRequest);
+        } else {
+            userCmLogPage = userLogRepository.findSpentLogs(userIndex, pageRequest);
+        }
         
         List<UserLogResponseDTO> userLogDtos = userCmLogPage.getContent().stream()
                 .map(this::convertToDto)
@@ -210,11 +224,18 @@ public class UserLogService {
     /**
      * 내가 받은 금액 조회
      */
-    public Map<String, Object> getReceivedLogs(Integer userIndex, int page, int size) {
-        log.info("내가 받은 금액 조회 - userIndex: {}, page: {}, size: {}", userIndex, page, size);
+    public Map<String, Object> getReceivedLogs(Integer userIndex, int page, int size, Integer year, Integer month) {
+        log.info("내가 받은 금액 조회 - userIndex: {}, page: {}, size: {}, year: {}, month: {}", 
+                userIndex, page, size, year, month);
         
         PageRequest pageRequest = PageRequest.of(page, size);
-        Page<UserCmLog> userCmLogPage = userLogRepository.findReceivedLogs(userIndex, pageRequest);
+        Page<UserCmLog> userCmLogPage;
+        
+        if (year != null && month != null) {
+            userCmLogPage = userLogRepository.findReceivedLogsByMonth(userIndex, year, month, pageRequest);
+        } else {
+            userCmLogPage = userLogRepository.findReceivedLogs(userIndex, pageRequest);
+        }
         
         List<UserLogResponseDTO> userLogDtos = userCmLogPage.getContent().stream()
                 .map(this::convertToDto)
@@ -230,58 +251,6 @@ public class UserLogService {
         response.put("hasPrevious", userCmLogPage.hasPrevious());
         
         log.info("내가 받은 금액 조회 완료 - 총 {}개", userCmLogPage.getTotalElements());
-        return response;
-    }
-
-    /**
-     * 돈이 들어오는 거래 조회 (수입)
-     */
-    public Map<String, Object> getIncomeLogs(Integer userIndex, int page, int size) {
-        log.info("수입 거래 조회 - userIndex: {}, page: {}, size: {}", userIndex, page, size);
-        
-        PageRequest pageRequest = PageRequest.of(page, size);
-        Page<UserCmLog> userCmLogPage = userLogRepository.findIncomeLogs(userIndex, pageRequest);
-        
-        List<UserLogResponseDTO> userLogDtos = userCmLogPage.getContent().stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("content", userLogDtos);
-        response.put("totalElements", userCmLogPage.getTotalElements());
-        response.put("totalPages", userCmLogPage.getTotalPages());
-        response.put("currentPage", userCmLogPage.getNumber());
-        response.put("size", userCmLogPage.getSize());
-        response.put("hasNext", userCmLogPage.hasNext());
-        response.put("hasPrevious", userCmLogPage.hasPrevious());
-        
-        log.info("수입 거래 조회 완료 - 총 {}개", userCmLogPage.getTotalElements());
-        return response;
-    }
-
-    /**
-     * 돈이 빠져나가는 거래 조회 (지출)
-     */
-    public Map<String, Object> getExpenseLogs(Integer userIndex, int page, int size) {
-        log.info("지출 거래 조회 - userIndex: {}, page: {}, size: {}", userIndex, page, size);
-        
-        PageRequest pageRequest = PageRequest.of(page, size);
-        Page<UserCmLog> userCmLogPage = userLogRepository.findExpenseLogs(userIndex, pageRequest);
-        
-        List<UserLogResponseDTO> userLogDtos = userCmLogPage.getContent().stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("content", userLogDtos);
-        response.put("totalElements", userCmLogPage.getTotalElements());
-        response.put("totalPages", userCmLogPage.getTotalPages());
-        response.put("currentPage", userCmLogPage.getNumber());
-        response.put("size", userCmLogPage.getSize());
-        response.put("hasNext", userCmLogPage.hasNext());
-        response.put("hasPrevious", userCmLogPage.hasPrevious());
-        
-        log.info("지출 거래 조회 완료 - 총 {}개", userCmLogPage.getTotalElements());
         return response;
     }
 

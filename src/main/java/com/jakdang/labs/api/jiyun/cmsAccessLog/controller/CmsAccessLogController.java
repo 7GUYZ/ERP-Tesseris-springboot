@@ -16,7 +16,7 @@ public class CmsAccessLogController {
     
     @GetMapping("/search")
     public ResponseDTO<?> searchCmsAccessLogs(
-        @RequestParam(name = "userId", required = false, defaultValue = "") String userId,
+        @RequestParam(name = "userEmail", required = false, defaultValue = "") String userEmail,
         @RequestParam(name = "userName", required = false, defaultValue = "") String userName,
         @RequestParam(name = "cmsAccessUserIp", required = false, defaultValue = "") String cmsAccessUserIp,
         @RequestParam(name = "adminTypeIndex", required = false, defaultValue = "0") String adminTypeIndex,
@@ -25,7 +25,7 @@ public class CmsAccessLogController {
     ) {
         try {
             List<Object[]> logs = cmsAccessLogService.searchCmsAccessLogs(
-                userId, userName, cmsAccessUserIp, adminTypeIndex, cmsAccessUserTimeStart, cmsAccessUserTimeEnd
+                userEmail, userName, cmsAccessUserIp, adminTypeIndex, cmsAccessUserTimeStart, cmsAccessUserTimeEnd
             );
             return ResponseDTO.<List<Object[]>>createSuccessResponse("조회 성공", logs);
         } catch (Exception e) {

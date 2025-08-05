@@ -114,6 +114,7 @@ public interface StoreLjeRepo extends JpaRepository<Store, Integer> {
                 INNER JOIN user_cm u ON s.user_index = u.user_cm_index
                 LEFT JOIN store_business_hours h ON s.user_index = h.store_user_index
                 LEFT JOIN store_image i ON s.store_index = i.store_user_index
+                    AND (i.store_main_image_status = 'T' OR i.store_main_image_status = 'N')
                 WHERE s.store_index = :store_index
                 GROUP BY s.store_index, s.store_name, s.store_phone, s.store_address, 
                          s.store_detail_address, s.store_site, s.store_memo, c.store_category_name,

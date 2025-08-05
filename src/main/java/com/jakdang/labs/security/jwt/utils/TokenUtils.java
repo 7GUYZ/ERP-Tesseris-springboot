@@ -37,16 +37,67 @@ public class TokenUtils {
      * 쿠키에서 리프레시 토큰 추출
      * 
      * @param cookies 쿠키 배열
+     * @param user_role_index 사용자 역할 인덱스 (4: admin, 그 외: user, null: 모든 토큰 반환)
      * @return 리프레시 토큰 (없으면 null)
      */
-    public String extractRefreshToken(Cookie[] cookies) {
-        return Optional.ofNullable(cookies)
-                .flatMap(cookieArray -> Arrays.stream(cookieArray)
-                        .filter(cookie -> "adminRefresh".equals(cookie.getName()) || 
-                                         "userRefresh".equals(cookie.getName()))
-                        .map(Cookie::getValue)
-                        .findFirst())
-                .orElse(null);
+    public String extractRefreshToken(Cookie[] cookies, Integer user_role_index) {
+        if (cookies == null) {
+            return null;
+        }
+        
+        // user_role_index가 null이면 모든 토큰을 찾아서 반환 (DB에서 확인 필요)
+        if (user_role_index == null) {
+            // adminRefresh와 userRefresh 쿠키를 모두 찾아서 로그 출력
+            String adminRefreshValue = null;
+            String userRefreshValue = null;
+            
+            for (Cookie cookie : cookies) {
+                if ("adminRefresh".equals(cookie.getName())) {
+                    adminRefreshValue = cookie.getValue();
+                    log.info("adminRefresh 쿠키 발견: {}", adminRefreshValue != null ? "값 있음" : "값 없음");
+                } else if ("userRefresh".equals(cookie.getName())) {
+                    userRefreshValue = cookie.getValue();
+                    log.info("userRefresh 쿠키 발견: {}", userRefreshValue != null ? "값 있음" : "값 없음");
+                }
+            }
+            
+            // 두 토큰이 모두 있으면 DB에서 확인이 필요하므로 null 반환
+            if (adminRefreshValue != null && userRefreshValue != null) {
+                log.warn("adminRefresh와 userRefresh가 모두 존재 - DB에서 확인 필요");
+                return null;
+            }
+            
+            // 하나만 있으면 해당 토큰 반환
+            if (adminRefreshValue != null) {
+                log.info("adminRefresh 토큰만 존재 - 반환");
+                return adminRefreshValue;
+            } else if (userRefreshValue != null) {
+                log.info("userRefresh 토큰만 존재 - 반환");
+                return userRefreshValue;
+            }
+            
+            log.warn("리프레시 토큰 쿠키를 찾을 수 없음");
+            return null;
+        }
+        
+        // user_role_index에 따라 올바른 쿠키에서 토큰 추출
+        String targetCookieName = (user_role_index == 4) ? "adminRefresh" : "userRefresh";
+        log.info("토큰 추출 대상 쿠키: {} (user_role_index: {})", targetCookieName, user_role_index);
+        
+        for (Cookie cookie : cookies) {
+            if (targetCookieName.equals(cookie.getName())) {
+                String tokenValue = cookie.getValue();
+                if (tokenValue != null) {
+                    log.info("{} 토큰 추출 성공", targetCookieName);
+                    return tokenValue;
+                } else {
+                    log.warn("{} 쿠키는 있지만 값이 없음", targetCookieName);
+                }
+            }
+        }
+        
+        log.warn("{} 쿠키를 찾을 수 없음", targetCookieName);
+        return null;
     }
 
     /**

@@ -14,7 +14,7 @@ public interface CmsAccessLogkjyRepository extends JpaRepository<CmsAccessLog, I
     
     @Query(value = """
         SELECT
-            t2.users_id as userId,
+            t5.email as userEmail,
             t5.name as userName,
             t1.cms_access_user_value as cmsAccessUserValue,
             t4.admin_type_name as adminTypeName,
@@ -25,7 +25,7 @@ public interface CmsAccessLogkjyRepository extends JpaRepository<CmsAccessLog, I
         INNER JOIN admin t3 ON t2.user_index = t3.user_index
         INNER JOIN admin_type t4 ON t3.admin_type_index = t4.admin_type_index
         INNER JOIN users t5 ON t2.users_id = t5.id
-        WHERE (:userId = '' OR t2.users_id LIKE CONCAT('%', :userId, '%'))
+        WHERE (:userEmail = '' OR t5.email LIKE CONCAT('%', :userEmail, '%'))
           AND (:userName = '' OR t5.name LIKE CONCAT('%', :userName, '%'))
           AND (:cmsAccessUserIp = '' OR t1.cms_access_user_ip LIKE CONCAT('%', :cmsAccessUserIp, '%'))
           AND (:adminTypeIndex = '0' OR t3.admin_type_index = :adminTypeIndex)
@@ -34,7 +34,7 @@ public interface CmsAccessLogkjyRepository extends JpaRepository<CmsAccessLog, I
         ORDER BY t1.cms_access_user_time DESC
         """, nativeQuery = true)
     List<Object[]> searchCmsAccessLogs(
-        @Param("userId") String userId,
+        @Param("userEmail") String userEmail,
         @Param("userName") String userName,
         @Param("cmsAccessUserIp") String cmsAccessUserIp,
         @Param("adminTypeIndex") String adminTypeIndex,
