@@ -775,7 +775,8 @@ public class ChatWebSocketController {
             @RequestParam("room_index") String roomIndex,
             @RequestParam("user_id") String userId,
             @RequestParam("message") String message,
-            @RequestParam("files") MultipartFile[] files) {
+            @RequestParam("files") MultipartFile[] files,
+            @RequestParam(value = "tempMessageIndex", required = false) String tempMessageIndex) {
 
         try {
             List<Map<String, Object>> uploadedFiles = new ArrayList<>();
@@ -822,6 +823,19 @@ public class ChatWebSocketController {
                 messageData.put("room_index", roomIndex);
                 messageData.put("timestamp", System.currentTimeMillis());
                 messageData.put("files", uploadedFiles);
+                
+                // 응답에서 messageindex 추출하여 추가
+                if (response.getData() instanceof Map) {
+                    Map<String, Object> responseData = (Map<String, Object>) response.getData();
+                    messageData.put("messageindex", responseData.get("messageindex"));
+                    log.info("📝 파일 업로드 응답에서 messageindex 추출: {}", responseData.get("messageindex"));
+                    
+                    // 임시 messageindex가 있으면 응답에 포함
+                    if (tempMessageIndex != null) {
+                        messageData.put("tempMessageIndex", tempMessageIndex);
+                        log.info("📝 파일 업로드 응답에 tempMessageIndex 포함: {}", tempMessageIndex);
+                    }
+                }
 
                 // 발신자 이름 정보 추가
                 try {
@@ -861,7 +875,15 @@ public class ChatWebSocketController {
 
             // 응답 데이터
             Map<String, Object> responseData = new HashMap<>();
-            responseData.put("messageIndex", System.currentTimeMillis());
+            
+            // 응답에서 messageindex 추출하여 반환
+            if (response != null && response.getData() != null && response.getData() instanceof Map) {
+                Map<String, Object> chatResponseData = (Map<String, Object>) response.getData();
+                responseData.put("messageIndex", chatResponseData.get("messageindex"));
+                log.info("📝 파일 업로드 응답에 messageindex 포함: {}", chatResponseData.get("messageindex"));
+            } else {
+                responseData.put("messageIndex", System.currentTimeMillis());
+            }
             responseData.put("files", uploadedFiles);
 
             return ResponseEntity.ok(responseData);
