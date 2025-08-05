@@ -344,12 +344,12 @@ public class ChatWebSocketController {
      */
     @MessageMapping("/adminchat.joinRoom/{roomId}")
     @SendTo("/queue/{roomId}")
-    public Map<String, Object> joinRoom(@Payload Map<String, Object> joinMessage) {
+    public Map<String, Object> joinRoom(@PathVariable String roomId, @Payload Map<String, Object> joinMessage) {
 
-        String roomId = (String) joinMessage.get("roomId");
         String userId = (String) joinMessage.get("user_id");
+        String messageType = (String) joinMessage.get("type");
 
-        log.info("채팅방 입장: roomId={}, user={}", roomId, userId);
+        log.info("채팅방 입장: roomId={}, user={}, type={}", roomId, userId, messageType);
 
         // 입장 메시지 브로드캐스트
         Map<String, Object> systemMessage = Map.of(
@@ -357,7 +357,16 @@ public class ChatWebSocketController {
                 "message", userId + "님이 입장했습니다.",
                 "timestamp", System.currentTimeMillis(),
                 "roomId", roomId,
-                "userId", userId);
+                "userId", userId,
+                "action", "join");
+
+        // 서버 측에서 사용자 상태 업데이트 (필요시)
+        try {
+            // 사용자가 방에 참여했음을 서버에 기록
+            log.info("사용자 {}가 방 {}에 입장했습니다.", userId, roomId);
+        } catch (Exception e) {
+            log.error("사용자 입장 상태 업데이트 실패: {}", e.getMessage());
+        }
 
         return systemMessage;
     }
@@ -367,12 +376,12 @@ public class ChatWebSocketController {
      */
     @MessageMapping("/adminchat.leaveRoom/{roomId}")
     @SendTo("/queue/{roomId}")
-    public Map<String, Object> leaveRoom(@Payload Map<String, Object> leaveMessage) {
+    public Map<String, Object> leaveRoom(@PathVariable String roomId, @Payload Map<String, Object> leaveMessage) {
 
-        String roomId = (String) leaveMessage.get("roomId");
         String userId = (String) leaveMessage.get("user_id");
+        String messageType = (String) leaveMessage.get("type");
 
-        log.info("채팅방 퇴장: roomId={}, user={}", roomId, userId);
+        log.info("채팅방 퇴장: roomId={}, user={}, type={}", roomId, userId, messageType);
 
         // 퇴장 메시지 브로드캐스트
         Map<String, Object> systemMessage = Map.of(
@@ -380,7 +389,16 @@ public class ChatWebSocketController {
                 "message", userId + "님이 퇴장했습니다.",
                 "timestamp", System.currentTimeMillis(),
                 "roomId", roomId,
-                "userId", userId);
+                "userId", userId,
+                "action", "leave");
+
+        // 서버 측에서 사용자 상태 업데이트 (필요시)
+        try {
+            // 사용자가 방에서 나갔음을 서버에 기록
+            log.info("사용자 {}가 방 {}에서 퇴장했습니다.", userId, roomId);
+        } catch (Exception e) {
+            log.error("사용자 퇴장 상태 업데이트 실패: {}", e.getMessage());
+        }
 
         return systemMessage;
     }
