@@ -17,7 +17,7 @@ public class CmsAccessLogService {
     private final AdminTypekjyRepository adminTypeRepository;
     
     public List<Object[]> searchCmsAccessLogs(
-        String userId,
+        String userEmail,
         String userName,
         String cmsAccessUserIp,
         String adminTypeIndex,
@@ -25,7 +25,7 @@ public class CmsAccessLogService {
         String cmsAccessUserTimeEnd
     ) {
         List<Object[]> result = cmsAccessLogRepository.searchCmsAccessLogs(
-            userId != null ? userId : "",
+            userEmail != null ? userEmail : "",
             userName != null ? userName : "",
             cmsAccessUserIp != null ? cmsAccessUserIp : "",
             adminTypeIndex != null ? adminTypeIndex : "0",
