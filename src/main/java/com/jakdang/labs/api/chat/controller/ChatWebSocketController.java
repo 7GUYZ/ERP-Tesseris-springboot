@@ -49,27 +49,34 @@ public class ChatWebSocketController {
     /**
      * 채팅 메시지 전송 처리 (단체 채팅방)
      * 클라이언트에서 /app/adminchat.sendMessage/{roomId}로 전송
-     * 해당 방의 모든 구독자에게 /queue/{roomId}로 브로드캐스트
+     * 새 방 생성 시: 방 생성 + 구독 설정 + 메시지 브로드캐스트
+     * 기존 방: 메시지 브로드캐스트
      */
     @MessageMapping("/adminchat.sendMessage/{roomId}")
-    @SendTo("/queue/{roomId}")
-    public Map<String, Object> sendMessage(@PathVariable String roomId, @Payload Map<String, Object> messageData) {
-        // 2. MessageRequestDTO 생성
-        MessageRequestDTO messageRequestDTO = new MessageRequestDTO();
+    public void sendMessage(@PathVariable String roomId, @Payload Map<String, Object> messageData) {
         log.info("=== 채팅 메시지 수신 시작 ===");
         log.info("채팅 메시지 수신: {}", messageData);
-        log.info("roomId: {}", roomId);
-        log.info("메시지 데이터 크기: {} bytes", messageData.toString().length());
-        log.info("메시지 데이터 키들: {}", messageData.keySet());
+        log.info("원본 roomId: {}", roomId);
 
         try {
             // 1. 프론트에서 전송한 데이터 추출
             String userId = (String) messageData.get("user_id");
             String message = (String) messageData.get("message");
             
-            // admin으로 전송된 경우 새 방 생성으로 처리
-            boolean isNewRoomCreation = "admin".equals(roomId);
-            log.info("새 방 생성 여부: {}", isNewRoomCreation);
+            // 2. room_index 추출 및 새 방 생성 여부 판단
+            Object roomIndexObj = messageData.get("room_index");
+            String roomIndex = null;
+            boolean isNewRoomCreation = false;
+            
+            if (roomIndexObj == null || "null".equals(String.valueOf(roomIndexObj))) {
+                // room_index가 null이면 새 방 생성
+                isNewRoomCreation = true;
+                log.info("새 방 생성 감지: room_index가 null");
+            } else {
+                // room_index가 있으면 기존 방 사용
+                roomIndex = String.valueOf(roomIndexObj);
+                log.info("기존 방 사용: room_index={}", roomIndex);
+            }
 
             // 파일 업로드는 HTTP 방식으로 처리하므로 WebSocket에서는 파일 정보만 전달받음
             Object filesObj = messageData.get("files");
@@ -78,12 +85,12 @@ public class ChatWebSocketController {
             if (filesObj != null && filesObj instanceof List) {
                 @SuppressWarnings("unchecked")
                 List<Object> filesList = (List<Object>) filesObj;
-                
+
                 for (Object fileObj : filesList) {
                     if (fileObj instanceof Map) {
                         @SuppressWarnings("unchecked")
                         Map<String, Object> fileData = (Map<String, Object>) fileObj;
-                        
+
                         // HTTP 업로드에서 이미 S3 URL이 전달됨
                         String fileUrl = (String) fileData.get("url");
                         if (fileUrl != null) {
@@ -93,14 +100,15 @@ public class ChatWebSocketController {
                 }
             }
 
-            // room_index는 Integer일 수 있으므로 안전하게 처리
-            Object roomIndexObj = messageData.get("room_index");
-            String roomIndex;
-            if (roomIndexObj instanceof Integer) {
-                roomIndex = String.valueOf(roomIndexObj);
-            } else {
-                roomIndex = (String) roomIndexObj;
-            }
+            // 3. MessageRequestDTO 생성 및 설정
+            MessageRequestDTO messageRequestDTO = new MessageRequestDTO();
+            messageRequestDTO.setUser_id(userId);
+            messageRequestDTO.setMessage(message);
+            messageRequestDTO.setRoom_index(roomIndex); // null이면 새 방 생성, 있으면 기존 방 사용
+            messageRequestDTO.setRoom_name((String) messageData.get("room_name"));
+            messageRequestDTO.setParticipants(new ArrayList<>());
+            messageRequestDTO.setTimestamp(null);
+            messageRequestDTO.setUploadFiles(new ArrayList<>());
 
             String roomName = (String) messageData.get("room_name");
             Object participantsObj = messageData.get("participants");
@@ -126,7 +134,15 @@ public class ChatWebSocketController {
 
             messageRequestDTO.setUser_id(userId);
             messageRequestDTO.setMessage(message);
-            messageRequestDTO.setRoom_index(roomIndex);
+            
+            // 새 방 생성인 경우 room_index를 null로 설정하여 서비스에서 자동 생성하도록 함
+            if (isNewRoomCreation) {
+                messageRequestDTO.setRoom_index(null);
+                log.info("새 방 생성으로 room_index를 null로 설정");
+            } else {
+                messageRequestDTO.setRoom_index(roomIndex);
+            }
+            
             messageRequestDTO.setRoom_name(roomName);
             messageRequestDTO.setParticipants(participants != null ? participants : new ArrayList<>());
             messageRequestDTO.setTimestamp(null);
@@ -174,68 +190,10 @@ public class ChatWebSocketController {
                     }
                 }
 
-                // 4-1. 새 채팅방 생성 시 WebSocket으로 모든 참가자에게 알림
-                try {
-                    // 새 방 생성 여부 확인 (admin으로 전송되었거나 응답 메시지로 판단)
-                    if (isNewRoomCreation || (response.getResultMessage() != null && response.getResultMessage().contains("방 생성"))) {
-                        log.info("새 채팅방 생성 감지 - WebSocket 알림 전송 시작 (isNewRoomCreation: {}, resultMessage: {})", 
-                                isNewRoomCreation, response.getResultMessage());
-
-                        Map<String, Object> newRoomMessage = new HashMap<>();
-                        newRoomMessage.put("type", "new_room_created");
-                        newRoomMessage.put("room_index", messageData.get("room_index"));
-                        newRoomMessage.put("room_name", roomName);
-                        newRoomMessage.put("participants", participants);
-                        newRoomMessage.put("timestamp", System.currentTimeMillis());
-                        
-                        // 마지막 메시지 정보 추가
-                        newRoomMessage.put("message_type", "chat");
-                        newRoomMessage.put("message", message);
-                        newRoomMessage.put("user_id", userId);
-                        newRoomMessage.put("sender", userId);
-                        
-                        // 발신자 이름 정보 추가
-                        try {
-                            ResponseDTO<?> adminListResponse = chatService.Adminlist();
-                            if (adminListResponse != null && adminListResponse.getData() != null) {
-                                @SuppressWarnings("unchecked")
-                                List<AdminListDTO> adminList = (List<AdminListDTO>) adminListResponse.getData();
-                                
-                                boolean found = false;
-                                for (AdminListDTO admin : adminList) {
-                                    String adminUserId = admin.getUserId();
-                                    String adminName = admin.getName();
-                                    
-                                    if (userId.equals(adminUserId)) {
-                                        newRoomMessage.put("sender_name", adminName);
-                                        found = true;
-                                        break;
-                                    }
-                                }
-                                
-                                if (!found) {
-                                    newRoomMessage.put("sender_name", "Unknown");
-                                }
-                            } else {
-                                newRoomMessage.put("sender_name", "Unknown");
-                            }
-                        } catch (Exception e) {
-                            log.error("발신자 이름 조회 실패: {}", e.getMessage());
-                            newRoomMessage.put("sender_name", "Unknown");
-                        }
-
-                        // 새 방 생성 시에는 admin 구독자들에게만 알림 (프론트에서 새 방 구독 설정)
-                        log.info("📡 admin 구독자들에게 새 방 생성 알림: /queue/admin");
-                        messagingTemplate.convertAndSend("/queue/admin", newRoomMessage);
-
-                        log.info("새 채팅방 생성 WebSocket 알림 전송 완료: {}", newRoomMessage);
-                        
-                        // 새 방 생성 시에는 /queue/admin으로 응답 (기존 @SendTo 무시)
-                        return newRoomMessage;
-                    }
-                } catch (Exception e) {
-                    log.error("새 채팅방 생성 WebSocket 알림 전송 실패: {}", e.getMessage());
-                }
+                                 // 4-1. 새 채팅방 생성 시 해당 room_index로 직접 응답
+                 if (isNewRoomCreation) {
+                     log.info("📡 새 방 생성 완료 - room_index: {}로 브로드캐스트", messageData.get("room_index"));
+                 }
             }
 
             // 5. 메시지에 타임스탬프 추가
@@ -247,149 +205,246 @@ public class ChatWebSocketController {
 
             // 7. 채팅방 목록 업데이트를 위한 정보 추가
             messageData.put("message_type", "chat");
-            messageData.put("room_id", roomId);
-            messageData.put("room_index", roomIndex);
             
-            // 새 방 생성이 아닌 경우에만 기존 로직 실행
-            if (!isNewRoomCreation) {
-            
-            // 8. 파일 정보 추가 (DB에서 조회한 파일 정보)
-            if (!uploadFiles.isEmpty()) {
-                try {
-                    // 채팅 서비스에서 파일 정보 조회
-                    List<Map<String, Object>> fileInfoList = new ArrayList<>();
-                    for (String fileUrl : uploadFiles) {
-                        Map<String, Object> fileInfo = new HashMap<>();
-                        fileInfo.put("url", fileUrl);
-                        fileInfo.put("name", extractFileNameFromUrl(fileUrl));
-                        fileInfo.put("type", extractFileTypeFromUrl(fileUrl));
-                        fileInfo.put("size", 0); // S3에서 직접 조회하지 않으므로 0으로 설정
-                        fileInfoList.add(fileInfo);
-                    }
-                    messageData.put("files", fileInfoList);
-                    log.info("📁 파일 정보 추가: {}", fileInfoList);
-                } catch (Exception e) {
-                    log.error("파일 정보 추가 실패: {}", e.getMessage());
-                }
-            } else {
-                // 파일이 없는 경우 빈 배열로 설정
-                messageData.put("files", new ArrayList<>());
-                log.info("📁 파일 없음 - 빈 배열 설정");
-            }
-
-            // 7. 발신자 이름 정보 추가 (관리자 목록에서 조회)
-            try {
-                log.info("발신자 이름 조회 시작: userId={}", userId);
-                ResponseDTO<?> adminListResponse = chatService.Adminlist();
-                if (adminListResponse != null && adminListResponse.getData() != null) {
-                    @SuppressWarnings("unchecked")
-                    List<AdminListDTO> adminList = (List<AdminListDTO>) adminListResponse.getData();
-                    log.info("관리자 목록 조회 성공: {}명", adminList.size());
-
-                    boolean found = false;
-                    for (AdminListDTO admin : adminList) {
-                        String adminUserId = admin.getUserId();
-                        String adminName = admin.getName();
-                        log.debug("관리자 정보: userId={}, name={}", adminUserId, adminName);
-
-                        if (userId.equals(adminUserId)) {
-                            messageData.put("sender_name", adminName);
-                            log.info("발신자 이름 찾음: {} -> {}", userId, adminName);
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    if (!found) {
-                        log.warn("발신자 이름을 찾을 수 없음: userId={}", userId);
-                        messageData.put("sender_name", "Unknown");
-                    }
+            // 새 방 생성 시에는 응답에서 받은 room_index 사용, 기존 방은 원래 roomIndex 사용
+            if (isNewRoomCreation && response != null && response.getData() != null) {
+                String responseRoomIndex;
+                if (response.getData() instanceof Map) {
+                    Map<String, Object> responseData = (Map<String, Object>) response.getData();
+                    responseRoomIndex = String.valueOf(responseData.get("room_index"));
                 } else {
-                    log.warn("관리자 목록 응답이 null이거나 데이터가 없음");
-                    messageData.put("sender_name", "Unknown");
+                    responseRoomIndex = String.valueOf(response.getData());
                 }
-            } catch (Exception e) {
-                log.error("발신자 이름 조회 실패: {}", e.getMessage(), e);
-                messageData.put("sender_name", "Unknown");
-            }
-
-            log.info("채팅 메시지 브로드캐스트: {}", messageData);
-
-            // 브로드캐스트 전송 전 최종 확인
-            log.info("최종 브로드캐스트 데이터 확인:");
-            log.info("- roomId: {}", roomId);
-            log.info("- user_id: {}", messageData.get("user_id"));
-            log.info("- sender_name: {}", messageData.get("sender_name"));
-            log.info("- message: {}", messageData.get("message"));
-            log.info("- messageindex: {}", messageData.get("messageindex"));
-            log.info("- tempMessageIndex: {}", messageData.get("tempMessageIndex"));
-            log.info("- files: {}", messageData.get("files"));
-            log.info("- 전체 응답: {}", messageData);
-            log.info("- 브로드캐스트 대상: /queue/{}", roomId);
-            log.info("=== 브로드캐스트 전송 시작 ===");
-
-            // 응답 데이터의 모든 키를 확인
-            log.info("응답 데이터의 모든 키:");
-            for (String key : messageData.keySet()) {
-                log.info("  - {}: {}", key, messageData.get(key));
-            }
-            }
-            
-            // 새 방 생성이 아닌 경우에만 기존 응답 반환
-            if (!isNewRoomCreation) {
-                return messageData;
+                messageData.put("room_id", responseRoomIndex);
+                messageData.put("room_index", responseRoomIndex);
+                log.info("새 방 생성으로 응답에서 받은 room_index 설정: {}", responseRoomIndex);
             } else {
-                // 새 방 생성의 경우 이미 위에서 newRoomMessage를 반환했으므로 여기서는 null 반환
-                return null;
+                messageData.put("room_id", roomIndex);
+                messageData.put("room_index", roomIndex);
             }
+
+                         // 8. 파일 정보 추가 (DB에서 조회한 파일 정보)
+             if (!uploadFiles.isEmpty()) {
+                 try {
+                     // 채팅 서비스에서 파일 정보 조회
+                     List<Map<String, Object>> fileInfoList = new ArrayList<>();
+                     for (String fileUrl : uploadFiles) {
+                         Map<String, Object> fileInfo = new HashMap<>();
+                         fileInfo.put("url", fileUrl);
+                         fileInfo.put("name", extractFileNameFromUrl(fileUrl));
+                         fileInfo.put("type", extractFileTypeFromUrl(fileUrl));
+                         fileInfo.put("size", 0); // S3에서 직접 조회하지 않으므로 0으로 설정
+                         fileInfoList.add(fileInfo);
+                     }
+                     messageData.put("files", fileInfoList);
+                     log.info("📁 파일 정보 추가: {}", fileInfoList);
+                 } catch (Exception e) {
+                     log.error("파일 정보 추가 실패: {}", e.getMessage());
+                 }
+             } else {
+                 // 파일이 없는 경우 빈 배열로 설정
+                 messageData.put("files", new ArrayList<>());
+                 log.info("📁 파일 없음 - 빈 배열 설정");
+             }
+
+             // 9. 발신자 이름 정보 추가 (관리자 목록에서 조회)
+             try {
+                 log.info("발신자 이름 조회 시작: userId={}", userId);
+                 ResponseDTO<?> adminListResponse = chatService.Adminlist();
+                 if (adminListResponse != null && adminListResponse.getData() != null) {
+                     @SuppressWarnings("unchecked")
+                     List<AdminListDTO> adminList = (List<AdminListDTO>) adminListResponse.getData();
+                     log.info("관리자 목록 조회 성공: {}명", adminList.size());
+
+                     boolean found = false;
+                     for (AdminListDTO admin : adminList) {
+                         String adminUserId = admin.getUserId();
+                         String adminName = admin.getName();
+                         log.debug("관리자 정보: userId={}, name={}", adminUserId, adminName);
+
+                         if (userId.equals(adminUserId)) {
+                             messageData.put("sender_name", adminName);
+                             log.info("발신자 이름 찾음: {} -> {}", userId, adminName);
+                             found = true;
+                             break;
+                         }
+                     }
+
+                     if (!found) {
+                         log.warn("발신자 이름을 찾을 수 없음: userId={}", userId);
+                         messageData.put("sender_name", "Unknown");
+                     }
+                 } else {
+                     log.warn("관리자 목록 응답이 null이거나 데이터가 없음");
+                     messageData.put("sender_name", "Unknown");
+                 }
+             } catch (Exception e) {
+                 log.error("발신자 이름 조회 실패: {}", e.getMessage(), e);
+                 messageData.put("sender_name", "Unknown");
+             }
+
+             log.info("채팅 메시지 브로드캐스트: {}", messageData);
+
+                         // 8. 브로드캐스트 전송
+             if (!isNewRoomCreation) {
+                 // 기존 방: 해당 방으로 브로드캐스트
+                 messagingTemplate.convertAndSend("/queue/" + roomIndex, messageData);
+                 log.info("📡 기존 방 메시지 브로드캐스트 완료: /queue/{}", roomIndex);
+             } else {
+                 // 새 방 생성: admin 방으로 브로드캐스트 (연속성 유지)
+                 messagingTemplate.convertAndSend("/queue/admin", messageData);
+                 log.info("📡 새 방 생성 메시지 브로드캐스트 완료: /queue/admin (연속성 유지)");
+             }
 
         } catch (Exception e) {
             log.error("메시지 처리 중 오류 발생: {}", e.getMessage());
             messageData.put("error", "메시지 전송 실패");
             messageData.put("timestamp", System.currentTimeMillis());
-            return messageData;
+            // 오류 메시지도 브로드캐스트 (기본값 "1" 사용)
+            messagingTemplate.convertAndSend("/queue/1", messageData);
         }
     }
 
     /**
-     * 채팅방 구독 처리 (단체 채팅방)
-     * 클라이언트가 /queue/{roomId}를 구독할 때 호출
+     * 채팅방 입장 처리 (기존 방)
+     * 클라이언트에서 /app/adminchat.joinRoom/{roomId}로 전송
+     * 방 존재 확인 + 구독 설정 + 기존 메시지 전송
      */
     @MessageMapping("/adminchat.joinRoom/{roomId}")
     @SendTo("/queue/{roomId}")
     public Map<String, Object> joinRoom(@PathVariable String roomId, @Payload Map<String, Object> joinMessage) {
 
         String userId = (String) joinMessage.get("user_id");
-        String messageType = (String) joinMessage.get("type");
+        log.info("채팅방 입장 요청: roomId={}, user={}", roomId, userId);
 
-        log.info("채팅방 입장: roomId={}, user={}, type={}", roomId, userId, messageType);
-
-        // 입장 메시지 브로드캐스트
-        Map<String, Object> systemMessage = Map.of(
-                "type", "system",
-                "message", userId + "님이 입장했습니다.",
-                "timestamp", System.currentTimeMillis(),
-                "roomId", roomId,
-                "userId", userId,
-                "action", "join");
-
-        // 서버 측에서 사용자 상태 업데이트 (필요시)
         try {
-            // 사용자가 방에 참여했음을 서버에 기록
-            log.info("사용자 {}가 방 {}에 입장했습니다.", userId, roomId);
-        } catch (Exception e) {
-            log.error("사용자 입장 상태 업데이트 실패: {}", e.getMessage());
-        }
+            // 1. roomId가 JSON 객체인 경우 처리 (프론트엔드에서 잘못 전달된 경우)
+            String cleanRoomId = roomId;
+            if (roomId.startsWith("{") && roomId.contains("user_id")) {
+                try {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> roomIdObj = objectMapper.readValue(roomId, Map.class);
+                    // JSON 객체에서 room_index 추출 시도 (우선순위: room_index > id > roomId > roomid)
+                    Object roomIndexObj = roomIdObj.get("room_index");
+                    if (roomIndexObj == null) {
+                        roomIndexObj = roomIdObj.get("id");
+                    }
+                    if (roomIndexObj == null) {
+                        roomIndexObj = roomIdObj.get("roomId");
+                    }
+                    if (roomIndexObj == null) {
+                        roomIndexObj = roomIdObj.get("roomid");
+                    }
+                    
+                    if (roomIndexObj != null) {
+                        cleanRoomId = String.valueOf(roomIndexObj);
+                        log.info("JSON roomId에서 room_index 추출: {} -> {}", roomId, cleanRoomId);
+                                         } else {
+                         log.warn("JSON roomId에서 room_index를 찾을 수 없음: {}", roomId);
+                         // 오류 메시지 대신 기본값 사용
+                         cleanRoomId = "1";
+                         log.info("기본값으로 roomId 설정: {}", cleanRoomId);
+                     }
+                                 } catch (Exception e) {
+                     log.error("JSON roomId 파싱 실패: {}", e.getMessage());
+                     // 오류 메시지 대신 기본값 사용
+                     cleanRoomId = "1";
+                     log.info("파싱 실패로 기본값 설정: {}", cleanRoomId);
+                 }
+            }
 
-        return systemMessage;
+            // 2. 방 존재 여부 확인 (정리된 roomId 사용)
+            ResponseDTO<?> roomCheckResponse = chatServiceClient.SearchRoom(userId);
+            boolean roomExists = false;
+            String actualRoomIndex = cleanRoomId;
+
+            if (roomCheckResponse != null && roomCheckResponse.getData() != null) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> roomList = (List<Map<String, Object>>) roomCheckResponse.getData();
+
+                for (Map<String, Object> room : roomList) {
+                    String roomIndex = String.valueOf(room.get("room_index"));
+                    if (roomIndex.equals(cleanRoomId)) {
+                        roomExists = true;
+                        actualRoomIndex = roomIndex;
+                        break;
+                    }
+                }
+            }
+
+                         if (!roomExists) {
+                 log.warn("방이 존재하지 않음: roomId={}, cleanRoomId={}", roomId, cleanRoomId);
+                 // 오류 메시지 대신 기본 방으로 처리
+                 actualRoomIndex = "1";
+                 log.info("존재하지 않는 방을 기본값으로 설정: {}", actualRoomIndex);
+             }
+
+            // 2. 기존 메시지 조회 (최근 25개)
+            ResponseDTO<?> chatResponse = chatServiceClient.ChatList(actualRoomIndex, userId, 0, 25);
+            List<Map<String, Object>> existingMessages = new ArrayList<>();
+
+            if (chatResponse != null && chatResponse.getData() != null) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> messages = (List<Map<String, Object>>) chatResponse.getData();
+                existingMessages = messages;
+            }
+
+                         // 3. 입장 성공 응답 (기존 메시지 포함, 입장 알림 없음)
+             Map<String, Object> joinResponse = new HashMap<>();
+             joinResponse.put("type", "join_success");
+             joinResponse.put("roomId", actualRoomIndex);
+             joinResponse.put("userId", userId);
+             joinResponse.put("existingMessages", existingMessages);
+             joinResponse.put("timestamp", System.currentTimeMillis());
+             // 입장 알림은 명시적인 입장 요청 시에만 발생하도록 제거
+
+            log.info("채팅방 입장 성공: roomId={}, user={}, 기존 메시지 수={}", actualRoomIndex, userId, existingMessages.size());
+            return joinResponse;
+
+                 } catch (Exception e) {
+             log.error("채팅방 입장 처리 중 오류: {}", e.getMessage());
+                           // 오류 발생 시에도 기본 응답 반환
+              Map<String, Object> joinResponse = new HashMap<>();
+              joinResponse.put("type", "join_success");
+              joinResponse.put("roomId", "1");
+              joinResponse.put("userId", userId);
+              joinResponse.put("existingMessages", new ArrayList<>());
+              joinResponse.put("timestamp", System.currentTimeMillis());
+              // 입장 알림은 명시적인 입장 요청 시에만 발생하도록 제거
+             
+             log.info("오류 발생으로 기본 응답 반환: roomId=1");
+             return joinResponse;
+         }
     }
 
-    /**
-     * 채팅방 퇴장 처리 (단체 채팅방)
-     */
-    @MessageMapping("/adminchat.leaveRoom/{roomId}")
-    @SendTo("/queue/{roomId}")
-    public Map<String, Object> leaveRoom(@PathVariable String roomId, @Payload Map<String, Object> leaveMessage) {
+         /**
+      * 채팅방 명시적 입장 알림 (초대된 사용자가 방에 입장할 때)
+      */
+     @MessageMapping("/adminchat.enterRoom/{roomId}")
+     @SendTo("/queue/{roomId}")
+     public Map<String, Object> enterRoom(@PathVariable String roomId, @Payload Map<String, Object> enterMessage) {
+         
+         String userId = (String) enterMessage.get("user_id");
+         log.info("채팅방 명시적 입장: roomId={}, user={}", roomId, userId);
+         
+         // 입장 알림 메시지 브로드캐스트
+         Map<String, Object> systemMessage = Map.of(
+                 "type", "system",
+                 "message", userId + "님이 입장했습니다.",
+                 "timestamp", System.currentTimeMillis(),
+                 "roomId", roomId,
+                 "userId", userId,
+                 "action", "enter");
+         
+         return systemMessage;
+     }
+     
+     /**
+      * 채팅방 퇴장 처리 (단체 채팅방) - 명시적 퇴장 요청 시에만
+      */
+     @MessageMapping("/adminchat.leaveRoom/{roomId}")
+     @SendTo("/queue/{roomId}")
+     public Map<String, Object> leaveRoom(@PathVariable String roomId, @Payload Map<String, Object> leaveMessage) {
 
         String userId = (String) leaveMessage.get("user_id");
         String messageType = (String) leaveMessage.get("type");
@@ -669,16 +724,16 @@ public class ChatWebSocketController {
             @RequestParam("user_id") String userId,
             @RequestParam("message") String message,
             @RequestParam("files") MultipartFile[] files) {
-        
+
         try {
             List<Map<String, Object>> uploadedFiles = new ArrayList<>();
-            
+
             for (MultipartFile file : files) {
                 if (!file.isEmpty()) {
                     // S3 업로드
                     String folder = "chat-files/" + roomIndex;
                     String fileKey = s3FileUploadService.uploadFile(file, folder);
-                    
+
                     // 업로드된 파일 정보 생성
                     Map<String, Object> uploadedFile = new HashMap<>();
                     uploadedFile.put("name", file.getOriginalFilename());
@@ -686,11 +741,11 @@ public class ChatWebSocketController {
                     uploadedFile.put("size", file.getSize());
                     uploadedFile.put("url", fileKey);
                     uploadedFiles.add(uploadedFile);
-                    
+
                     log.info("파일 업로드 성공: {} -> {}", file.getOriginalFilename(), fileKey);
                 }
             }
-            
+
             // 메시지 저장 및 WebSocket 브로드캐스트
             MessageRequestDTO messageRequest = new MessageRequestDTO();
             messageRequest.setRoom_index(roomIndex);
@@ -698,13 +753,13 @@ public class ChatWebSocketController {
             messageRequest.setMessage(message);
             // 파일 정보를 엔티티 구조에 맞게 전송
             List<String> fileUrls = uploadedFiles.stream()
-                .map(file -> (String) file.get("url"))
-                .collect(Collectors.toList());
+                    .map(file -> (String) file.get("url"))
+                    .collect(Collectors.toList());
             messageRequest.setUploadFiles(fileUrls);
-            
+
             // 채팅 서비스로 메시지 저장 및 브로드캐스트
             ResponseDTO<?> response = chatServiceClient.SendMessage(messageRequest);
-            
+
             // WebSocket으로 메시지 브로드캐스트
             if (response != null && response.getData() != null) {
                 Map<String, Object> messageData = new HashMap<>();
@@ -715,26 +770,26 @@ public class ChatWebSocketController {
                 messageData.put("room_index", roomIndex);
                 messageData.put("timestamp", System.currentTimeMillis());
                 messageData.put("files", uploadedFiles);
-                
+
                 // 발신자 이름 정보 추가
                 try {
                     ResponseDTO<?> adminListResponse = chatService.Adminlist();
                     if (adminListResponse != null && adminListResponse.getData() != null) {
                         @SuppressWarnings("unchecked")
                         List<AdminListDTO> adminList = (List<AdminListDTO>) adminListResponse.getData();
-                        
+
                         boolean found = false;
                         for (AdminListDTO admin : adminList) {
                             String adminUserId = admin.getUserId();
                             String adminName = admin.getName();
-                            
+
                             if (userId.equals(adminUserId)) {
                                 messageData.put("sender_name", adminName);
                                 found = true;
                                 break;
                             }
                         }
-                        
+
                         if (!found) {
                             messageData.put("sender_name", "Unknown");
                         }
@@ -745,27 +800,27 @@ public class ChatWebSocketController {
                     log.error("발신자 이름 조회 실패: {}", e.getMessage());
                     messageData.put("sender_name", "Unknown");
                 }
-                
+
                 // 해당 방의 모든 구독자에게 브로드캐스트
                 log.info("📡 WebSocket 브로드캐스트: /queue/{} -> {}", roomIndex, messageData);
                 log.info("📁 파일 정보 확인: files={}", messageData.get("files"));
                 messagingTemplate.convertAndSend("/queue/" + roomIndex, messageData);
             }
-            
+
             // 응답 데이터
             Map<String, Object> responseData = new HashMap<>();
             responseData.put("messageIndex", System.currentTimeMillis());
             responseData.put("files", uploadedFiles);
-            
+
             return ResponseEntity.ok(responseData);
-            
+
         } catch (Exception e) {
             log.error("파일 업로드 실패", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("error", "파일 업로드 중 오류가 발생했습니다."));
+                    .body(Map.of("error", "파일 업로드 중 오류가 발생했습니다."));
         }
     }
-    
+
     /**
      * S3 URL에서 파일명 추출
      */
@@ -787,7 +842,7 @@ public class ChatWebSocketController {
             return "unknown_file";
         }
     }
-    
+
     /**
      * S3 URL에서 파일 타입 추출
      */
