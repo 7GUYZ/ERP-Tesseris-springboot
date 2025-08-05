@@ -46,13 +46,20 @@ public class UserLogController {
         
         log.info("사용자 CM 사용 내역 조회 - userIndex: {}, page: {}, size: {}, year: {}, month: {}", 
                 userIndex, page, size, year, month);
+        log.info("파라미터 타입 확인 - year: {} ({}), month: {} ({})", 
+                year, year != null ? year.getClass().getSimpleName() : "null", 
+                month, month != null ? month.getClass().getSimpleName() : "null");
         
         try {
             Map<String, Object> result;
-            if (year != null && month != null) {
-                result = userLogService.getUserLogsByMonth(userIndex, year, month, page, size);
+            // year와 month가 모두 null이면 전체 데이터, 아니면 해당 월 데이터
+            if (year == null && month == null) {
+                result = userLogService.getAllLogs(userIndex, page, size, null, null);
             } else {
-                result = userLogService.getUserLogs(userIndex, page, size);
+                // 파라미터가 있으면 해당 월 데이터
+                int currentYear = year != null ? year : java.time.LocalDate.now().getYear();
+                int currentMonth = month != null ? month : java.time.LocalDate.now().getMonthValue();
+                result = userLogService.getUserLogsByMonth(userIndex, currentYear, currentMonth, page, size);
             }
             return ResponseEntity.ok(ResponseDTO.createSuccessResponse("CM 사용 내역 조회 성공", result));
         } catch (Exception e) {

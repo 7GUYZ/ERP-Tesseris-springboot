@@ -2,9 +2,10 @@ package com.jakdang.labs.api.taekjun.customermanagement.service;
 
 import com.jakdang.labs.api.taekjun.customermanagement.dto.CustomerListResponseDTO;
 import com.jakdang.labs.api.taekjun.customermanagement.dto.CustomerUpdateDTO;
+import com.jakdang.labs.api.taekjun.customermanagement.dto.EventCouponDTO;
 import com.jakdang.labs.api.taekjun.customermanagement.repository.CustomerManagementJtjRepo;
 import com.jakdang.labs.api.taekjun.customermanagement.repository.CouponRepository;
-import com.jakdang.labs.api.taekjun.Permissionsettings.repository.UserTesserisRepository;
+import com.jakdang.labs.api.taekjun.customermanagement.repository.UserTesserissJtjRepo;
 import com.jakdang.labs.api.taekjun.signin.repository.UserCmRepository;
 import com.jakdang.labs.api.taekjun.dashdord.repository.UserCmLogJtjRepo;
 import com.jakdang.labs.entity.StoreCustomer;
@@ -32,7 +33,7 @@ public class CustomerManagementService {
 
     private final CustomerManagementJtjRepo customerManagementJtjRepo;
     private final CouponRepository couponRepository;
-    private final UserTesserisRepository userTesserisRepository;
+    private final UserTesserissJtjRepo userTesserisRepository;
     private final UserCmRepository userCmRepository;
     private final UserCmLogJtjRepo userCmLogRepository;
     private final AlarmSvc alarmSvc;
@@ -453,6 +454,127 @@ public class CustomerManagementService {
             log.info("쿠폰 선물 알림 전송 실패 - customerIndexes: {}, storeUserIndex: {}, couponName: {}",
                     customerIndexes, storeUserIndex, couponName);
             // 알림 전송 실패해도 DB 저장은 성공으로 처리
+        }
+    }
+    
+    /**
+     * 이벤트 쿠폰 발행
+     */
+    @Transactional
+    public boolean issueEventCoupon(EventCouponDTO eventCouponDTO) {
+        log.info("이벤트 쿠폰 발행 시작 - eventName: {}, couponName: {}, storeUserIndex: {}, couponCount: {}", 
+                eventCouponDTO.getEventName(), eventCouponDTO.getCouponName(), eventCouponDTO.getStoreUserIndex(), eventCouponDTO.getCouponCount());
+        
+        try {
+            // 가맹점 정보 조회
+            log.info("가맹점 정보 조회 시작 - storeUserIndex: {}", eventCouponDTO.getStoreUserIndex());
+            Optional<UserTesseris> storeUser = userTesserisRepository.findByUserIndex(Integer.parseInt(eventCouponDTO.getStoreUserIndex()));
+            if (!storeUser.isPresent()) {
+                log.error("가맹점 사용자를 찾을 수 없습니다. storeUserIndex: {}", eventCouponDTO.getStoreUserIndex());
+                return false;
+            }
+            log.info("가맹점 정보 조회 성공 - storeUserIndex: {}", eventCouponDTO.getStoreUserIndex());
+            
+            // 핀번호 검증 (발급자의 핀번호와 일치하는지 확인)
+            Integer userCmIndex = Integer.parseInt(eventCouponDTO.getStoreUserIndex());
+            Optional<UserCm> userCm = userCmRepository.findByUserCmIndex(userCmIndex);
+            if (userCm.isEmpty() || userCm.get().getUserCmPincode() == null ||
+                    !userCm.get().getUserCmPincode().equals(eventCouponDTO.getPinCode())) {
+                log.warn("핀번호가 일치하지 않습니다. storeUserIndex: {}", eventCouponDTO.getStoreUserIndex());
+                return false;
+            }
+            
+            // 보유 CM 확인
+            Integer currentCm = getUserCurrentCm(userCmIndex);
+            
+            // 필요 CM 계산 (쿠폰 금액 × 쿠폰 개수)
+            Integer needCm = eventCouponDTO.getCouponPrice() * eventCouponDTO.getCouponCount();
+            
+            log.info("현재 CM 잔액: {}, 필요 CM: {}, 쿠폰 개수: {}", currentCm, needCm, eventCouponDTO.getCouponCount());
+            
+            // CM 잔액 확인
+            if (currentCm < needCm) {
+                log.warn("보유 CM이 부족합니다. 현재: {}, 필요: {}", currentCm, needCm);
+                return false;
+            }
+            
+            // CM 차감
+            updateUserCm(userCmIndex, needCm);
+            
+            // CM 차감 로그 기록
+            UserCmLog cmLog = new UserCmLog();
+            cmLog.setUserCmLogValue(-needCm); // 차감이므로 음수
+            cmLog.setUserCmLogTransactionTypeIndex(14); // 거래 타입 (14: 쿠폰)
+            cmLog.setUserCmLogValueTypeIndex(2); // 화폐 단위 (2: CM)
+            cmLog.setUserCmLogPaymentIndex(2); // 거래의 종류 (2: 출금)
+            cmLog.setUserCmpLogPaymentIndex(null); // CMP 거래의 종류 (사용하지 않음)
+            cmLog.setUserCmLogCreateTime(LocalDateTime.now()); // 거래 발생 시간
+            cmLog.setUserCmLogReason("이벤트 쿠폰 발행 - " + eventCouponDTO.getCouponCount() + "개 " + eventCouponDTO.getCouponName() + " 발행"); // 거래에 대한 메모
+            cmLog.setUserCmLogTransactionCancel(null); // 취소 (아님)
+            cmLog.setUserCouponValue(0); // 쿠폰으로 사용된 금액 (발급이므로 0)
+            
+            // UserTesseris 객체 생성 - 거래 요청인 (가맹점)
+            UserTesseris issuanceUserTesseris = new UserTesseris();
+            issuanceUserTesseris.setUserIndex(userCmIndex);
+            cmLog.setUserIndexEventTrigger(issuanceUserTesseris);
+            
+            // UserTesseris 객체 생성 - 거래 상대방 (시스템)
+            UserTesseris systemTesseris = new UserTesseris();
+            systemTesseris.setUserIndex(0); // 시스템 계정 (임시)
+            cmLog.setUserIndexEventParty(systemTesseris);
+            
+            // CM 로그 저장
+            userCmLogRepository.save(cmLog);
+            
+            log.info("CM 차감 로그 저장 완료 - 가맹점: {}, 차감액: {}, 쿠폰 개수: {}", userCmIndex, needCm, eventCouponDTO.getCouponCount());
+            
+            // 이벤트 쿠폰 생성 (지정된 개수만큼)
+            for (int i = 0; i < eventCouponDTO.getCouponCount(); i++) {
+                Coupon eventCoupon = new Coupon();
+                eventCoupon.setIssuanceUser(storeUser.get()); // 발급자 (가맹점)
+                eventCoupon.setProvidedUser(null); // 아직 제공되지 않음
+                eventCoupon.setCouponName(eventCouponDTO.getCouponName());
+                eventCoupon.setCouponPrice(eventCouponDTO.getCouponPrice());
+                eventCoupon.setCouponLimit(eventCouponDTO.getCouponLimit());
+                eventCoupon.setCouponIssuanceStatusIndex(1); // 발급됨 상태
+                eventCoupon.setCouponProvidedStatusIndex(null); // 아직 제공되지 않음
+                eventCoupon.setCouponIssuanceTime(LocalDateTime.now());
+                eventCoupon.setCouponProvidedTime(null);
+                eventCoupon.setCouponLimitTime(LocalDateTime.now().plusDays(eventCouponDTO.getCouponLimit()));
+                eventCoupon.setCouponCondition("이벤트 쿠폰입니다.");
+                
+                // 쿠폰 저장
+                couponRepository.save(eventCoupon);
+            }
+            
+            log.info("이벤트 쿠폰 발행 완료 - 쿠폰 개수: {}, eventName: {}", eventCouponDTO.getCouponCount(), eventCouponDTO.getEventName());
+            
+            // 이벤트 쿠폰 발행 알림 전송
+            try {
+                String message = String.format("[%s] 새로운 이벤트 쿠폰이 발행되었습니다: %s", 
+                        storeUser.get().getUsersId().getName(), eventCouponDTO.getCouponName());
+                
+                // 해당 가맹점의 모든 고객에게 알림 전송
+                List<StoreCustomer> customers = customerManagementJtjRepo.findByStoreUserIndex(eventCouponDTO.getStoreUserIndex());
+                for (StoreCustomer customer : customers) {
+                    try {
+                        // 고객의 user_index로 알림 전송
+                        String customerUserIndex = customer.getStoreCustomerUserIndex();
+                        alarmSvc.sendCouponAlarm(List.of(customerUserIndex), eventCouponDTO.getStoreUserIndex(), eventCouponDTO.getCouponName());
+                    } catch (Exception e) {
+                        log.error("이벤트 쿠폰 알림 전송 실패 - customerIndex: {}, error: {}", 
+                                customer.getStoreCustomerIndex(), e.getMessage());
+                    }
+                }
+            } catch (Exception e) {
+                log.error("이벤트 쿠폰 알림 전송 중 오류 발생", e);
+            }
+            
+            return true;
+            
+        } catch (Exception e) {
+            log.error("이벤트 쿠폰 발행 중 오류 발생", e);
+            return false;
         }
     }
 }
