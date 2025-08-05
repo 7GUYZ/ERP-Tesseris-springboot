@@ -2,6 +2,8 @@ package com.jakdang.labs.api.chat.dto;
 
 import java.util.List;
 
+import org.springframework.web.multipart.MultipartFile;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,4 +18,6 @@ public class MessageRequestDTO {
     private String user_id; // 사용자 ID (프론트엔드에서 보내는 필드)
     private String timestamp; // 타임스탬프 (프론트엔드에서 보내는 필드)
     private List<String> participants; // 참여자 목록
+    private List<MultipartFile> files; // 파일 목록
+    private List<String> uploadFiles; // 업로드된 파일 목록
 }

@@ -14,16 +14,16 @@ public interface SalesPerformanceJdbRepo extends JpaRepository<com.jakdang.labs.
     
     @Query("""
         SELECT new com.jakdang.labs.api.dabin.CmsSalesPerformance.dto.SalesPerformanceSearchResponseDto(
-            bm.userIndex.usersId.id,
+            bm.userIndex.usersId.email,
             bm.businessGrade.businessGradeName,
             bm.businessArea.businessAreaName,
             bm.userIndex.usersId.name,
             CASE WHEN bm.businessManDistributionFlag = true THEN '정상' ELSE '정지' END,
-            s.userIndex.usersId.id,
+            s.userIndex.usersId.email,
             s.storeName,
             srs.storeRequestStatusName,
             CASE WHEN s.storeTransactionStatus = true THEN '정상' ELSE '정지' END,
-            CASE WHEN uc.userCmpInit / 2 < s.storeSaveValue THEN 'CM락ON' ELSE 'CM락OFF' END,
+            CASE WHEN uc.userCmpInit / 2 < s.storeSaveValue THEN 'TS락ON' ELSE 'TS락OFF' END,
             CASE WHEN uc.userCmpDeposit + uc.userCmpWithdrawal > uc.userCmpInit * 2 THEN '판매락 ON' ELSE '판매락 OFF' END,
             s.storeRegistrationDate
         )
@@ -36,11 +36,11 @@ public interface SalesPerformanceJdbRepo extends JpaRepository<com.jakdang.labs.
         JOIN StoreRequestStatus srs ON s.storeRequestStatusIndex = srs.storeRequestStatusIndex
         JOIN UserCm uc ON uc.userCmIndex = su.userIndex
     
-        WHERE (:businessUserId IS NULL OR :businessUserId = '' OR ut.usersId.id LIKE CONCAT('%', :businessUserId, '%'))
+        WHERE (:businessUserId IS NULL OR :businessUserId = '' OR ut.usersId.email LIKE CONCAT('%', :businessUserId, '%'))
         AND (:businessGradeIndex IS NULL OR :businessGradeIndex = 0 OR bg.businessGradeIndex = :businessGradeIndex)
         AND (:userName IS NULL OR :userName = '' OR ut.usersId.name LIKE CONCAT('%', :userName, '%'))
         AND (:businessManDistributionFlag IS NULL OR bm.businessManDistributionFlag = :businessManDistributionFlag)
-        AND (:storeUserId IS NULL OR :storeUserId = '' OR su.usersId.id LIKE CONCAT('%', :storeUserId, '%'))
+        AND (:storeUserId IS NULL OR :storeUserId = '' OR su.usersId.email LIKE CONCAT('%', :storeUserId, '%'))
         AND (:storeName IS NULL OR :storeName = '' OR s.storeName LIKE CONCAT('%', :storeName, '%'))
         AND (:storeRequestStatusIndex IS NULL OR :storeRequestStatusIndex = 0 OR s.storeRequestStatusIndex = :storeRequestStatusIndex)
         AND (:storeTransactionStatus IS NULL OR 

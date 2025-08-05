@@ -2,7 +2,6 @@ package com.jakdang.labs.api.taekjun.user_update.repository;
 
 import com.jakdang.labs.api.taekjun.user_update.dto.UserInfoDto;
 import com.jakdang.labs.api.taekjun.user_update.dto.UserUpdateRequestDto;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -11,11 +10,14 @@ import java.util.List;
 import java.util.Map;
 
 @Repository
-@RequiredArgsConstructor
 @Slf4j
 public class UserUpdateJtjRepo {
 
     private final JdbcTemplate jdbcTemplate;
+
+    public UserUpdateJtjRepo(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
 
     /**
      * 사용자 인덱스로 사용자 정보를 조회합니다.

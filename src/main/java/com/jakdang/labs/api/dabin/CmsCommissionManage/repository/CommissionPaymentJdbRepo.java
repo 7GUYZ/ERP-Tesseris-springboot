@@ -15,7 +15,7 @@ public interface CommissionPaymentJdbRepo extends JpaRepository<TemporaryRegular
     
     @Query("""
         SELECT new com.jakdang.labs.api.dabin.CmsCommissionManage.dto.CommissionPaymentResponse(
-            ut.usersId.id,
+            ut.usersId.email,
             ut.userIndex,
             us.name,
             us.phone,
@@ -30,7 +30,7 @@ public interface CommissionPaymentJdbRepo extends JpaRepository<TemporaryRegular
             COALESCE(t4.description, '정회원'),
             t4.paymentStatus,
             t5.advanceMsg,
-            t6.usersId.id,
+            t6.usersId.email,
             us2.name,
             us2.phone,
             t7.userRoleKorNm,
@@ -49,13 +49,13 @@ public interface CommissionPaymentJdbRepo extends JpaRepository<TemporaryRegular
         JOIN UserRole t7 ON t6.userRoleIndex = t7.userRoleIndex
         LEFT JOIN t6.userBank t8
         WHERE ut.userRoleIndex > 0
-        AND (:userId IS NULL OR :userId = '' OR ut.usersId.id LIKE CONCAT('%', :userId, '%'))
+        AND (:userId IS NULL OR :userId = '' OR ut.usersId.email LIKE CONCAT('%', :userId, '%'))
         AND (:userName IS NULL OR :userName = '' OR us.name LIKE CONCAT('%', :userName, '%'))
         AND (:userPhone IS NULL OR :userPhone = '' OR us.phone LIKE CONCAT('%', :userPhone, '%'))
         AND (:chargeTimeStart IS NULL OR t1.temporaryStoreMasterChargeTime >= :chargeTimeStart)
         AND (:chargeTimeEnd IS NULL OR t1.temporaryStoreMasterChargeTime <= :chargeTimeEnd)
         AND (:transactionName IS NULL OR :transactionName = '' OR t1.temporaryStoreMasterTransactionName LIKE CONCAT('%', :transactionName, '%'))
-        AND (:suggestionUserId IS NULL OR :suggestionUserId = '' OR t6.usersId.id LIKE CONCAT('%', :suggestionUserId, '%'))
+        AND (:suggestionUserId IS NULL OR :suggestionUserId = '' OR t6.usersId.email LIKE CONCAT('%', :suggestionUserId, '%'))
         AND (:suggestionUserName IS NULL OR :suggestionUserName = '' OR us2.name LIKE CONCAT('%', :suggestionUserName, '%'))
         AND (:userRoleIndex IS NULL OR t6.userRoleIndex = :userRoleIndex)
         ORDER BY t1.temporaryStoreMasterChargeTime DESC
