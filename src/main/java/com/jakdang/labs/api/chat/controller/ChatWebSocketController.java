@@ -66,6 +66,10 @@ public class ChatWebSocketController {
             // 1. 프론트에서 전송한 데이터 추출
             String userId = (String) messageData.get("user_id");
             String message = (String) messageData.get("message");
+            
+            // admin으로 전송된 경우 새 방 생성으로 처리
+            boolean isNewRoomCreation = "admin".equals(roomId);
+            log.info("새 방 생성 여부: {}", isNewRoomCreation);
 
             // 파일 업로드는 HTTP 방식으로 처리하므로 WebSocket에서는 파일 정보만 전달받음
             Object filesObj = messageData.get("files");
@@ -172,9 +176,10 @@ public class ChatWebSocketController {
 
                 // 4-1. 새 채팅방 생성 시 WebSocket으로 모든 참가자에게 알림
                 try {
-                    // 새 방 생성 여부 확인 (응답 메시지로 판단)
-                    if (response.getResultMessage() != null && response.getResultMessage().contains("방 생성")) {
-                        log.info("새 채팅방 생성 감지 - WebSocket 알림 전송 시작");
+                    // 새 방 생성 여부 확인 (admin으로 전송되었거나 응답 메시지로 판단)
+                    if (isNewRoomCreation || (response.getResultMessage() != null && response.getResultMessage().contains("방 생성"))) {
+                        log.info("새 채팅방 생성 감지 - WebSocket 알림 전송 시작 (isNewRoomCreation: {}, resultMessage: {})", 
+                                isNewRoomCreation, response.getResultMessage());
 
                         Map<String, Object> newRoomMessage = new HashMap<>();
                         newRoomMessage.put("type", "new_room_created");
@@ -219,16 +224,14 @@ public class ChatWebSocketController {
                             newRoomMessage.put("sender_name", "Unknown");
                         }
 
-                        // 모든 참가자에게 새 방 생성 알림 전송
-                        for (String participantId : participants) {
-                            messagingTemplate.convertAndSend("/queue/" + participantId, newRoomMessage);
-                        }
-
-                        // admin 구독자들에게도 알림 (채팅방 목록 업데이트용)
+                        // 새 방 생성 시에는 admin 구독자들에게만 알림 (프론트에서 새 방 구독 설정)
                         log.info("📡 admin 구독자들에게 새 방 생성 알림: /queue/admin");
                         messagingTemplate.convertAndSend("/queue/admin", newRoomMessage);
 
                         log.info("새 채팅방 생성 WebSocket 알림 전송 완료: {}", newRoomMessage);
+                        
+                        // 새 방 생성 시에는 /queue/admin으로 응답 (기존 @SendTo 무시)
+                        return newRoomMessage;
                     }
                 } catch (Exception e) {
                     log.error("새 채팅방 생성 WebSocket 알림 전송 실패: {}", e.getMessage());
@@ -246,6 +249,9 @@ public class ChatWebSocketController {
             messageData.put("message_type", "chat");
             messageData.put("room_id", roomId);
             messageData.put("room_index", roomIndex);
+            
+            // 새 방 생성이 아닌 경우에만 기존 로직 실행
+            if (!isNewRoomCreation) {
             
             // 8. 파일 정보 추가 (DB에서 조회한 파일 정보)
             if (!uploadFiles.isEmpty()) {
@@ -327,8 +333,15 @@ public class ChatWebSocketController {
             for (String key : messageData.keySet()) {
                 log.info("  - {}: {}", key, messageData.get(key));
             }
-
-            return messageData;
+            }
+            
+            // 새 방 생성이 아닌 경우에만 기존 응답 반환
+            if (!isNewRoomCreation) {
+                return messageData;
+            } else {
+                // 새 방 생성의 경우 이미 위에서 newRoomMessage를 반환했으므로 여기서는 null 반환
+                return null;
+            }
 
         } catch (Exception e) {
             log.error("메시지 처리 중 오류 발생: {}", e.getMessage());
