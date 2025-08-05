@@ -17,7 +17,7 @@ public interface AdminhdkRepository extends JpaRepository<Admin, Integer> {
      * 관리자 리스트 조회 (필터 조건 포함)
      */
     @Query("SELECT new com.jakdang.labs.api.deokkyu.admin.dto.AdminListResponseDto(" +
-           "COALESCE(u.email, ''), COALESCE(u.name, ''), COALESCE(u.phone, ''), " +
+           "CAST(ut.userIndex AS string), COALESCE(u.email, ''), COALESCE(u.name, ''), COALESCE(u.phone, ''), " +
            "COALESCE(at.adminTypeName, ''), a.adminRegistrationDate) " +
            "FROM Admin a " +
            "JOIN a.userIndex ut " +
@@ -43,7 +43,7 @@ public interface AdminhdkRepository extends JpaRepository<Admin, Integer> {
      * 전체 관리자 리스트 조회 (필터 없음)
      */
     @Query("SELECT new com.jakdang.labs.api.deokkyu.admin.dto.AdminListResponseDto(" +
-           "COALESCE(u.email, ''), COALESCE(u.name, ''), COALESCE(u.phone, ''), " +
+           "CAST(ut.userIndex AS string), COALESCE(u.email, ''), COALESCE(u.name, ''), COALESCE(u.phone, ''), " +
            "COALESCE(at.adminTypeName, ''), a.adminRegistrationDate) " +
            "FROM Admin a " +
            "JOIN a.userIndex ut " +

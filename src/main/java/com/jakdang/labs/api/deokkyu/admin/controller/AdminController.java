@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.*;
 import com.jakdang.labs.api.deokkyu.admin.dto.AdminListRequestDto;
 import com.jakdang.labs.api.deokkyu.admin.dto.AdminListResponseDto;
 import com.jakdang.labs.api.deokkyu.admin.dto.AdminCreateRequestDto;
+import com.jakdang.labs.api.deokkyu.admin.dto.AdminDetailResponseDto;
+import com.jakdang.labs.api.deokkyu.admin.dto.AdminUpdateRequestDto;
 import com.jakdang.labs.api.deokkyu.admin.service.AdminService;
 import java.time.LocalDate;
 import java.util.List;
@@ -117,6 +119,89 @@ public class AdminController {
         } catch (Exception e) {
             log.error("관리자 등록 오류", e);
             return ResponseEntity.internalServerError().body("관리자 등록 중 오류가 발생했습니다: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 관리자 상세정보 조회 API
+     * GET /api/admin/detail/{userIndex}
+     */
+    @GetMapping("/detail/{userIndex}")
+    public ResponseEntity<AdminDetailResponseDto> getAdminDetail(@PathVariable("userIndex") String userIndexStr) {
+        try {
+            log.info("관리자 상세정보 조회 API 호출: userIndex={}", userIndexStr);
+            
+            if (userIndexStr == null || userIndexStr.trim().isEmpty()) {
+                log.error("userIndex가 null이거나 비어있습니다.");
+                return ResponseEntity.badRequest().build();
+            }
+            
+            // String을 Integer로 변환
+            Integer userIndex;
+            try {
+                userIndex = Integer.parseInt(userIndexStr.trim());
+            } catch (NumberFormatException e) {
+                log.error("userIndex 형식이 잘못되었습니다: {}", userIndexStr);
+                return ResponseEntity.badRequest().build();
+            }
+            
+            AdminDetailResponseDto adminDetail = adminService.getAdminDetail(userIndex);
+            if (adminDetail == null) {
+                log.warn("해당 userIndex의 관리자를 찾을 수 없습니다: {}", userIndex);
+                return ResponseEntity.notFound().build();
+            }
+            
+            log.info("관리자 상세정보 조회 완료: {}", adminDetail.getAdminUserEmail());
+            return ResponseEntity.ok(adminDetail);
+            
+        } catch (Exception e) {
+            log.error("관리자 상세정보 조회 오류", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * 관리자 정보 수정 API
+     * PUT /api/admin/update/{userIndex}
+     */
+    @PutMapping("/update/{userIndex}")
+    public ResponseEntity<String> updateAdmin(@PathVariable("userIndex") String userIndexStr, 
+                                            @RequestBody AdminUpdateRequestDto updateDto,
+                                            @RequestHeader("Authorization") String authHeader) {
+        try {
+            log.info("관리자 정보 수정 API 호출: userIndex={}", userIndexStr);
+            
+            if (userIndexStr == null || userIndexStr.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("userIndex는 필수입니다.");
+            }
+            
+            // String을 Integer로 변환
+            Integer userIndex;
+            try {
+                userIndex = Integer.parseInt(userIndexStr.trim());
+            } catch (NumberFormatException e) {
+                log.error("userIndex 형식이 잘못되었습니다: {}", userIndexStr);
+                return ResponseEntity.badRequest().body("userIndex 형식이 잘못되었습니다.");
+            }
+            
+            // DTO 기본 유효성 검증
+            if (updateDto.getAdminUserName() == null || updateDto.getAdminUserName().trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("이름은 필수입니다.");
+            }
+            
+            boolean success = adminService.updateAdmin(userIndex, updateDto, authHeader);
+            if (success) {
+                return ResponseEntity.ok("관리자 정보가 성공적으로 수정되었습니다.");
+            } else {
+                return ResponseEntity.badRequest().body("관리자 정보 수정에 실패했습니다. 입력 정보를 확인해주세요.");
+            }
+            
+        } catch (RuntimeException e) {
+            log.error("관리자 정보 수정 중 런타임 오류", e);
+            return ResponseEntity.badRequest().body("관리자 정보 수정 실패: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("관리자 정보 수정 오류", e);
+            return ResponseEntity.internalServerError().body("관리자 정보 수정 중 오류가 발생했습니다: " + e.getMessage());
         }
     }
 } 

@@ -31,7 +31,7 @@ public class AlarmSvc {
     private static final class AlarmTypeIds {
         public static final Integer AUTHORITY_CHANGED = 1;
         public static final Integer ADMIN_REGISTER = 2;
-        public static final Integer MONTHLY_CM_LIMIT = 3;
+        public static final Integer MONTHLY_TS_LIMIT = 3;
         public static final Integer COMMISSION_CHANGED = 4;
         public static final Integer NOTICE = 5;
         public static final Integer QNA_REGISTER = 6;
@@ -46,7 +46,7 @@ public class AlarmSvc {
         public static final Integer AUTHORITY_MANAGEMENT = 8;
         public static final Integer COMMISSION_MANAGEMENT = 9;
         public static final Integer ADMIN_MANAGEMENT = 10;
-        public static final Integer CM_LIMIT_MANAGEMENT = 8;
+        public static final Integer TS_LIMIT_MANAGEMENT = 8;
         public static final Integer NOTICE_MANAGEMENT = 25;
         public static final Integer QNA_MANAGEMENT = 26;
         public static final Integer STORE_REGISTER_MANAGEMENT = 33;
@@ -226,8 +226,8 @@ public class AlarmSvc {
                     .alarmMessage(message)
                     .senderIndex(finalSenderIndex)
                     .receiverIndexes(receiverIndexes)
-                    .alarmType("MONTHLY_CM_LIMIT_UPDATED")
-                    .title("월 CM 한도 변경 알림")
+                    .alarmType("MONTHLY_TS_LIMIT_UPDATED")
+                    .title("월 TS 한도 변경 알림")
                     .build();
 
             // alarm-service에 알림 내역 저장 요청
@@ -397,13 +397,13 @@ public class AlarmSvc {
     // ==========================================
 
     /**
-     * 1. 월 CM 한도 변경 알림
+     * 1. 월 TS 한도 변경 알림
      */
     public void sendMonthlyCmLimitChangedAlarm(Integer userIndex, Integer cmLimit) {
         List<String> allUserIndexes = getAllUserIndexes();
-        List<String> adminUserIndexes = findAdminsWithAuthority(ProgramIndexes.CM_LIMIT_MANAGEMENT);
-        String value = String.valueOf(cmLimit) + "CM";
-        sendAlarmWithValue(AlarmTypeIds.MONTHLY_CM_LIMIT, allUserIndexes, adminUserIndexes, value, userIndex);
+        List<String> adminUserIndexes = findAdminsWithAuthority(ProgramIndexes.TS_LIMIT_MANAGEMENT);
+        String value = String.valueOf(cmLimit) + "TS";
+        sendAlarmWithValue(AlarmTypeIds.MONTHLY_TS_LIMIT, allUserIndexes, adminUserIndexes, value, userIndex);
     }
 
     /**
@@ -421,9 +421,9 @@ public class AlarmSvc {
     public void sendGiftAlarm(Integer receiveUserIndex, Integer giftAmount, Integer sendUserIndex) {
         try {
             List<String> receiveUserIndexes = createSingleUserList(receiveUserIndex);
-            String value = String.valueOf(giftAmount) + "CM";
+            String value = String.valueOf(giftAmount) + "TS";
             sendAlarmWithValue(AlarmTypeIds.GIFT, receiveUserIndexes, new ArrayList<>(), value, sendUserIndex);
-            log.info("선물 알림 전송 완료: 받는 사람={}, 금액={}CM", receiveUserIndex, giftAmount);
+            log.info("선물 알림 전송 완료: 받는 사람={}, 금액={}TS", receiveUserIndex, giftAmount);
         } catch (Exception e) {
             log.error("선물 알림 전송 중 오류: {}", e.getMessage());
         }
