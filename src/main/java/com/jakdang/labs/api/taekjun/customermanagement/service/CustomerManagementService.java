@@ -60,10 +60,10 @@ public class CustomerManagementService {
      * 내 가맹점의 고객 목록 조회 (가맹점명+고객명+상태)
      */
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> getMyCustomers(String storeUserIndex) {
-        log.info("내 가맹점 고객 목록 조회 - storeUserIndex: {}", storeUserIndex);
+    public List<Map<String, Object>> getMyCustomers(String storeUserIndex, String member, String phone) {
+        log.info("내 가맹점 고객 목록 조회 - storeUserIndex: {}, member: {}, phone: {}", storeUserIndex, member, phone);
 
-        List<Object[]> results = customerManagementJtjRepo.findMyCustomersWithInfo(storeUserIndex);
+        List<Object[]> results = customerManagementJtjRepo.findMyCustomersWithInfo(storeUserIndex, member, phone);
 
         List<Map<String, Object>> customerList = results.stream()
                 .map(this::toMyCustomerDto)

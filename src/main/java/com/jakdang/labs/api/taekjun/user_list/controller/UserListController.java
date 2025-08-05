@@ -22,7 +22,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 public class UserListController {
     private final UserListService userListService;
     private final KakaoAddressService kakaoAddressService;
-    private final ExcelDownloadConfig.ExcelDownloadProperties excelDownloadProperties;
 
     @GetMapping
     public ResponseEntity<List<UserListResponseDTO>> getUserList() {
@@ -71,6 +70,7 @@ public class UserListController {
         } catch (Exception e) {
             System.err.println("=== CSV 다운로드 API 에러 ===");
             System.err.println("에러 메시지: " + e.getMessage());
+            System.err.println("에러 타입: " + e.getClass().getName());
             e.printStackTrace();
             return ResponseEntity.internalServerError().build();
         }

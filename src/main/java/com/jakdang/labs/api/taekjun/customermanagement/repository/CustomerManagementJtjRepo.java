@@ -57,9 +57,13 @@ public interface CustomerManagementJtjRepo extends JpaRepository<StoreCustomer, 
            "JOIN Store s ON s.userIndex.userIndex = CAST(sc.storeStoreUserIndex AS integer) " +
            "JOIN UserTesseris ut ON ut.userIndex = CAST(sc.storeCustomerUserIndex AS integer) " +
            "JOIN ut.usersId u " +
-           "WHERE sc.storeStoreUserIndex = :storeUserIndex")
+           "WHERE sc.storeStoreUserIndex = :storeUserIndex " +
+           "AND (:member IS NULL OR :member = '' OR :member = '전체' OR sc.storeCustomerStatus = :member) " +
+           "AND (:phone IS NULL OR :phone = '' OR u.phone LIKE CONCAT('%', :phone, '%'))")
     List<Object[]> findMyCustomersWithInfo(
-        @Param("storeUserIndex") String storeUserIndex
+        @Param("storeUserIndex") String storeUserIndex,
+        @Param("member") String member,
+        @Param("phone") String phone
     );
     
     // 내 가맹점의 특정 고객 조회
