@@ -15,7 +15,7 @@ public interface CouponForEventRepository extends JpaRepository<Coupon, Integer>
     
     @Query("""
         SELECT c.couponIndex, c.couponName, c.couponPrice, cis.couponIssuanceStatus,
-               c.couponIssuanceTime, c.couponLimit, c.couponLimitTime, s.storeName
+               c.couponProvidedTime, c.couponLimit, c.couponLimitTime, s.storeName
         FROM Coupon c
         INNER JOIN CouponIssuanceStatus cis ON c.couponIssuanceStatusIndex = cis.couponIssuanceStatusIndex
         LEFT JOIN Store s ON c.issuanceUser.userIndex = s.userIndex.userIndex

@@ -32,7 +32,7 @@ public class CouponJdbRepoImpl implements CouponJdbRepoCustom {
         }
         String jpql = "SELECT new com.jakdang.labs.api.dabin.CmsCouponManage.dto.CouponSearchResponseDto(" +
         "c.couponIndex, c.couponName, c.couponPrice, c.couponLimit, " +
-        "iu.usersId.id, iur.userRoleKorNm, pu.usersId.id, pur.userRoleKorNm, " +
+        "iu.usersId.email, iur.userRoleKorNm, pu.usersId.email, pur.userRoleKorNm, " +
         "cis.couponIssuanceStatus, cps.couponProvidedStatus, " +
         "c.couponIssuanceTime, c.couponProvidedTime, c.couponLimitTime) " +
         "FROM Coupon c " +
@@ -46,8 +46,8 @@ public class CouponJdbRepoImpl implements CouponJdbRepoCustom {
         "LEFT JOIN CouponProvidedStatus cps ON c.couponProvidedStatusIndex = cps.couponProvidedStatusIndex " +
         "WHERE (:couponName IS NULL OR c.couponName LIKE :couponName) " +
         "AND (:couponPrice IS NULL OR c.couponPrice = :couponPrice) " +
-        "AND (:issuanceUserId IS NULL OR uiu.id LIKE :issuanceUserId) " +
-        "AND (:providedUserId IS NULL OR upu.id LIKE :providedUserId) " +
+        "AND (:issuanceUserId IS NULL OR iu.usersId.email LIKE :issuanceUserId) " +
+        "AND (:providedUserId IS NULL OR pu.usersId.email LIKE :providedUserId) " +
         "AND (:issuanceStatusIndex IS NULL OR c.couponIssuanceStatusIndex = :issuanceStatusIndex) " +
         "AND (:providedStatusIndex IS NULL OR c.couponProvidedStatusIndex = :providedStatusIndex) " +
         "AND (:issuanceStart IS NULL OR c.couponIssuanceTime >= :issuanceStart) " +
