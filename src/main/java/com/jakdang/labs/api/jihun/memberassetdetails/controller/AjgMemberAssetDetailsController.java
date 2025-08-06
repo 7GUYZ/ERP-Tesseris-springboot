@@ -4,6 +4,8 @@ import com.jakdang.labs.api.jihun.memberassetdetails.dto.MemberAssetDetailsRespo
 import com.jakdang.labs.api.jihun.memberassetdetails.dto.MemberAssetDetailsSearchDto;
 import com.jakdang.labs.api.jihun.memberassetdetails.service.AjgMemberAssetDetailsService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +16,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/memberassetdetails")
 @RequiredArgsConstructor
+@Slf4j
 public class AjgMemberAssetDetailsController {
     
     private final AjgMemberAssetDetailsService ajgMemberAssetDetailsService;
@@ -83,6 +86,7 @@ public class AjgMemberAssetDetailsController {
     @PostMapping("/payment")
     public ResponseEntity<Map<String, Object>> processPayment(@RequestBody Map<String, Object> paymentRequest) {
         try {
+            log.info("paymentRequest: {}", paymentRequest);
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> members = (List<Map<String, Object>>) paymentRequest.get("members");
             Integer amount = (Integer) paymentRequest.get("amount");

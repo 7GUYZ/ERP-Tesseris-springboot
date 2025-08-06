@@ -214,8 +214,8 @@ public class AjgMemberAssetDetailsService {
         try {
             // 1. 지급 관련 인덱스 조회
             Optional<UserCmLogPayment> paymentOpt = userCmLogPaymentRepository.findByUserCmLogPaymentName("입금");
-            Optional<UserCmLogTransactionType> transactionOpt = userCmLogTransactionTypeRepository.findByUserCmLogTransactionTypeName("본사지급(TS)");
-            Optional<UserCmLogValueType> valueTypeOpt = userCmLogValueTypeRepository.findByUserCmLogValueTypeName("TS");
+            Optional<UserCmLogTransactionType> transactionOpt = userCmLogTransactionTypeRepository.findByUserCmLogTransactionTypeName("본사지급(CM)");
+            Optional<UserCmLogValueType> valueTypeOpt = userCmLogValueTypeRepository.findByUserCmLogValueTypeName("CM");
             
             if (!paymentOpt.isPresent() || !transactionOpt.isPresent() || !valueTypeOpt.isPresent()) {
                 log.error("거래 내역 기록 실패: 필요한 인덱스를 찾을 수 없습니다.");
@@ -316,7 +316,7 @@ public class AjgMemberAssetDetailsService {
             // 1. 회수 관련 인덱스 조회
             Optional<UserCmLogPayment> paymentOpt = userCmLogPaymentRepository.findByUserCmLogPaymentName("출금");
             Optional<UserCmLogTransactionType> transactionOpt = userCmLogTransactionTypeRepository.findByUserCmLogTransactionTypeName("본사회수(TS)");
-            Optional<UserCmLogValueType> valueTypeOpt = userCmLogValueTypeRepository.findByUserCmLogValueTypeName("TS");
+            Optional<UserCmLogValueType> valueTypeOpt = userCmLogValueTypeRepository.findByUserCmLogValueTypeName("CM");
             
             if (!paymentOpt.isPresent() || !transactionOpt.isPresent() || !valueTypeOpt.isPresent()) {
                 log.error("거래 내역 기록 실패: 필요한 인덱스를 찾을 수 없습니다.");
