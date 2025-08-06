@@ -31,8 +31,8 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
     // 닉네임으로 사용자 찾기
     Optional<UserEntity> findByNickname(String nickname);
     
-    // 이메일 또는 닉네임으로 사용자 검색
-    @Query("SELECT u FROM UserEntity u WHERE u.email = :searchValue OR u.nickname = :searchValue")
+    // 이메일 또는 닉네임으로 사용자 검색 (부분 검색 가능)
+    @Query("SELECT u FROM UserEntity u WHERE u.email LIKE %:searchValue% OR u.nickname LIKE %:searchValue%")
     Optional<UserEntity> findByEmailOrNickname(@Param("searchValue") String searchValue);
     
     // created_at, updated_at 컬럼 업데이트

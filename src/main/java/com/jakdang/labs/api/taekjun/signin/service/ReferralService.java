@@ -98,10 +98,14 @@ public class ReferralService {
      * 아이디로 사용자 검색 결과 반환
      */
     public UserSearchResultDTO searchUserByIdentifier(String identifier) {
+        log.info("사용자 검색 시작 - identifier: {}", identifier);
+        
         Optional<UserEntity> userOpt = findUserByIdentifier(identifier);
         
         if (userOpt.isPresent()) {
             UserEntity user = userOpt.get();
+            log.info("사용자 검색 성공 - userId: {}, email: {}, nickname: {}", 
+                    user.getId(), user.getEmail(), user.getNickname());
             return new UserSearchResultDTO(
                 user.getId(),
                 user.getName(),
@@ -112,6 +116,7 @@ public class ReferralService {
                 "사용자를 찾았습니다."
             );
         } else {
+            log.warn("사용자 검색 실패 - identifier: {}", identifier);
             return new UserSearchResultDTO(
                 null, null, null, null, null, false,
                 "해당 아이디로 사용자를 찾을 수 없습니다."
