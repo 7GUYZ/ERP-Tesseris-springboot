@@ -2,6 +2,7 @@ package com.jakdang.labs.api.taekjun.customermanagement.controller;
 
 import com.jakdang.labs.api.taekjun.customermanagement.dto.CustomerListResponseDTO;
 import com.jakdang.labs.api.taekjun.customermanagement.dto.CustomerUpdateDTO;
+import com.jakdang.labs.api.taekjun.customermanagement.dto.EventCouponDTO;
 import com.jakdang.labs.api.taekjun.customermanagement.service.CustomerManagementService;
 import com.jakdang.labs.entity.StoreCustomer;
 import lombok.RequiredArgsConstructor;
@@ -62,12 +63,14 @@ public class CustomerManagementController {
      */
     @GetMapping("/my-customers")
     public ResponseEntity<Map<String, Object>> getMyCustomers(
-            @RequestParam String storeUserIndex) {
+            @RequestParam String storeUserIndex,
+            @RequestParam(required = false) String member,
+            @RequestParam(required = false) String phone) {
         
-        log.info("내 가맹점 고객 목록 조회 요청 - storeUserIndex: {}", storeUserIndex);
+        log.info("내 가맹점 고객 목록 조회 요청 - storeUserIndex: {}, member: {}, phone: {}", storeUserIndex, member, phone);
         
         try {
-            List<Map<String, Object>> customers = customerManagementService.getMyCustomers(storeUserIndex);
+            List<Map<String, Object>> customers = customerManagementService.getMyCustomers(storeUserIndex, member, phone);
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -434,6 +437,101 @@ public class CustomerManagementController {
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);
             response.put("message", "쿠폰 선물 중 오류가 발생했습니다.");
+            
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+    
+    /**
+     * 이벤트 쿠폰 발행
+     */
+    @PostMapping("/issue-event-coupon")
+    public ResponseEntity<Map<String, Object>> issueEventCoupon(@RequestBody EventCouponDTO eventCouponDTO) {
+        
+        log.info("이벤트 쿠폰 발행 요청 - eventName: {}, couponName: {}, storeUserIndex: {}", 
+                eventCouponDTO.getEventName(), eventCouponDTO.getCouponName(), eventCouponDTO.getStoreUserIndex());
+        
+        // 필수 데이터 검증
+        if (eventCouponDTO.getEventName() == null || eventCouponDTO.getEventName().isEmpty()) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "이벤트명을 입력해주세요.");
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        if (eventCouponDTO.getCouponName() == null || eventCouponDTO.getCouponName().isEmpty()) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "쿠폰명을 입력해주세요.");
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        if (eventCouponDTO.getCouponPrice() == null || eventCouponDTO.getCouponPrice() <= 0) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "쿠폰 금액을 입력해주세요.");
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        if (eventCouponDTO.getCouponLimit() == null || eventCouponDTO.getCouponLimit() < 1 || eventCouponDTO.getCouponLimit() > 90) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "쿠폰 기한은 1일~90일 사이로 입력해주세요.");
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        if (eventCouponDTO.getCouponCount() == null || eventCouponDTO.getCouponCount() < 1) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "쿠폰 발행 개수를 입력해주세요.");
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        if (eventCouponDTO.getPinCode() == null || eventCouponDTO.getPinCode().isEmpty()) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "핀번호를 입력해주세요.");
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        // 핀번호 형식 검증 (6자리 숫자)
+        if (!eventCouponDTO.getPinCode().matches("\\d{6}")) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "핀번호는 6자리 숫자로 입력해주세요.");
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        if (eventCouponDTO.getStoreUserIndex() == null) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "가맹점 정보가 없습니다.");
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        try {
+            boolean success = customerManagementService.issueEventCoupon(eventCouponDTO);
+            
+            Map<String, Object> response = new HashMap<>();
+            
+            if (success) {
+                response.put("success", true);
+                response.put("message", "이벤트 쿠폰이 성공적으로 발행되었습니다.");
+                log.info("이벤트 쿠폰 발행 완료");
+                return ResponseEntity.ok(response);
+            } else {
+                response.put("success", false);
+                response.put("message", "이벤트 쿠폰 발행에 실패했습니다.");
+                log.warn("이벤트 쿠폰 발행 실패");
+                return ResponseEntity.badRequest().body(response);
+            }
+            
+        } catch (Exception e) {
+            log.error("이벤트 쿠폰 발행 중 오류 발생", e);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "이벤트 쿠폰 발행 중 오류가 발생했습니다.");
             
             return ResponseEntity.badRequest().body(response);
         }

@@ -23,10 +23,10 @@ public interface UserListJtjRepo extends JpaRepository<UserTesseris, Integer> {
             b.user_bank_name,
             u.user_bank_number,
             u.user_bank_holder,
-            r_ue.name AS recommender_name,
-            r_ue.email AS recommender_email,
-            su.join_date,
-            IFNULL(cm.user_cm_deposit, 0) - IFNULL(cm.user_cm_withdrawal,0) AS cm_balance,
+            MAX(r_ue.name) AS recommender_name,
+            MAX(r_ue.email) AS recommender_email,
+            MAX(su.join_date) AS join_date,
+            IFNULL(SUM(cm.user_cm_deposit), 0) - IFNULL(SUM(cm.user_cm_withdrawal), 0) AS cm_balance,
             ue.created_at,
             u.user_zone_code,
             u.user_address,
@@ -42,6 +42,9 @@ public interface UserListJtjRepo extends JpaRepository<UserTesseris, Integer> {
         LEFT JOIN user_cm cm ON u.user_index = cm.user_cm_index
         WHERE u.user_role_index <> 4 AND u.user_role_index <> 7
         AND ue.activated = 1
+        GROUP BY u.user_index, ue.name, ue.email, ue.phone, ue.nickname, u.user_birthday, 
+                 u.user_gender_index, r.user_role_kor_nm, b.user_bank_name, u.user_bank_number, 
+                 u.user_bank_holder, ue.created_at, u.user_zone_code, u.user_address, u.user_detail_address
         ORDER BY u.user_index DESC
     """, nativeQuery = true)
     List<Object[]> findUserListRaw();
@@ -59,10 +62,10 @@ public interface UserListJtjRepo extends JpaRepository<UserTesseris, Integer> {
             b.user_bank_name,
             u.user_bank_number,
             u.user_bank_holder,
-            r_ue.name AS recommender_name,
-            r_ue.email AS recommender_email,
-            su.join_date,
-            IFNULL(cm.user_cm_deposit, 0) - IFNULL(cm.user_cm_withdrawal,0) AS cm_balance,
+            MAX(r_ue.name) AS recommender_name,
+            MAX(r_ue.email) AS recommender_email,
+            MAX(su.join_date) AS join_date,
+            IFNULL(SUM(cm.user_cm_deposit), 0) - IFNULL(SUM(cm.user_cm_withdrawal), 0) AS cm_balance,
             ue.created_at,
             u.user_zone_code,
             u.user_address,
@@ -84,6 +87,9 @@ public interface UserListJtjRepo extends JpaRepository<UserTesseris, Integer> {
         AND (:userRole IS NULL OR :userRole = '' OR r.user_role_kor_nm = :userRole)
         AND (:startDate IS NULL OR :startDate = '' OR ue.created_at >= STR_TO_DATE(:startDate, '%Y-%m-%d'))
         AND (:endDate IS NULL OR :endDate = '' OR ue.created_at <= STR_TO_DATE(:endDate, '%Y-%m-%d'))
+        GROUP BY u.user_index, ue.name, ue.email, ue.phone, ue.nickname, u.user_birthday, 
+                 u.user_gender_index, r.user_role_kor_nm, b.user_bank_name, u.user_bank_number, 
+                 u.user_bank_holder, ue.created_at, u.user_zone_code, u.user_address, u.user_detail_address
         ORDER BY u.user_index DESC
     """, nativeQuery = true)
     List<Object[]> findUserListWithSearch(

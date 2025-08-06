@@ -15,11 +15,11 @@ public interface MemberRecommendationJdbRepo extends JpaRepository<com.jakdang.l
     
     @Query("""
         SELECT new com.jakdang.labs.api.dabin.CmsMemberRecommendation.dto.MemberRecommendationSearchResponseDto(
-            t2.usersId.id,
+            t2.usersId.email,
             t2.usersId.name,
             t4.userRoleKorNm,
             t5.storeName,
-            t3.usersId.id,
+            t3.usersId.email,
             t3.usersId.name,
             t6.userRoleKorNm,
             t1.joinDate
@@ -30,7 +30,7 @@ public interface MemberRecommendationJdbRepo extends JpaRepository<com.jakdang.l
         INNER JOIN UserRole t4 ON t2.userRoleIndex = t4.userRoleIndex
         LEFT JOIN Store t5 ON t1.suggestionUserIndex = t5.userIndex.userIndex
         INNER JOIN UserRole t6 ON t3.userRoleIndex = t6.userRoleIndex
-        WHERE (:suggestionUserId IS NULL OR :suggestionUserId = '' OR t2.usersId.id LIKE CONCAT('%', :suggestionUserId, '%'))
+        WHERE (:suggestionUserId IS NULL OR :suggestionUserId = '' OR t2.usersId.email LIKE CONCAT('%', :suggestionUserId, '%'))
         AND (:suggestionUserName IS NULL OR :suggestionUserName = '' OR t2.usersId.name LIKE CONCAT('%', :suggestionUserName, '%'))
         AND (:suggestionUserRole IS NULL OR :suggestionUserRole = 0 OR t4.userRoleIndex = :suggestionUserRole)
         AND (:recommendationUserRole IS NULL OR :recommendationUserRole = 0 OR t3.userRoleIndex = :recommendationUserRole)
