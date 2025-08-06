@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 public class ChageController {
     private final ChageService chargeService;
     @PostMapping("/confirm/{source}")
-    public ResponseEntity<Map<String, Object>> ChargeConfirm(@RequestBody Map<String, Object> data, @PathVariable String source) {
+    public ResponseEntity<Map<String, Object>> ChargeConfirm(@RequestBody Map<String, Object> data, @PathVariable("source") String source) {
         try {
             chargeService.confirmPayment(data, source);
             return ResponseEntity.status(HttpStatus.SC_OK).body(

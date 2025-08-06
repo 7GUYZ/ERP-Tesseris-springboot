@@ -74,7 +74,7 @@ public class AdminMyPageController {
     
     @PostMapping("/changepassword")
     public ResponseEntity<String> changePassword(@RequestBody PasswordChangeRequestDto passwordChangeRequest, 
-                                               @RequestParam String userIndex) {
+                                               @RequestParam("userIndex") String userIndex) {
         log.info("패스워드 변경 요청 - userIndex: {}", userIndex);
         
         if (userIndex == null || userIndex.trim().isEmpty()) {
