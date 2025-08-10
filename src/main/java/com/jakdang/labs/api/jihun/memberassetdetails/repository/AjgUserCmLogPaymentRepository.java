@@ -8,5 +8,5 @@ import java.util.Optional;
 
 @Repository
 public interface AjgUserCmLogPaymentRepository extends JpaRepository<UserCmLogPayment, Integer> {
-    Optional<UserCmLogPayment> findByUserCmLogPaymentName(String paymentName);
+    Optional<UserCmLogPayment> findByUserCmLogPaymentIndex(Integer paymentIndex);
 } 

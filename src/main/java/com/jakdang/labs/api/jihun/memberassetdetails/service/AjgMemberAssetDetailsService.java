@@ -213,9 +213,9 @@ public class AjgMemberAssetDetailsService {
     private boolean createPaymentLog(UserTesseris member, Integer amount, String reason) {
         try {
             // 1. 지급 관련 인덱스 조회
-            Optional<UserCmLogPayment> paymentOpt = userCmLogPaymentRepository.findByUserCmLogPaymentName("입금");
-            Optional<UserCmLogTransactionType> transactionOpt = userCmLogTransactionTypeRepository.findByUserCmLogTransactionTypeName("본사지급(CM)");
-            Optional<UserCmLogValueType> valueTypeOpt = userCmLogValueTypeRepository.findByUserCmLogValueTypeName("CM");
+            Optional<UserCmLogPayment> paymentOpt = userCmLogPaymentRepository.findByUserCmLogPaymentIndex(1);
+            Optional<UserCmLogTransactionType> transactionOpt = userCmLogTransactionTypeRepository.findByUserCmLogTransactionTypeIndex(2);
+            Optional<UserCmLogValueType> valueTypeOpt = userCmLogValueTypeRepository.findByUserCmLogValueTypeIndex(2);
             
             if (!paymentOpt.isPresent() || !transactionOpt.isPresent() || !valueTypeOpt.isPresent()) {
                 log.error("거래 내역 기록 실패: 필요한 인덱스를 찾을 수 없습니다.");
@@ -312,11 +312,11 @@ public class AjgMemberAssetDetailsService {
      * 회수 거래 내역 기록
      */
     private boolean createCollectionLog(UserTesseris member, Integer amount, String reason) {
-        try {
+        try {   
             // 1. 회수 관련 인덱스 조회
-            Optional<UserCmLogPayment> paymentOpt = userCmLogPaymentRepository.findByUserCmLogPaymentName("출금");
-            Optional<UserCmLogTransactionType> transactionOpt = userCmLogTransactionTypeRepository.findByUserCmLogTransactionTypeName("본사회수(TS)");
-            Optional<UserCmLogValueType> valueTypeOpt = userCmLogValueTypeRepository.findByUserCmLogValueTypeName("CM");
+            Optional<UserCmLogPayment> paymentOpt = userCmLogPaymentRepository.findByUserCmLogPaymentIndex(2);
+            Optional<UserCmLogTransactionType> transactionOpt = userCmLogTransactionTypeRepository.findByUserCmLogTransactionTypeIndex(3);
+            Optional<UserCmLogValueType> valueTypeOpt = userCmLogValueTypeRepository.findByUserCmLogValueTypeIndex(2);
             
             if (!paymentOpt.isPresent() || !transactionOpt.isPresent() || !valueTypeOpt.isPresent()) {
                 log.error("거래 내역 기록 실패: 필요한 인덱스를 찾을 수 없습니다.");
