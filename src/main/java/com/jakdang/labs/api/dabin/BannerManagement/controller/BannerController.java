@@ -13,14 +13,17 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.PathVariable;
 
 @RestController
 @RequestMapping("/api/dabin/banner")
 @RequiredArgsConstructor
 public class BannerController {
-    
+
     private final BannerService bannerService;
-    
+
     @GetMapping("/list")
     public ResponseEntity<ResponseDTO<?>> getAllBanners() {
         try {
@@ -32,7 +35,10 @@ public class BannerController {
                 System.out.println("  - userId: " + banner.getUserId());
                 System.out.println("  - bannerPhoto: " + banner.getBannerPhoto());
                 System.out.println("  - bannerCreateTime: " + banner.getBannerCreateTime());
-                System.out.println("  - bannerCreateTime type: " + (banner.getBannerCreateTime() != null ? banner.getBannerCreateTime().getClass().getName() : "null"));
+                System.out.println("  - bannerCreateTime type: "
+                        + (banner.getBannerCreateTime() != null ? banner.getBannerCreateTime().getClass().getName()
+                                : "null"));
+                System.out.println("  - bannerIsvisible: " + banner.getBannerIsvisible());
             }
             return ResponseEntity.ok(ResponseDTO.createSuccessResponse("배너 목록 조회 성공", banners));
         } catch (Exception e) {
@@ -41,9 +47,9 @@ public class BannerController {
             return ResponseEntity.badRequest().body(ResponseDTO.createErrorResponse(500, "배너 목록 조회에 실패했습니다."));
         }
     }
-    
+
     @GetMapping("/{bannerIndex}")
-    public ResponseEntity<ResponseDTO<?>> getBannerById(@PathVariable Integer bannerIndex) {
+    public ResponseEntity<ResponseDTO<?>> getBannerById(@PathVariable("bannerIndex") Integer bannerIndex) {
         try {
             Optional<BannerResponseDto> bannerOpt = bannerService.getBannerById(bannerIndex);
             if (bannerOpt.isPresent()) {
@@ -55,23 +61,23 @@ public class BannerController {
             return ResponseEntity.badRequest().body(ResponseDTO.createErrorResponse(500, "배너 조회에 실패했습니다."));
         }
     }
-    
+
     @PostMapping("/create")
     public ResponseEntity<ResponseDTO<?>> createBanner(@RequestParam("file") MultipartFile file) {
         try {
             System.out.println("=== 배너 생성 요청 시작 ===");
             System.out.println("파일명: " + file.getOriginalFilename());
             System.out.println("파일 크기: " + file.getSize());
-            
+
             // 현재 로그인한 사용자의 userIndex 가져오기
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             String userEmail = authentication.getName();
             System.out.println("사용자 이메일: " + userEmail);
-            
+
             // userEmail로 userIndex 조회 (실제 구현에서는 UserService를 통해 조회)
             Integer userIndex = 1; // 임시로 1 설정, 실제로는 UserService에서 조회
             System.out.println("사용자 인덱스: " + userIndex);
-            
+
             BannerResponseDto createdBanner = bannerService.createBanner(file, userIndex);
             System.out.println("배너 생성 성공: " + createdBanner);
             return ResponseEntity.ok(ResponseDTO.createSuccessResponse("배너를 등록하였습니다.", createdBanner));
@@ -79,52 +85,58 @@ public class BannerController {
             System.err.println("=== 배너 생성 실패 ===");
             System.err.println("에러 메시지: " + e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.badRequest().body(ResponseDTO.createErrorResponse(500, "배너 등록에 실패했습니다: " + e.getMessage()));
+            return ResponseEntity.badRequest()
+                    .body(ResponseDTO.createErrorResponse(500, "배너 등록에 실패했습니다: " + e.getMessage()));
         }
     }
-    
+
     @PutMapping("/{bannerIndex}")
     public ResponseEntity<?> updateBanner(
-            @PathVariable Integer bannerIndex,
+            @PathVariable("bannerIndex") Integer bannerIndex,
             @RequestParam(value = "file", required = false) MultipartFile file) {
         try {
             // 현재 로그인한 사용자의 userIndex 가져오기
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             String userEmail = authentication.getName();
-            
+
             // userEmail로 userIndex 조회 (실제 구현에서는 UserService를 통해 조회)
             Integer userIndex = 1; // 임시로 1 설정, 실제로는 UserService에서 조회
-            
+
             BannerResponseDto updatedBanner = bannerService.updateBanner(bannerIndex, file, userIndex);
             return ResponseEntity.ok(Map.of(
-                "success", true,
-                "message", "배너를 수정하였습니다.",
-                "data", updatedBanner
-            ));
+                    "success", true,
+                    "message", "배너를 수정하였습니다.",
+                    "data", updatedBanner));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of(
-                "success", false,
-                "message", "배너 수정에 실패했습니다: " + e.getMessage()
-            ));
+                    "success", false,
+                    "message", "배너 수정에 실패했습니다: " + e.getMessage()));
         }
     }
-    
+
     @DeleteMapping("/{bannerIndex}")
-    public ResponseEntity<?> deleteBanner(@PathVariable Integer bannerIndex) {
+    public ResponseEntity<?> deleteBanner(@PathVariable("bannerIndex") Integer bannerIndex) {
         try {
             bannerService.deleteBanner(bannerIndex);
             return ResponseEntity.ok(Map.of(
-                "success", true,
-                "message", "배너를 삭제하였습니다."
-            ));
+                    "success", true,
+                    "message", "배너를 삭제하였습니다."));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of(
-                "success", false,
-                "message", "배너 삭제에 실패했습니다."
-            ));
+                    "success", false,
+                    "message", "배너 삭제에 실패했습니다."));
         }
     }
-    
+
+    @PutMapping("/banner_isvisible")
+    public ResponseEntity<ResponseDTO<?>> BannerIsvisible(@RequestBody List<Integer> bannerIndices) {
+       try {
+        return ResponseEntity.ok(bannerService.updateBannerIsvisible(bannerIndices));
+       } catch (Exception e) {
+        return ResponseEntity.badRequest().body(ResponseDTO.createErrorResponse(500, "배너 노출 여부 수정에 실패했습니다: " + e.getMessage()));
+       }
+    }
+
     /**
      * 기존 배너들의 생성 시간 업데이트 (임시용)
      */
@@ -134,7 +146,8 @@ public class BannerController {
             bannerService.updateBannerCreateTimes();
             return ResponseEntity.ok(ResponseDTO.createSuccessResponse("배너 생성 시간이 업데이트되었습니다.", null));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ResponseDTO.createErrorResponse(500, "배너 생성 시간 업데이트에 실패했습니다: " + e.getMessage()));
+            return ResponseEntity.badRequest()
+                    .body(ResponseDTO.createErrorResponse(500, "배너 생성 시간 업데이트에 실패했습니다: " + e.getMessage()));
         }
     }
-} 
+}

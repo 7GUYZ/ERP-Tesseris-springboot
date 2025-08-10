@@ -21,7 +21,8 @@ public interface BannerRepository extends JpaRepository<Banner, Integer> {
             b.bannerIndex,
             u.usersId.name,
             b.bannerPhoto,
-            b.bannerCreateTime
+            b.bannerCreateTime,
+            b.bannerIsvisible
         )
         FROM Banner b
         JOIN b.userIndex u
@@ -34,7 +35,8 @@ public interface BannerRepository extends JpaRepository<Banner, Integer> {
             b.bannerIndex,
             u.usersId.name,
             b.bannerPhoto,
-            b.bannerCreateTime
+            b.bannerCreateTime,
+            b.bannerIsvisible
         )
         FROM Banner b
         JOIN b.userIndex u
