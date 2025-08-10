@@ -51,8 +51,8 @@ public class UserCmLogController {
      */
     @GetMapping
     public ResponseEntity<Map<String, Object>> getAllUserCmLogsPaged(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "25") int size) {
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "25") int size) {
         log.info("페이징 UserCmLog 조회 API 호출 - page: {}, size: {}", page, size);
 
         try {
