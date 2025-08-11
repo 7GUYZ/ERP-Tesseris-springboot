@@ -50,6 +50,15 @@ public class NoticeService {
       notice.setUserIndex(user.getUserIndex()); // userIndex 저장
       notice.setNoticeTitle(request.getNoticeTitle());
       notice.setNoticeDesc(request.getNoticeDesc());
+      
+      // noticeType 유효성 검사 및 설정
+      String noticeType = request.getNoticeType();
+      if (noticeType != null && (noticeType.equals("중요") || noticeType.equals("일반"))) {
+        notice.setNoticeType(noticeType);
+      } else {
+        notice.setNoticeType("일반"); // 기본값
+      }
+      
       notice.setNoticeCreateTime(LocalDateTime.now());
       noticeRepository.save(notice);
 
@@ -77,15 +86,20 @@ public class NoticeService {
     return toResponse(notice);
   }
 
-  // 공지사항 목록
+  // 공지사항 목록 (중요공지 우선)
   @Transactional(readOnly = true)
   public List<NoticeDTO.Response> getNoticeList() {
     try {
       List<Notice> notices = noticeRepository.findAll();
       System.out.println("조회된 공지사항 수: " + notices.size());
-      return notices.stream()
+      
+      // 모든 공지사항을 최신순으로 정렬
+      List<NoticeDTO.Response> allNotices = notices.stream()
           .map(this::toResponse)
+          .sorted((a, b) -> b.getNoticeCreateTime().compareTo(a.getNoticeCreateTime()))
           .collect(Collectors.toList());
+      
+      return allNotices;
     } catch (Exception e) {
       System.out.println("공지사항 목록 조회 중 오류: " + e.getMessage());
       e.printStackTrace();
@@ -103,6 +117,15 @@ public class NoticeService {
           .orElseThrow(() -> new IllegalArgumentException("공지사항을 찾을 수 없습니다."));
       notice.setNoticeTitle(request.getNoticeTitle());
       notice.setNoticeDesc(request.getNoticeDesc());
+      
+      // noticeType 유효성 검사 및 설정
+      String noticeType = request.getNoticeType();
+      if (noticeType != null && (noticeType.equals("중요") || noticeType.equals("일반"))) {
+        notice.setNoticeType(noticeType);
+      } else {
+        notice.setNoticeType("일반"); // 기본값
+      }
+      
       noticeRepository.save(notice);
       return true;
     } catch (Exception e) {
@@ -161,6 +184,7 @@ public class NoticeService {
     dto.setUserEmail(userEmail);
     dto.setNoticeTitle(notice.getNoticeTitle());
     dto.setNoticeDesc(notice.getNoticeDesc());
+    dto.setNoticeType(notice.getNoticeType());
     dto.setNoticeCreateTime(notice.getNoticeCreateTime());
     return dto;
   }

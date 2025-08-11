@@ -1,6 +1,7 @@
 package com.jakdang.labs.api.taekjun.user_list.Dto;
 
 import lombok.Data;
+import java.util.List;
 
 @Data
 public class UserListSearchDTO {
@@ -14,4 +15,5 @@ public class UserListSearchDTO {
     private String recommenderEmail;  // 추천인 이메일
     private String recommenderName;   // 추천인 이름
     private String recommenderGrade;  // 추천인 등급
+    private List<String> selectedIds; // 선택된 사용자 ID 목록
 } 

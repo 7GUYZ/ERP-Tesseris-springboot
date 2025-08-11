@@ -26,7 +26,11 @@ public class Notice {
 
     @Column(name = "notice_desc", columnDefinition = "TEXT")
     private String noticeDesc;
-
+    
     @Column(name = "notice_create_time")
     private LocalDateTime noticeCreateTime;
+
+    @Column(name = "notic_type", columnDefinition = "ENUM('중요', '일반') NOT NULL DEFAULT '일반'")
+    private String noticeType;
+    
 } 
