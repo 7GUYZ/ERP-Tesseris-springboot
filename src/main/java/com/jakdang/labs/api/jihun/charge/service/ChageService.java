@@ -173,7 +173,7 @@ public class ChageService {
 
             // 2. 충전한 사람 UserCm 업데이트 (amount만큼 +)
             UserCm userCm = ajgUserCm.findById(userIndex)
-                    .orElseThrow(() -> new RuntimeException("UserCm 정보를 찾을 수 없습니다: " + userIndex));
+                    .orElseThrow(() -> new RuntimeException("UserTS 정보를 찾을 수 없습니다: " + userIndex));
 
             // 기존 UserCm의 모든 데이터를 유지하면서 deposit만 + 업데이트
             Integer currentDeposit = userCm.getUserCmDeposit() != null ? userCm.getUserCmDeposit() : 0;
@@ -195,17 +195,17 @@ public class ChageService {
 
             // 충전 타입 조회
             UserCmLogTransactionType transactionType = ajgUserCmLogTransactionType
-                    .findByUserCmLogTransactionTypeName("충전(CM)");
+                    .findByUserCmLogTransactionTypeName("충전(TS)");
             userCmLog.setUserCmLogTransactionTypeIndex(transactionType.getUserCmLogTransactionTypeIndex());
 
             // CM 타입 조회
-            UserCmLogValueType valueType = ajgUserCmLogValueType.findByUserCmLogValueTypeName("CM");
+            UserCmLogValueType valueType = ajgUserCmLogValueType.findByUserCmLogValueTypeName("TS");
             userCmLog.setUserCmLogValueTypeIndex(valueType.getUserCmLogValueTypeIndex());
 
             userCmLog.setUserIndexEventTrigger(userTesseris); // 발생자 = 본인
             userCmLog.setUserIndexEventParty(userTesseris); // 받는사람 = 본인
             userCmLog.setUserCmLogValue(amount);
-            userCmLog.setUserCmLogReason("CM충전");
+            userCmLog.setUserCmLogReason("TS충전");
             userCmLog.setUserCmLogCreateTime(approvedTime);
             userCmLog.setUserCmLogTransactionCancel(null);
             userCmLog.setUserCouponValue(null);
@@ -262,7 +262,7 @@ public class ChageService {
                     referralUserCmLog.setUserIndexEventTrigger(userTesseris); // 발생자 = 충전한사람
                     referralUserCmLog.setUserIndexEventParty(referralUserTesseris); // 받는사람 = 추천인
                     referralUserCmLog.setUserCmLogValue((int) finalCashValue); // 계산된 금액
-                    referralUserCmLog.setUserCmLogReason("추천인 CM충전");
+                    referralUserCmLog.setUserCmLogReason("추천인 TS충전");
                     referralUserCmLog.setUserCmLogCreateTime(approvedTime);
                     referralUserCmLog.setUserCmLogTransactionCancel(null);
                     referralUserCmLog.setUserCouponValue(null);
@@ -310,7 +310,7 @@ public class ChageService {
                 case 8: // 모범회원
                 case 9: // VIP회원
                 case 10: // 프리미엄회원
-                    description = "CM충전";
+                    description = "TS충전";
                     break;
                 case 3: // 가맹점
                     description = "가맹점_결제_추천인혜택";

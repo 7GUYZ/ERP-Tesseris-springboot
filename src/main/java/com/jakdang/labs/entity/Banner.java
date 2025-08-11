@@ -27,4 +27,13 @@ public class Banner {
 
     @Column(name = "banner_create_time")
     private LocalDateTime bannerCreateTime;
-} 
+
+    /**
+     * 배너 표시 여부
+     * 0 : 미표시 (False)
+     * 1 : 표시 (True)
+     */
+    @Column(name = "banner_isvisible", columnDefinition = "TINYINT(1) DEFAULT 0")
+    private Boolean bannerIsvisible;
+
+}

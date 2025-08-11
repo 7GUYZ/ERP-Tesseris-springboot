@@ -17,4 +17,6 @@ public class BannerResponseDto {
     
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime bannerCreateTime;
+
+    private Boolean bannerIsvisible;
 } 

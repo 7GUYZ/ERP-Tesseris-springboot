@@ -8,5 +8,5 @@ import java.util.Optional;
 
 @Repository
 public interface AjgUserCmLogValueTypeRepository extends JpaRepository<UserCmLogValueType, Integer> {
-    Optional<UserCmLogValueType> findByUserCmLogValueTypeName(String valueTypeName);
-} 
+    Optional<UserCmLogValueType> findByUserCmLogValueTypeIndex(Integer valueTypeIndex);
+    } 
