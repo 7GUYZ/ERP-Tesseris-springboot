@@ -29,12 +29,13 @@ public interface PaymentJtjRepo extends JpaRepository<Store, Integer> {
     """)
     List<Coupon> findUserCoupons(@Param("userIndex") Integer userIndex, @Param("couponName") String couponName);
     
-    // 특정 가맹점이 사용자에게 준 쿠폰 목록 조회
+    // 특정 가맹점이 사용자에게 준 쿠폰 목록 조회 (사용 가능한 쿠폰만)
     @Query("""
         SELECT c FROM Coupon c 
         WHERE c.providedUser.userIndex = :userIndex 
         AND c.issuanceUser.userIndex = :storeUserIndex
-        AND c.couponProvidedStatusIndex IN (1, 2, 3)
+        AND c.couponProvidedStatusIndex = 1
+        AND (c.couponLimitTime IS NULL OR c.couponLimitTime > CURRENT_TIMESTAMP)
         AND (:couponName IS NULL OR c.couponName LIKE %:couponName%)
         ORDER BY c.couponIssuanceTime DESC
     """)

@@ -10,6 +10,7 @@ public class NoticeDTO {
         private Integer userIndex;
         private String noticeTitle;
         private String noticeDesc;
+        private String noticeType;
     }
 
     @Data
@@ -17,6 +18,7 @@ public class NoticeDTO {
         private Integer noticeIndex;
         private String noticeTitle;
         private String noticeDesc;
+        private String noticeType;
         private String password; // 비밀번호 추가
     }
 
@@ -31,6 +33,7 @@ public class NoticeDTO {
         private Integer noticeIndex;
         private String noticeTitle;
         private String noticeDesc;
+        private String noticeType;
         @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
         private LocalDateTime noticeCreateTime;
         private String userEmail; 

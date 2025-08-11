@@ -7,13 +7,13 @@ import com.jakdang.labs.api.taekjun.user_list.repository.UserListJtjRepo;
 import com.jakdang.labs.entity.UserTesseris;
 import com.jakdang.labs.api.auth.entity.UserEntity;
 import com.jakdang.labs.entity.UserGender;
-import com.jakdang.labs.entity.UserBank;
 import com.jakdang.labs.entity.SuggestionUser;
 import com.jakdang.labs.api.taekjun.signin.repository.SuggestionUserRepository;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.stream.Collectors;
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStreamWriter;
@@ -161,14 +161,53 @@ public class UserListService {
         return dto;
     }
     
+    // 선택된 ID로 사용자 목록 조회
+    public List<UserListResponseDTO> getUserListByIds(List<String> selectedIds) {
+        System.out.println("=== 선택된 ID로 사용자 목록 조회 ===");
+        System.out.println("선택된 ID 개수: " + selectedIds.size());
+        
+        try {
+            // Repository에서 findUserListByIds 메서드 호출
+            List<Object[]> rawList = userListJtjRepo.findUserListByIds(selectedIds);
+            
+            if (rawList == null || rawList.isEmpty()) {
+                System.out.println("선택된 ID로 조회된 데이터가 없습니다.");
+                return new ArrayList<>();
+            }
+            
+            return rawList.stream()
+                    .map(this::mapToDto)
+                    .collect(Collectors.toList())
+                    .stream()
+                    .collect(Collectors.toMap(
+                        UserListResponseDTO::getUserIndex,
+                        dto -> dto,
+                        (existing, replacement) -> existing  // 기존 데이터 유지
+                    ))
+                    .values()
+                    .stream()
+                    .sorted((a, b) -> Integer.compare(b.getUserIndex(), a.getUserIndex()))  // 최신순 정렬
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            System.err.println("=== UserListService.getUserListByIds 에러 ===");
+            System.err.println("에러 메시지: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
+    
     public byte[] generateCsvFile(UserListSearchDTO searchDTO) throws IOException {
         System.out.println("=== CSV 파일 생성 시작 ===");
         System.out.println("검색 조건: " + searchDTO);
         
         List<UserListResponseDTO> userList;
         
-        if (searchDTO != null && (searchDTO.getId() != null || searchDTO.getName() != null || 
-                                 searchDTO.getPhone() != null || searchDTO.getUserRole() != null)) {
+        // 선택된 항목이 있는 경우
+        if (searchDTO != null && searchDTO.getSelectedIds() != null && !searchDTO.getSelectedIds().isEmpty()) {
+            System.out.println("선택된 항목만 다운로드: " + searchDTO.getSelectedIds().size() + "개");
+            userList = getUserListByIds(searchDTO.getSelectedIds());
+        } else if (searchDTO != null && (searchDTO.getId() != null || searchDTO.getName() != null || 
+                                       searchDTO.getPhone() != null || searchDTO.getUserRole() != null)) {
             // DATE 검색 조건 제외하고 검색
             UserListSearchDTO safeSearchDTO = new UserListSearchDTO();
             safeSearchDTO.setId(searchDTO.getId());
@@ -308,15 +347,24 @@ public class UserListService {
             
             // 성별 업데이트 추가
             if (updateDTO.getGender() != null && !updateDTO.getGender().trim().isEmpty()) {
-                UserGender userGender = null;
-                if ("남자".equals(updateDTO.getGender())) {
-                    userGender = new UserGender();
-                    userGender.setUserGenderIndex(1);
-                } else if ("여자".equals(updateDTO.getGender())) {
-                    userGender = new UserGender();
-                    userGender.setUserGenderIndex(2);
+                try {
+                    // 성별 인덱스 설정
+                    Integer genderIndex = null;
+                    if ("남자".equals(updateDTO.getGender())) {
+                        genderIndex = 1;
+                    } else if ("여자".equals(updateDTO.getGender())) {
+                        genderIndex = 2;
+                    }
+                    
+                    if (genderIndex != null) {
+                        // UserGender 엔티티 생성 및 설정
+                        UserGender userGender = new UserGender();
+                        userGender.setUserGenderIndex(genderIndex);
+                        userTesseris.setUserGender(userGender);
+                    }
+                } catch (Exception e) {
+                    System.out.println("성별 설정 중 오류 발생: " + e.getMessage());
                 }
-                userTesseris.setUserGender(userGender);
             }
             
             // 은행 정보 업데이트
