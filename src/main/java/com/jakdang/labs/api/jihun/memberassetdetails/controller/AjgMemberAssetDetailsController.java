@@ -4,6 +4,8 @@ import com.jakdang.labs.api.jihun.memberassetdetails.dto.MemberAssetDetailsRespo
 import com.jakdang.labs.api.jihun.memberassetdetails.dto.MemberAssetDetailsSearchDto;
 import com.jakdang.labs.api.jihun.memberassetdetails.service.AjgMemberAssetDetailsService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +16,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/memberassetdetails")
 @RequiredArgsConstructor
+@Slf4j
 public class AjgMemberAssetDetailsController {
     
     private final AjgMemberAssetDetailsService ajgMemberAssetDetailsService;
@@ -83,10 +86,12 @@ public class AjgMemberAssetDetailsController {
     @PostMapping("/payment")
     public ResponseEntity<Map<String, Object>> processPayment(@RequestBody Map<String, Object> paymentRequest) {
         try {
+            log.info("paymentRequest: {}", paymentRequest);
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> members = (List<Map<String, Object>>) paymentRequest.get("members");
             Integer amount = (Integer) paymentRequest.get("amount");
             String reason = (String) paymentRequest.get("reason");
+            String type = paymentRequest.get("type") != null ? paymentRequest.get("type").toString() : null;
 
             // amount null 체크
             if (amount == null) {
@@ -111,6 +116,31 @@ public class AjgMemberAssetDetailsController {
                 ));
             }
             
+            // 안전장치: 회수 요청이 지급 엔드포인트로 들어온 경우에도 올바른 로직으로 라우팅
+            if ((type != null && type.equals("cm-collection")) || amount < 0) {
+                int collectionAmount = Math.abs(amount);
+                AjgMemberAssetDetailsService.BulkPaymentResult result = ajgMemberAssetDetailsService.processBulkCollectionWithFullTransaction(members, collectionAmount, reason);
+                if (result.isOverallSuccess()) {
+                    return ResponseEntity.ok(Map.of(
+                        "success", true,
+                        "message", result.getMessage(),
+                        "totalCount", result.getTotalCount(),
+                        "successCount", result.getSuccessCount(),
+                        "failureCount", result.getFailureCount(),
+                        "results", result.getResults()
+                    ));
+                } else {
+                    return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", result.getMessage(),
+                        "totalCount", result.getTotalCount(),
+                        "successCount", result.getSuccessCount(),
+                        "failureCount", result.getFailureCount(),
+                        "results", result.getResults()
+                    ));
+                }
+            }
+
             if (members == null || members.isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "message", "처리할 회원 목록이 필요합니다."));
             }

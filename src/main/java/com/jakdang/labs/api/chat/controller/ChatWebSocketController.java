@@ -163,37 +163,25 @@ public class ChatWebSocketController {
 
                     log.info("Map 응답에서 추출: room_index={}, messageindex={}",
                             responseData.get("room_index"), responseData.get("messageindex"));
-
-                    // 임시 messageindex가 있으면 응답에 포함
-                    String tempMessageIndex = (String) messageData.get("tempMessageIndex");
-                    if (tempMessageIndex != null) {
-                        messageData.put("tempMessageIndex", tempMessageIndex);
-                        log.info("임시 messageindex 포함: {}", tempMessageIndex);
-                    } else {
-                        log.warn("임시 messageindex가 없음");
-                    }
-
-                    log.info("메시지 저장 응답: room_index={}, messageindex={}, tempMessageIndex={}",
-                            responseData.get("room_index"), responseData.get("messageindex"), tempMessageIndex);
                 } else {
                     // 기존 호환성을 위해 단순 값도 처리
                     messageData.put("room_index", response.getData());
                     log.info("단순 값 응답에서 추출: room_index={}", response.getData());
-
-                    // 임시 messageindex가 있으면 응답에 포함
-                    String tempMessageIndex = (String) messageData.get("tempMessageIndex");
-                    if (tempMessageIndex != null) {
-                        messageData.put("tempMessageIndex", tempMessageIndex);
-                        log.info("임시 messageindex 포함: {}", tempMessageIndex);
-                    } else {
-                        log.warn("임시 messageindex가 없음");
-                    }
                 }
 
-                                 // 4-1. 새 채팅방 생성 시 해당 room_index로 직접 응답
-                 if (isNewRoomCreation) {
-                     log.info("📡 새 방 생성 완료 - room_index: {}로 브로드캐스트", messageData.get("room_index"));
-                 }
+                // 4-1. 새 채팅방 생성 시 해당 room_index로 직접 응답
+                if (isNewRoomCreation) {
+                    log.info("📡 새 방 생성 완료 - room_index: {}로 브로드캐스트", messageData.get("room_index"));
+                }
+            }
+
+            // 4-2. 임시 messageindex가 있으면 응답에 포함 (중요: 브로드캐스트에 포함되어야 함)
+            String tempMessageIndex = (String) messageData.get("tempMessageIndex");
+            if (tempMessageIndex != null) {
+                messageData.put("tempMessageIndex", tempMessageIndex);
+                log.info("임시 messageindex 포함: {}", tempMessageIndex);
+            } else {
+                log.warn("임시 messageindex가 없음");
             }
 
             // 5. 메시지에 타임스탬프 추가
@@ -285,7 +273,23 @@ public class ChatWebSocketController {
 
              log.info("채팅 메시지 브로드캐스트: {}", messageData);
 
-                         // 8. 브로드캐스트 전송
+             // 브로드캐스트 전송 전 최종 확인
+             log.info("최종 브로드캐스트 데이터 확인:");
+             log.info("- roomId: {}", roomId);
+             log.info("- user_id: {}", messageData.get("user_id"));
+             log.info("- messageindex: {}", messageData.get("messageindex"));
+             log.info("- tempMessageIndex: {}", messageData.get("tempMessageIndex"));
+             log.info("- 전체 응답: {}", messageData);
+             log.info("- 브로드캐스트 대상: /queue/{}", roomIndex);
+             log.info("=== 브로드캐스트 전송 시작 ===");
+
+             // 응답 데이터의 모든 키를 확인
+             log.info("응답 데이터의 모든 키:");
+             for (String key : messageData.keySet()) {
+                 log.info("  - {}: {}", key, messageData.get(key));
+             }
+
+             // 8. 브로드캐스트 전송
              if (!isNewRoomCreation) {
                  // 기존 방: 해당 방으로 브로드캐스트
                  messagingTemplate.convertAndSend("/queue/" + roomIndex, messageData);
