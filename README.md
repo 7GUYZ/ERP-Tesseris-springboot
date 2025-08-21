@@ -12,7 +12,7 @@ tesseris/
 ├── ERD-tesseris-springboot/      # Spring Boot 백엔드 서버
 ├── ERP-Tesseris-react/           # 사용자용 React 애플리케이션
 ├── ERP-Tesseris-Chat-Backend     # 실시간 채팅 서버
-├── ERP-Tesseris-Alert-Backend    # 실시간 채팅 서버
+├── ERP-Tesseris-Alert-Backend    # 실시간 알람 서버
 ```
 
 ## 🛠️ 사용된 기술
