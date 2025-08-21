@@ -240,25 +240,10 @@ npm start
 - **파일 관리**: 이미지 업로드, 파일 공유
 - **관리자 기능**: 사용자 관리, 시스템 모니터링
 
-## 🤝 기여하기
-
-1. 이 저장소를 포크합니다
-2. 새로운 기능 브랜치를 생성합니다 (`git checkout -b feature/amazing-feature`)
-3. 변경사항을 커밋합니다 (`git commit -m 'Add some amazing feature'`)
-4. 브랜치에 푸시합니다 (`git push origin feature/amazing-feature`)
-5. Pull Request를 생성합니다
-
-## 📄 라이선스
-
-이 프로젝트는 MIT 라이선스 하에 배포됩니다. 자세한 내용은 `LICENSE` 파일을 참조하세요.
-
-## 📞 문의
-
-프로젝트에 대한 문의사항이 있으시면 이슈를 생성해 주세요.
 
 ---
 
 **Tesseris ERP System** - 효율적인 비즈니스 관리를 위한 최고의 선택 🎯
-
+---
 ** 포트폴리오**
 https://www.tokkitokki.kr/7guyz
